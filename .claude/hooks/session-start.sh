@@ -10,27 +10,22 @@ PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 
 echo "==> PuckLogic session start hook"
 
-# ── Node / Turborepo (root or apps/web) ─────────────────────────────────────
+# ── Node / Turborepo (pnpm) ──────────────────────────────────────────────────
 if [ -f "$PROJECT_DIR/package.json" ]; then
-  echo "==> Installing Node.js dependencies (root)..."
+  echo "==> Installing Node.js dependencies (pnpm)..."
   cd "$PROJECT_DIR"
-  npm install
+  # Install pnpm if not available
+  if ! command -v pnpm &>/dev/null; then
+    npm install -g pnpm
+  fi
+  pnpm install
 fi
 
-# ── Python / FastAPI (apps/api or root) ─────────────────────────────────────
-install_python_deps() {
-  local dir="$1"
-  if [ -f "$dir/pyproject.toml" ]; then
-    echo "==> Installing Python dependencies from pyproject.toml in $dir..."
-    cd "$dir"
-    pip install -e ".[dev]" --quiet
-  elif [ -f "$dir/requirements.txt" ]; then
-    echo "==> Installing Python dependencies from requirements.txt in $dir..."
-    pip install -r "$dir/requirements.txt" --quiet
-  fi
-}
-
-install_python_deps "$PROJECT_DIR"
-install_python_deps "$PROJECT_DIR/apps/api"
+# ── Python / FastAPI (apps/api) ──────────────────────────────────────────────
+if [ -f "$PROJECT_DIR/apps/api/pyproject.toml" ]; then
+  echo "==> Installing Python dependencies (apps/api)..."
+  cd "$PROJECT_DIR/apps/api"
+  pip install -e ".[dev]" --quiet
+fi
 
 echo "==> Session start hook complete."

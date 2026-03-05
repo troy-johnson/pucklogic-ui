@@ -1,0 +1,35 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Environment files — NEVER commit actual secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.local
+!*.local.example
+
+# Next.js
+.next
+out
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+.venv
+venv
+*.egg-info
+dist/
+.pytest_cache
+.ruff_cache
+
+# Build outputs
+dist
+build
+
+# Misc
+.DS_Store
+*.log
+.turbo

@@ -25,7 +25,7 @@ Full architecture details: `pucklogic_architecture.docx`
 
 ---
 
-## Monorepo Structure (planned — pre-scaffold as of Phase 1)
+## Monorepo Structure
 
 ```
 apps/
@@ -44,21 +44,34 @@ pucklogic_architecture.docx
 
 ## Dev Commands
 
-> Update this section as the scaffold is built out in Phase 1.
-
-**Frontend (Next.js)**
+**From repo root (Turborepo)**
 ```bash
-npm run dev          # start Next.js dev server
-npm run build        # build all apps via Turborepo
-npm run lint         # ESLint across apps
+pnpm install         # install all workspace dependencies
+pnpm run dev         # start all apps in dev mode (Next.js on :3000)
+pnpm run build       # production build all apps
+pnpm run lint        # lint all apps
+pnpm run test        # run all tests
+```
+
+**Frontend only**
+```bash
+cd apps/web
+pnpm run dev         # Next.js dev server on http://localhost:3000
 ```
 
 **Backend (FastAPI)**
 ```bash
 cd apps/api
-uvicorn main:app --reload   # start dev server
-pytest                      # run tests
-ruff check .                # lint
+pip install -e ".[dev]"         # install Python deps (first time)
+uvicorn main:app --reload       # dev server on http://localhost:8000
+pytest                          # run tests
+ruff check .                    # lint
+```
+
+**Add a shadcn/ui component**
+```bash
+cd apps/web
+npx shadcn@latest add <component-name>
 ```
 
 ---
@@ -131,7 +144,7 @@ Scrapers run on GitHub Actions cron (daily or weekly). Each source has a dedicat
 
 ## Important Notes for AI Agents
 
-- **Repo is pre-scaffold.** No application code exists yet. Phase 1 starts now. Refer to `pucklogic_architecture.docx` for full design rationale.
+- **Phase 1 scaffold is complete.** Turborepo monorepo with Next.js (`apps/web`), FastAPI (`apps/api`), and shared UI package (`packages/ui`) are all in place. Refer to `pucklogic_architecture.docx` for full design rationale.
 - **Session hook**: `.claude/hooks/session-start.sh` auto-installs Node and Python deps in remote Claude Code sessions.
 - **Secrets**: never commit secrets. Use `.env.local` (Next.js) and `.env` (FastAPI) — both must be gitignored.
 - **Scraper ethics**: always check and respect `robots.txt`; add rate-limiting and backoff to all scrapers.
