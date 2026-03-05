@@ -1,3 +1,7 @@
+/**
+ * Supabase server client — AUTH ONLY.
+ * Do not use this for data queries. All data access goes through lib/api/.
+ */
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
