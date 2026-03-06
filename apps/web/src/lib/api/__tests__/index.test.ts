@@ -19,6 +19,12 @@ describe("apiFetch", () => {
       });
     });
 
+    it("returns undefined for a 204 No Content response", async () => {
+      mockFetch({ ok: true, status: 204 });
+      const result = await apiFetch<undefined>("/user-kits/kit-1");
+      expect(result).toBeUndefined();
+    });
+
     it("calls the correct URL", async () => {
       const spy = mockFetch({ ok: true, json: async () => ({}) });
       await apiFetch("/health");

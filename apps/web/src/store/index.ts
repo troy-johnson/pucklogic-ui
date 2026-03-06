@@ -1,14 +1,11 @@
 import { create } from "zustand";
 
-// Root store — feature slices will be added here as they're built
-// Example: import { createRankingsSlice, RankingsSlice } from "./rankings"
-// type StoreState = RankingsSlice & ...
+import { createRankingsSlice, type RankingsSlice } from "./slices/rankings";
+import { createSourcesSlice, type SourcesSlice } from "./slices/sources";
 
-interface AppState {
-  // placeholder — will be replaced by feature slices in Phase 2
-  _initialized: boolean;
-}
+export type AppState = SourcesSlice & RankingsSlice;
 
-export const useStore = create<AppState>()(() => ({
-  _initialized: true,
+export const useStore = create<AppState>()((...a) => ({
+  ...createSourcesSlice(...a),
+  ...createRankingsSlice(...a),
 }));
