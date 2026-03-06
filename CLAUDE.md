@@ -142,6 +142,35 @@ Scrapers run on GitHub Actions cron (daily or weekly). Each source has a dedicat
 
 ---
 
+## Testing & TDD Practices
+
+**TDD is required.** Write the test before the implementation.
+
+### Workflow
+1. Write a failing test that defines the expected behaviour
+2. Write the minimum implementation to make it pass
+3. Refactor if needed, keeping tests green
+
+### Frontend (`apps/web`) — Vitest + React Testing Library
+- **Run:** `pnpm test` (single pass) · `pnpm test:watch` (watch) · `pnpm test:coverage` (with coverage)
+- **Config:** `apps/web/vitest.config.ts` — jsdom env, globals enabled, v8 coverage
+- **Setup:** `apps/web/src/test/setup.ts` — jest-dom matchers imported globally
+- **Location:** co-locate tests in `__tests__/` next to the source file (e.g. `src/lib/api/__tests__/index.test.ts`)
+
+### Backend (`apps/api`) — pytest + pytest-cov
+- **Run:** `pytest` from `apps/api/` (coverage printed automatically)
+- **Config:** `pyproject.toml` — `asyncio_mode = auto`, `testpaths = ["tests"]`, v8 coverage
+- **Fixtures:** shared fixtures live in `tests/conftest.py`
+- **Location:** mirror the source tree under `tests/` (e.g. `tests/repositories/test_players.py`)
+
+### Rules
+- Every new module or function must ship with tests
+- Mocks over real I/O: use `vi.spyOn` / `MagicMock` — never hit real DB, HTTP, or filesystem in unit tests
+- Use `TYPE_CHECKING` guards on heavy imports (e.g. `supabase.Client`) to keep the test environment portable
+- All tests must be green before committing
+
+---
+
 ## Important Notes for AI Agents
 
 - **Phase 1 scaffold is complete.** Turborepo monorepo with Next.js (`apps/web`), FastAPI (`apps/api`), and shared UI package (`packages/ui`) are all in place. Refer to `pucklogic_architecture.docx` for full design rationale.
