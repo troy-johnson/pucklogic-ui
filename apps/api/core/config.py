@@ -7,6 +7,11 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_service_role_key: str = ""
     database_url: str = ""
+    redis_url: str = ""
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_price_id: str = ""
+    frontend_url: str = "http://localhost:3000"
     environment: str = "development"
 
     @property
