@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 
+import stripe
 from fastapi import APIRouter, Header, HTTPException, Request
 
 from core.config import settings
@@ -19,8 +20,6 @@ async def create_checkout_session(
     """Create a Stripe Checkout session for a one-time draft-kit purchase."""
     if not settings.stripe_secret_key:
         raise HTTPException(status_code=503, detail="Stripe not configured")
-
-    import stripe
 
     stripe.api_key = settings.stripe_secret_key
     session = stripe.checkout.Session.create(
@@ -40,8 +39,6 @@ async def stripe_webhook(
     """Handle Stripe webhook events (signature-verified)."""
     if not settings.stripe_webhook_secret:
         raise HTTPException(status_code=503, detail="Stripe webhook not configured")
-
-    import stripe
 
     stripe.api_key = settings.stripe_secret_key
     body = await request.body()
