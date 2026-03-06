@@ -8,6 +8,7 @@ the results into Supabase.
 Usage (CLI):
     python -m scrapers.moneypuck
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -15,8 +16,6 @@ import csv
 import io
 import logging
 from typing import Any
-
-import httpx
 
 from scrapers.base import BaseScraper, RobotsDisallowedError
 
@@ -82,7 +81,11 @@ class MoneyPuckScraper(BaseScraper):
         result = (
             db.table("sources")
             .upsert(
-                {"name": self.SOURCE_NAME, "display_name": self.DISPLAY_NAME, "active": True},
+                {
+                    "name": self.SOURCE_NAME,
+                    "display_name": self.DISPLAY_NAME,
+                    "active": True,
+                },
                 on_conflict="name",
             )
             .execute()
@@ -126,9 +129,7 @@ class MoneyPuckScraper(BaseScraper):
         csv_url = self._csv_url(season)
 
         if not await self._check_robots_txt(csv_url):
-            raise RobotsDisallowedError(
-                f"robots.txt disallows scraping {csv_url}"
-            )
+            raise RobotsDisallowedError(f"robots.txt disallows scraping {csv_url}")
 
         response = await self._get_with_retry(csv_url)
         players = self._parse_csv(response.text)
@@ -146,9 +147,11 @@ class MoneyPuckScraper(BaseScraper):
 # CLI entry-point
 # ------------------------------------------------------------------
 
+
 async def _main() -> None:
-    from core.config import settings
     from supabase import create_client
+
+    from core.config import settings
 
     db = create_client(settings.supabase_url, settings.supabase_service_role_key)
     count = await MoneyPuckScraper().scrape(settings.current_season, db)

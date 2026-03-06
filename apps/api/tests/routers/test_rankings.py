@@ -124,7 +124,12 @@ class TestComputeRankings:
         assert "name" in player
 
     def test_missing_season_returns_422(self, client: TestClient) -> None:
-        assert client.post("/rankings/compute", json={"weights": WEIGHTS}).status_code == 422
+        assert (
+            client.post("/rankings/compute", json={"weights": WEIGHTS}).status_code
+            == 422
+        )
 
     def test_missing_weights_returns_422(self, client: TestClient) -> None:
-        assert client.post("/rankings/compute", json={"season": SEASON}).status_code == 422
+        assert (
+            client.post("/rankings/compute", json={"season": SEASON}).status_code == 422
+        )

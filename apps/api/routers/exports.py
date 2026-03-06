@@ -31,9 +31,7 @@ async def generate_export(
             media_type=(
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             ),
-            headers={
-                "Content-Disposition": f'attachment; filename="{filename}.xlsx"'
-            },
+            headers={"Content-Disposition": f'attachment; filename="{filename}.xlsx"'},
         )
 
     content = generate_pdf(ranked, req.season)

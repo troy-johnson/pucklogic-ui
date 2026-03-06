@@ -4,15 +4,15 @@ TDD tests for scrapers/base.py.
 All HTTP and DB I/O is mocked — no real network calls.
 Written BEFORE the implementation.
 """
+
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
 
-from scrapers.base import BaseScraper, RobotsDisallowedError
-
+from scrapers.base import BaseScraper
 
 # ---------------------------------------------------------------------------
 # Minimal concrete subclass for testing
@@ -30,7 +30,9 @@ class _DummyScraper(BaseScraper):
 
 
 def _make_response(status_code: int = 200, text: str = "") -> httpx.Response:
-    return httpx.Response(status_code, text=text, request=httpx.Request("GET", "http://x"))
+    return httpx.Response(
+        status_code, text=text, request=httpx.Request("GET", "http://x")
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -75,7 +77,8 @@ class TestRobotsTxt:
 
     @pytest.mark.asyncio
     async def test_robots_agent_name_matches_check(self) -> None:
-        """ROBOTS_AGENT (bare name) must be used for can_fetch(), not the full UA string."""
+        """ROBOTS_AGENT (bare name) must be used for can_fetch(),
+        not the full UA string."""
         robots_txt = f"User-agent: {_DummyScraper.ROBOTS_AGENT}\nDisallow: /"
         mock_http = AsyncMock()
         mock_http.get.return_value = _make_response(200, robots_txt)
@@ -158,8 +161,10 @@ class TestGetWithRetry:
         ]
         scraper = _DummyScraper(http=mock_http)
         sleep_calls = []
+
         async def mock_sleep(s: float) -> None:
             sleep_calls.append(s)
+
         with patch("scrapers.base.asyncio.sleep", side_effect=mock_sleep):
             await scraper._get_with_retry("https://example.com/api")
         assert sleep_calls == [1, 2]

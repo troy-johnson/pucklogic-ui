@@ -6,6 +6,7 @@ Enforces:
   - polite rate-limiting between pages
   - exponential-backoff retries on transient server errors
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -28,7 +29,9 @@ class BaseScraper(ABC):
     # ROBOTS_AGENT is the bare name checked against robots.txt entries.
     # USER_AGENT is the full HTTP header string sent with every request.
     ROBOTS_AGENT: str = "PuckLogicBot"
-    USER_AGENT: str = "PuckLogicBot/1.0 (fantasy hockey stats aggregator; contact@pucklogic.com)"
+    USER_AGENT: str = (
+        "PuckLogicBot/1.0 (fantasy hockey stats aggregator; contact@pucklogic.com)"
+    )
     MIN_DELAY_SECONDS: float = 1.0
     MAX_RETRIES: int = 3
     RETRY_STATUSES: frozenset[int] = frozenset({429, 500, 502, 503, 504})
@@ -55,7 +58,9 @@ class BaseScraper(ABC):
             rp.parse(response.text.splitlines())
         except Exception:
             # Unreachable robots.txt → assume allowed (fail-open)
-            logger.warning("Could not fetch robots.txt from %s — assuming allowed", robots_url)
+            logger.warning(
+                "Could not fetch robots.txt from %s — assuming allowed", robots_url
+            )
             return True
         allowed = rp.can_fetch(self.ROBOTS_AGENT, url)
         if not allowed:

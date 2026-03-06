@@ -24,7 +24,9 @@ def generate_excel(
     ws = wb.active
     ws.title = f"Rankings {season}"
 
-    header_fill = PatternFill(start_color="1E3A5F", end_color="1E3A5F", fill_type="solid")
+    header_fill = PatternFill(
+        start_color="1E3A5F", end_color="1E3A5F", fill_type="solid"
+    )
     header_font = Font(color="FFFFFF", bold=True)
 
     # Collect all source columns

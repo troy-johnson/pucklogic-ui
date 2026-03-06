@@ -20,33 +20,33 @@ def repo(mock_db: MagicMock) -> SourceRepository:
 
 
 NHL_SOURCE = {"id": "s1", "name": "nhl_com", "display_name": "NHL.com", "active": True}
-MP_SOURCE = {"id": "s2", "name": "moneypuck", "display_name": "MoneyPuck", "active": True}
+MP_SOURCE = {
+    "id": "s2",
+    "name": "moneypuck",
+    "display_name": "MoneyPuck",
+    "active": True,
+}
 
 
 class TestList:
     def _chain(self, mock_db: MagicMock) -> MagicMock:
-        return (
-            mock_db.table.return_value
-            .select.return_value
-            .eq.return_value
-            .order.return_value
-            .execute.return_value
-        )
+        chain = mock_db.table.return_value.select.return_value.eq.return_value
+        return chain.order.return_value.execute.return_value
 
     def _chain_no_filter(self, mock_db: MagicMock) -> MagicMock:
-        return (
-            mock_db.table.return_value
-            .select.return_value
-            .order.return_value
-            .execute.return_value
-        )
+        chain = mock_db.table.return_value.select.return_value
+        return chain.order.return_value.execute.return_value
 
-    def test_queries_sources_table(self, repo: SourceRepository, mock_db: MagicMock) -> None:
+    def test_queries_sources_table(
+        self, repo: SourceRepository, mock_db: MagicMock
+    ) -> None:
         self._chain(mock_db).data = []
         repo.list()
         mock_db.table.assert_called_once_with("sources")
 
-    def test_filters_active_by_default(self, repo: SourceRepository, mock_db: MagicMock) -> None:
+    def test_filters_active_by_default(
+        self, repo: SourceRepository, mock_db: MagicMock
+    ) -> None:
         chain = mock_db.table.return_value.select.return_value.eq
         chain.return_value.order.return_value.execute.return_value.data = []
         repo.list(active_only=True)
@@ -66,15 +66,12 @@ class TestList:
 
 class TestGet:
     def _chain(self, mock_db: MagicMock) -> MagicMock:
-        return (
-            mock_db.table.return_value
-            .select.return_value
-            .eq.return_value
-            .maybe_single.return_value
-            .execute.return_value
-        )
+        chain = mock_db.table.return_value.select.return_value.eq.return_value
+        return chain.maybe_single.return_value.execute.return_value
 
-    def test_returns_source_when_found(self, repo: SourceRepository, mock_db: MagicMock) -> None:
+    def test_returns_source_when_found(
+        self, repo: SourceRepository, mock_db: MagicMock
+    ) -> None:
         self._chain(mock_db).data = NHL_SOURCE
         assert repo.get("s1") == NHL_SOURCE
 
@@ -93,15 +90,12 @@ class TestGet:
 
 class TestGetByName:
     def _chain(self, mock_db: MagicMock) -> MagicMock:
-        return (
-            mock_db.table.return_value
-            .select.return_value
-            .eq.return_value
-            .maybe_single.return_value
-            .execute.return_value
-        )
+        chain = mock_db.table.return_value.select.return_value.eq.return_value
+        return chain.maybe_single.return_value.execute.return_value
 
-    def test_returns_source_when_found(self, repo: SourceRepository, mock_db: MagicMock) -> None:
+    def test_returns_source_when_found(
+        self, repo: SourceRepository, mock_db: MagicMock
+    ) -> None:
         self._chain(mock_db).data = NHL_SOURCE
         assert repo.get_by_name("nhl_com") == NHL_SOURCE
 

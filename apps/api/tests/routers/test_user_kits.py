@@ -37,24 +37,23 @@ def override_deps(mock_db: MagicMock) -> None:
 class TestListUserKits:
     def test_returns_200(self, client: TestClient, mock_db: MagicMock) -> None:
         (
-            mock_db.table.return_value.select.return_value
-            .eq.return_value.order.return_value.execute.return_value.data
+            mock_db.table.return_value.select.return_value.eq.return_value.order.return_value.execute.return_value.data
         ) = [KIT_ROW]
         assert client.get("/user-kits").status_code == 200
 
     def test_returns_list_of_kits(self, client: TestClient, mock_db: MagicMock) -> None:
         (
-            mock_db.table.return_value.select.return_value
-            .eq.return_value.order.return_value.execute.return_value.data
+            mock_db.table.return_value.select.return_value.eq.return_value.order.return_value.execute.return_value.data
         ) = [KIT_ROW]
         data = client.get("/user-kits").json()
         assert isinstance(data, list)
         assert len(data) == 1
 
-    def test_kit_has_required_fields(self, client: TestClient, mock_db: MagicMock) -> None:
+    def test_kit_has_required_fields(
+        self, client: TestClient, mock_db: MagicMock
+    ) -> None:
         (
-            mock_db.table.return_value.select.return_value
-            .eq.return_value.order.return_value.execute.return_value.data
+            mock_db.table.return_value.select.return_value.eq.return_value.order.return_value.execute.return_value.data
         ) = [KIT_ROW]
         kit = client.get("/user-kits").json()[0]
         assert "id" in kit
@@ -73,8 +72,7 @@ class TestListUserKits:
         self, client: TestClient, mock_db: MagicMock
     ) -> None:
         (
-            mock_db.table.return_value.select.return_value
-            .eq.return_value.order.return_value.execute.return_value.data
+            mock_db.table.return_value.select.return_value.eq.return_value.order.return_value.execute.return_value.data
         ) = []
         assert client.get("/user-kits").json() == []
 
@@ -87,17 +85,23 @@ class TestCreateUserKit:
     }
 
     def test_returns_201(self, client: TestClient, mock_db: MagicMock) -> None:
-        mock_db.table.return_value.insert.return_value.execute.return_value.data = [KIT_ROW]
+        mock_db.table.return_value.insert.return_value.execute.return_value.data = [
+            KIT_ROW
+        ]
         assert client.post("/user-kits", json=self.CREATE_BODY).status_code == 201
 
     def test_returns_created_kit(self, client: TestClient, mock_db: MagicMock) -> None:
-        mock_db.table.return_value.insert.return_value.execute.return_value.data = [KIT_ROW]
+        mock_db.table.return_value.insert.return_value.execute.return_value.data = [
+            KIT_ROW
+        ]
         data = client.post("/user-kits", json=self.CREATE_BODY).json()
         assert data["id"] == KIT_ROW["id"]
         assert data["name"] == KIT_ROW["name"]
 
     def test_inserts_with_user_id(self, client: TestClient, mock_db: MagicMock) -> None:
-        mock_db.table.return_value.insert.return_value.execute.return_value.data = [KIT_ROW]
+        mock_db.table.return_value.insert.return_value.execute.return_value.data = [
+            KIT_ROW
+        ]
         client.post("/user-kits", json=self.CREATE_BODY)
         insert_call = mock_db.table.return_value.insert.call_args.args[0]
         assert insert_call["user_id"] == MOCK_USER["id"]
@@ -114,17 +118,19 @@ class TestCreateUserKit:
 
 
 class TestDeleteUserKit:
-    def test_returns_204_when_deleted(self, client: TestClient, mock_db: MagicMock) -> None:
+    def test_returns_204_when_deleted(
+        self, client: TestClient, mock_db: MagicMock
+    ) -> None:
         (
-            mock_db.table.return_value.delete.return_value
-            .eq.return_value.eq.return_value.execute.return_value.data
+            mock_db.table.return_value.delete.return_value.eq.return_value.eq.return_value.execute.return_value.data
         ) = [KIT_ROW]
         assert client.delete("/user-kits/kit-1").status_code == 204
 
-    def test_returns_404_when_not_found(self, client: TestClient, mock_db: MagicMock) -> None:
+    def test_returns_404_when_not_found(
+        self, client: TestClient, mock_db: MagicMock
+    ) -> None:
         (
-            mock_db.table.return_value.delete.return_value
-            .eq.return_value.eq.return_value.execute.return_value.data
+            mock_db.table.return_value.delete.return_value.eq.return_value.eq.return_value.execute.return_value.data
         ) = []
         assert client.delete("/user-kits/nonexistent").status_code == 404
 
@@ -148,7 +154,9 @@ class TestUnauthenticated:
         from fastapi import HTTPException as _HTTPException
 
         def _raise_401() -> None:
-            raise _HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+            raise _HTTPException(
+                status_code=401, detail="Missing or invalid Authorization header"
+            )
 
         app.dependency_overrides[get_current_user] = _raise_401
         try:

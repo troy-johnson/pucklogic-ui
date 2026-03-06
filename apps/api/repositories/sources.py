@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class SourceRepository:
-    def __init__(self, db: "Client") -> None:
+    def __init__(self, db: Client) -> None:
         self._db = db
 
     def list(self, active_only: bool = True) -> list[dict[str, Any]]:

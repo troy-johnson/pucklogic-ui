@@ -27,10 +27,10 @@ logger = logging.getLogger(__name__)
 # Supabase singleton
 # ---------------------------------------------------------------------------
 
-_supabase_client: "Client | None" = None
+_supabase_client: Client | None = None
 
 
-def get_db() -> "Client":
+def get_db() -> Client:
     """Return (and lazily create) the shared Supabase client."""
     global _supabase_client
     if _supabase_client is None:

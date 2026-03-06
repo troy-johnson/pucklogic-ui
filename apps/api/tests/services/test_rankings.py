@@ -19,25 +19,45 @@ TWO_SOURCE_ROWS = [
     {
         "rank": 1,
         "season": "2025-26",
-        "players": {"id": "p1", "name": "Connor McDavid", "team": "EDM", "position": "C"},
+        "players": {
+            "id": "p1",
+            "name": "Connor McDavid",
+            "team": "EDM",
+            "position": "C",
+        },
         "sources": {"name": "nhl_com", "display_name": "NHL.com"},
     },
     {
         "rank": 2,
         "season": "2025-26",
-        "players": {"id": "p2", "name": "Nathan MacKinnon", "team": "COL", "position": "C"},
+        "players": {
+            "id": "p2",
+            "name": "Nathan MacKinnon",
+            "team": "COL",
+            "position": "C",
+        },
         "sources": {"name": "nhl_com", "display_name": "NHL.com"},
     },
     {
         "rank": 1,
         "season": "2025-26",
-        "players": {"id": "p2", "name": "Nathan MacKinnon", "team": "COL", "position": "C"},
+        "players": {
+            "id": "p2",
+            "name": "Nathan MacKinnon",
+            "team": "COL",
+            "position": "C",
+        },
         "sources": {"name": "moneypuck", "display_name": "MoneyPuck"},
     },
     {
         "rank": 2,
         "season": "2025-26",
-        "players": {"id": "p1", "name": "Connor McDavid", "team": "EDM", "position": "C"},
+        "players": {
+            "id": "p1",
+            "name": "Connor McDavid",
+            "team": "EDM",
+            "position": "C",
+        },
         "sources": {"name": "moneypuck", "display_name": "MoneyPuck"},
     },
 ]
@@ -89,14 +109,50 @@ class TestFlattenDbRankings:
 def two_source_rankings() -> dict:
     return {
         "nhl_com": [
-            {"player_id": "p1", "name": "McDavid", "team": "EDM", "position": "C", "rank": 1},
-            {"player_id": "p2", "name": "MacKinnon", "team": "COL", "position": "C", "rank": 2},
-            {"player_id": "p3", "name": "Draisaitl", "team": "EDM", "position": "C", "rank": 3},
+            {
+                "player_id": "p1",
+                "name": "McDavid",
+                "team": "EDM",
+                "position": "C",
+                "rank": 1,
+            },
+            {
+                "player_id": "p2",
+                "name": "MacKinnon",
+                "team": "COL",
+                "position": "C",
+                "rank": 2,
+            },
+            {
+                "player_id": "p3",
+                "name": "Draisaitl",
+                "team": "EDM",
+                "position": "C",
+                "rank": 3,
+            },
         ],
         "moneypuck": [
-            {"player_id": "p2", "name": "MacKinnon", "team": "COL", "position": "C", "rank": 1},
-            {"player_id": "p1", "name": "McDavid", "team": "EDM", "position": "C", "rank": 2},
-            {"player_id": "p3", "name": "Draisaitl", "team": "EDM", "position": "C", "rank": 3},
+            {
+                "player_id": "p2",
+                "name": "MacKinnon",
+                "team": "COL",
+                "position": "C",
+                "rank": 1,
+            },
+            {
+                "player_id": "p1",
+                "name": "McDavid",
+                "team": "EDM",
+                "position": "C",
+                "rank": 2,
+            },
+            {
+                "player_id": "p3",
+                "name": "Draisaitl",
+                "team": "EDM",
+                "position": "C",
+                "rank": 3,
+            },
         ],
     }
 
@@ -129,7 +185,9 @@ class TestComputeWeightedRankings:
         assert mcd["source_ranks"]["nhl_com"] == 1
         assert mcd["source_ranks"]["moneypuck"] == 2
 
-    def test_composite_score_between_zero_and_one(self, two_source_rankings: dict) -> None:
+    def test_composite_score_between_zero_and_one(
+        self, two_source_rankings: dict
+    ) -> None:
         result = compute_weighted_rankings(
             two_source_rankings, {"nhl_com": 50, "moneypuck": 50}
         )
@@ -143,10 +201,10 @@ class TestComputeWeightedRankings:
         # Only nhl_com contributes; McDavid (rank 1) should be first
         assert result[0]["player_id"] == "p1"
 
-    def test_source_absent_from_weights_excluded(self, two_source_rankings: dict) -> None:
-        result = compute_weighted_rankings(
-            two_source_rankings, {"nhl_com": 100}
-        )
+    def test_source_absent_from_weights_excluded(
+        self, two_source_rankings: dict
+    ) -> None:
+        result = compute_weighted_rankings(two_source_rankings, {"nhl_com": 100})
         # moneypuck not in weights → not counted
         mcd = next(r for r in result if r["player_id"] == "p1")
         assert "moneypuck" not in mcd["source_ranks"]
@@ -193,7 +251,9 @@ class TestComputeWeightedRankings:
                 {"player_id": "p1", "name": "McDavid", "rank": 2},
             ],
         }
-        result = compute_weighted_rankings(source_rankings, {"nhl_com": 1, "moneypuck": 1})
+        result = compute_weighted_rankings(
+            source_rankings, {"nhl_com": 1, "moneypuck": 1}
+        )
         # Both players have symmetric ranks → composite scores should be equal
         scores = {r["player_id"]: r["composite_score"] for r in result}
         assert abs(scores["p1"] - scores["p2"]) < 1e-9

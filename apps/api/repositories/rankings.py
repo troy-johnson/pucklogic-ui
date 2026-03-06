@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class RankingsRepository:
-    def __init__(self, db: "Client") -> None:
+    def __init__(self, db: Client) -> None:
         self._db = db
 
     def get_by_season(

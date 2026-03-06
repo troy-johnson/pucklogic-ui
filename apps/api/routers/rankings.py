@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 
@@ -28,7 +28,7 @@ async def compute_rankings(
     if cached_data is not None:
         return RankingsComputeResponse(
             season=req.season,
-            computed_at=datetime.now(timezone.utc),
+            computed_at=datetime.now(UTC),
             cached=True,
             rankings=[RankedPlayer(**p) for p in cached_data],
         )
@@ -40,7 +40,7 @@ async def compute_rankings(
 
     return RankingsComputeResponse(
         season=req.season,
-        computed_at=datetime.now(timezone.utc),
+        computed_at=datetime.now(UTC),
         cached=False,
         rankings=[RankedPlayer(**p) for p in ranked],
     )

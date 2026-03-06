@@ -7,14 +7,13 @@ upserts them into the ``players`` and ``player_rankings`` Supabase tables.
 Usage (CLI):
     python -m scrapers.nhl_com
 """
+
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
 from typing import Any
-
-import httpx
 
 from scrapers.base import BaseScraper, RobotsDisallowedError
 
@@ -61,7 +60,11 @@ class NhlComScraper(BaseScraper):
         result = (
             db.table("sources")
             .upsert(
-                {"name": self.SOURCE_NAME, "display_name": self.DISPLAY_NAME, "active": True},
+                {
+                    "name": self.SOURCE_NAME,
+                    "display_name": self.DISPLAY_NAME,
+                    "active": True,
+                },
                 on_conflict="name",
             )
             .execute()
@@ -139,11 +142,12 @@ class NhlComScraper(BaseScraper):
 # CLI entry-point
 # ------------------------------------------------------------------
 
+
 async def _main() -> None:
     from core.config import settings
 
     if TYPE_CHECKING:
-        from supabase import Client
+        pass
     from supabase import create_client
 
     db = create_client(settings.supabase_url, settings.supabase_service_role_key)

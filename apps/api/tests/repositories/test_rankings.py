@@ -30,12 +30,8 @@ def repo(mock_db: MagicMock) -> RankingsRepository:
 
 class TestGetBySeason:
     def _base_chain(self, mock_db: MagicMock) -> MagicMock:
-        return (
-            mock_db.table.return_value
-            .select.return_value
-            .eq.return_value
-            .execute.return_value
-        )
+        chain = mock_db.table.return_value.select.return_value.eq.return_value
+        return chain.execute.return_value
 
     def test_queries_player_rankings_table(
         self, repo: RankingsRepository, mock_db: MagicMock
@@ -44,7 +40,9 @@ class TestGetBySeason:
         repo.get_by_season(SEASON)
         mock_db.table.assert_called_once_with("player_rankings")
 
-    def test_filters_by_season(self, repo: RankingsRepository, mock_db: MagicMock) -> None:
+    def test_filters_by_season(
+        self, repo: RankingsRepository, mock_db: MagicMock
+    ) -> None:
         chain = mock_db.table.return_value.select.return_value.eq
         chain.return_value.execute.return_value.data = []
         repo.get_by_season(SEASON)
@@ -82,11 +80,7 @@ class TestGetSourcesForSeason:
             {"sources": {"name": "nhl_com"}},  # duplicate — should be deduplicated
         ]
         (
-            mock_db.table.return_value
-            .select.return_value
-            .eq.return_value
-            .execute.return_value
-            .data
+            mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value.data
         ) = raw
         result = repo.get_sources_for_season(SEASON)
         assert result == ["nhl_com", "moneypuck"]
@@ -95,10 +89,6 @@ class TestGetSourcesForSeason:
         self, repo: RankingsRepository, mock_db: MagicMock
     ) -> None:
         (
-            mock_db.table.return_value
-            .select.return_value
-            .eq.return_value
-            .execute.return_value
-            .data
+            mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value.data
         ) = []
         assert repo.get_sources_for_season(SEASON) == []

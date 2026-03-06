@@ -4,10 +4,11 @@ TDD tests for scrapers/nhl_com.py.
 All HTTP and DB I/O is mocked.
 Written BEFORE the implementation.
 """
+
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -28,7 +29,9 @@ def _make_response(data: dict, status: int = 200) -> httpx.Response:
 def _mock_db(source_id: str = "src-1", player_id: str = "p-1") -> MagicMock:
     db = MagicMock()
     # sources.upsert(...).execute() → {"data": [{"id": source_id}]}
-    db.table.return_value.upsert.return_value.execute.return_value.data = [{"id": source_id}]
+    db.table.return_value.upsert.return_value.execute.return_value.data = [
+        {"id": source_id}
+    ]
     # players.upsert(...).execute() → {"data": [{"id": player_id}]}
     return db
 
@@ -107,12 +110,18 @@ class TestScrape:
         mock_http = AsyncMock()
         mock_http.get.side_effect = [
             # robots.txt
-            httpx.Response(200, text="User-agent: *\nAllow: /", request=httpx.Request("GET", "http://x")),
+            httpx.Response(
+                200,
+                text="User-agent: *\nAllow: /",
+                request=httpx.Request("GET", "http://x"),
+            ),
             # NHL API page 1 (2 players — less than PAGE_SIZE so no page 2)
             _make_response({"data": [NHL_PLAYER_1, NHL_PLAYER_2], "total": 2}),
         ]
         db = _mock_db()
-        db.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "p-1"}]
+        db.table.return_value.upsert.return_value.execute.return_value.data = [
+            {"id": "p-1"}
+        ]
         scraper = NhlComScraper(http=mock_http)
         count = await scraper.scrape(SEASON, db)
         assert count == 2
@@ -121,7 +130,11 @@ class TestScrape:
     async def test_upserts_source_record(self) -> None:
         mock_http = AsyncMock()
         mock_http.get.side_effect = [
-            httpx.Response(200, text="User-agent: *\nAllow: /", request=httpx.Request("GET", "http://x")),
+            httpx.Response(
+                200,
+                text="User-agent: *\nAllow: /",
+                request=httpx.Request("GET", "http://x"),
+            ),
             _make_response({"data": [], "total": 0}),
         ]
         db = _mock_db()
@@ -140,6 +153,7 @@ class TestScrape:
             request=httpx.Request("GET", "http://x"),
         )
         from scrapers.base import RobotsDisallowedError
+
         db = _mock_db()
         scraper = NhlComScraper(http=mock_http)
         with pytest.raises(RobotsDisallowedError):
@@ -149,7 +163,11 @@ class TestScrape:
     async def test_assigns_rank_1_to_first_player(self) -> None:
         mock_http = AsyncMock()
         mock_http.get.side_effect = [
-            httpx.Response(200, text="User-agent: *\nAllow: /", request=httpx.Request("GET", "http://x")),
+            httpx.Response(
+                200,
+                text="User-agent: *\nAllow: /",
+                request=httpx.Request("GET", "http://x"),
+            ),
             _make_response({"data": [NHL_PLAYER_1], "total": 1}),
         ]
         db = _mock_db()
@@ -157,8 +175,7 @@ class TestScrape:
         await scraper.scrape(SEASON, db)
         # Find the player_rankings upsert call — rank should be 1
         upsert_calls = [
-            c for c in db.table.return_value.upsert.call_args_list
-            if "rank" in str(c)
+            c for c in db.table.return_value.upsert.call_args_list if "rank" in str(c)
         ]
         assert any("'rank': 1" in str(c) for c in upsert_calls)
 
@@ -169,12 +186,18 @@ class TestScrape:
         full_page = [NHL_PLAYER_1] * PAGE
         mock_http = AsyncMock()
         mock_http.get.side_effect = [
-            httpx.Response(200, text="User-agent: *\nAllow: /", request=httpx.Request("GET", "http://x")),
+            httpx.Response(
+                200,
+                text="User-agent: *\nAllow: /",
+                request=httpx.Request("GET", "http://x"),
+            ),
             _make_response({"data": full_page, "total": PAGE + 1}),
             _make_response({"data": [NHL_PLAYER_2], "total": PAGE + 1}),
         ]
         db = _mock_db()
-        db.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "p-1"}]
+        db.table.return_value.upsert.return_value.execute.return_value.data = [
+            {"id": "p-1"}
+        ]
         scraper = NhlComScraper(http=mock_http)
         with patch("scrapers.base.asyncio.sleep", new_callable=AsyncMock):
             count = await scraper.scrape(SEASON, db)
@@ -185,12 +208,18 @@ class TestScrape:
         PAGE = NhlComScraper.PAGE_SIZE
         mock_http = AsyncMock()
         mock_http.get.side_effect = [
-            httpx.Response(200, text="User-agent: *\nAllow: /", request=httpx.Request("GET", "http://x")),
+            httpx.Response(
+                200,
+                text="User-agent: *\nAllow: /",
+                request=httpx.Request("GET", "http://x"),
+            ),
             _make_response({"data": [NHL_PLAYER_1] * PAGE}),
             _make_response({"data": []}),
         ]
         db = _mock_db()
-        db.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "p-1"}]
+        db.table.return_value.upsert.return_value.execute.return_value.data = [
+            {"id": "p-1"}
+        ]
         scraper = NhlComScraper(http=mock_http)
         sleep_mock = AsyncMock()
         with patch("scrapers.nhl_com.asyncio.sleep", sleep_mock):

@@ -4,10 +4,11 @@ TDD tests for scrapers/moneypuck.py.
 All HTTP and DB I/O is mocked.
 Written BEFORE the implementation.
 """
+
 from __future__ import annotations
 
 import textwrap
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
@@ -39,7 +40,9 @@ def _make_response(text: str, status: int = 200) -> httpx.Response:
 
 def _mock_db() -> MagicMock:
     db = MagicMock()
-    db.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "x-1"}]
+    db.table.return_value.upsert.return_value.execute.return_value.data = [
+        {"id": "x-1"}
+    ]
     return db
 
 
@@ -125,8 +128,8 @@ class TestScrape:
     async def test_returns_count_of_upserted_rows(self) -> None:
         mock_http = AsyncMock()
         mock_http.get.side_effect = [
-            _make_response("User-agent: *\nAllow: /"),   # robots.txt
-            _make_response(SKATERS_CSV),                  # CSV
+            _make_response("User-agent: *\nAllow: /"),  # robots.txt
+            _make_response(SKATERS_CSV),  # CSV
         ]
         db = _mock_db()
         scraper = MoneyPuckScraper(http=mock_http)
@@ -144,8 +147,7 @@ class TestScrape:
         scraper = MoneyPuckScraper(http=mock_http)
         await scraper.scrape(SEASON, db)
         upsert_calls = [
-            c for c in db.table.return_value.upsert.call_args_list
-            if "rank" in str(c)
+            c for c in db.table.return_value.upsert.call_args_list if "rank" in str(c)
         ]
         assert any("'rank': 1" in str(c) for c in upsert_calls)
 
@@ -154,6 +156,7 @@ class TestScrape:
         mock_http = AsyncMock()
         mock_http.get.return_value = _make_response("User-agent: *\nDisallow: /")
         from scrapers.base import RobotsDisallowedError
+
         db = _mock_db()
         scraper = MoneyPuckScraper(http=mock_http)
         with pytest.raises(RobotsDisallowedError):
