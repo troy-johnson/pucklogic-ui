@@ -1,0 +1,39 @@
+name: Scrape NHL.com
+
+on:
+  schedule:
+    # Daily at 06:00 UTC — NHL.com updates stats nightly
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      season:
+        description: "Season to scrape (e.g. 2025-26)"
+        required: false
+        default: ""
+
+jobs:
+  scrape:
+    name: NHL.com daily scrape
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -e "."
+
+      - name: Run NHL.com scraper
+        run: python -m scrapers.nhl_com
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # Override season via workflow_dispatch input when provided
+          CURRENT_SEASON: ${{ inputs.season || vars.CURRENT_SEASON || '2025-26' }}

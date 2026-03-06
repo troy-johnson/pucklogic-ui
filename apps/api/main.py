@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
-from routers import health
+from routers import exports, health, rankings, sources, stripe, user_kits
 
 app = FastAPI(
     title="PuckLogic API",
@@ -13,10 +13,17 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"] if not settings.is_production else [],
+    allow_origins=(
+        [settings.frontend_url] if settings.is_production else ["http://localhost:3000"]
+    ),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.include_router(health.router)
+app.include_router(sources.router)
+app.include_router(rankings.router)
+app.include_router(exports.router)
+app.include_router(stripe.router)
+app.include_router(user_kits.router)

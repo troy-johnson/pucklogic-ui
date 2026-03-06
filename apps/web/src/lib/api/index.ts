@@ -36,5 +36,10 @@ export async function apiFetch<T>(
     throw new ApiError(res.status, await res.text());
   }
 
+  // 204 No Content / 205 Reset Content — no body to parse
+  if (res.status === 204 || res.status === 205) {
+    return undefined as T;
+  }
+
   return res.json() as Promise<T>;
 }

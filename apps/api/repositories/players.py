@@ -19,12 +19,7 @@ class PlayerRepository:
         self._db = db
 
     def list(self, season: str) -> list[dict[str, Any]]:
-        result = (
-            self._db.table("players")
-            .select("*")
-            .eq("season", season)
-            .execute()
-        )
+        result = self._db.table("players").select("*").eq("season", season).execute()
         return result.data
 
     def get(self, player_id: str) -> dict[str, Any] | None:
