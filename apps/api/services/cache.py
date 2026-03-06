@@ -1,0 +1,86 @@
+"""
+Redis cache service (Upstash-compatible).
+
+Uses the standard redis-py client pointed at an Upstash Redis TLS endpoint.
+If Redis is not configured (empty REDIS_URL), all cache operations are no-ops
+so local development works without a Redis instance.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import logging
+from typing import Any
+
+logger = logging.getLogger(__name__)
+
+RANKINGS_TTL_SECONDS = 6 * 60 * 60  # 6 hours
+
+
+def _make_rankings_key(season: str, weights: dict[str, float]) -> str:
+    """Deterministic cache key regardless of weight dict insertion order."""
+    canonical = json.dumps(weights, sort_keys=True)
+    digest = hashlib.md5(canonical.encode()).hexdigest()[:8]
+    return f"rankings:{season}:{digest}"
+
+
+class CacheService:
+    def __init__(self, redis_url: str = "") -> None:
+        self._client = None
+        if redis_url:
+            try:
+                import redis
+
+                self._client = redis.from_url(
+                    redis_url,
+                    decode_responses=True,
+                    socket_connect_timeout=2,
+                    socket_timeout=2,
+                )
+            except Exception:
+                logger.warning("Redis unavailable — caching disabled.")
+
+    @property
+    def available(self) -> bool:
+        return self._client is not None
+
+    def get_rankings(
+        self, season: str, weights: dict[str, float]
+    ) -> list[dict[str, Any]] | None:
+        if not self._client:
+            return None
+        try:
+            key = _make_rankings_key(season, weights)
+            raw = self._client.get(key)
+            if raw:
+                return json.loads(raw)
+        except Exception as exc:
+            logger.warning("Cache GET failed: %s", exc)
+        return None
+
+    def set_rankings(
+        self,
+        season: str,
+        weights: dict[str, float],
+        data: list[dict[str, Any]],
+    ) -> None:
+        if not self._client:
+            return
+        try:
+            key = _make_rankings_key(season, weights)
+            self._client.setex(key, RANKINGS_TTL_SECONDS, json.dumps(data))
+        except Exception as exc:
+            logger.warning("Cache SET failed: %s", exc)
+
+    def invalidate_rankings(self, season: str) -> None:
+        """Delete all cached rankings for a season (e.g., after a scrape run)."""
+        if not self._client:
+            return
+        try:
+            pattern = f"rankings:{season}:*"
+            keys = self._client.keys(pattern)
+            if keys:
+                self._client.delete(*keys)
+        except Exception as exc:
+            logger.warning("Cache invalidate failed: %s", exc)
