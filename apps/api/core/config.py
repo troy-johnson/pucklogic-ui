@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     stripe_price_id: str = ""
     frontend_url: str = "http://localhost:3000"
     environment: str = "development"
+    current_season: str = "2025-26"
 
     @property
     def is_production(self) -> bool:
