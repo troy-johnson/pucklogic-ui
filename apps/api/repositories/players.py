@@ -8,9 +8,10 @@ only this file.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from supabase import Client
+if TYPE_CHECKING:
+    from supabase import Client
 
 
 class PlayerRepository:
