@@ -64,6 +64,7 @@ class RankingsComputeResponse(BaseModel):
 class CheckoutSessionRequest(BaseModel):
     success_url: str
     cancel_url: str
+    user_id: str | None = None
 
 
 class CheckoutSessionResponse(BaseModel):
