@@ -54,6 +54,17 @@ apps/api/
 
 ---
 
+## Version Scope
+
+| Version | Trends API |
+|---------|------------|
+| **v1.0 (Phase 3)** | `GET /trends` returns pre-season Layer 1 scores (`breakout_score`, `regression_risk`, `confidence`, SHAP values) from `player_trends`. No paywall gate needed — all scores visible to free users. Feature spec: `docs/feature-engineering-spec.md`. |
+| **v2.0 (post-launch)** | Layer 2 in-season engine: nightly Celery job populates `trending_up_score`, `trending_down_score`, `momentum_score`, `signals_json`. Paywall gate strips top-10 rows for free users. Endpoint extended, not replaced. |
+
+Do not build Layer 2 Celery jobs, Z-score computation, or the paywall gate until v2.0 is scoped for implementation.
+
+---
+
 ## Phase 2 Status
 
 | Area | Status | Notes |
@@ -172,3 +183,7 @@ async def compute_rankings(
 - Async route handlers are preferred; sync is acceptable for CPU-bound code.
 - `ruff` enforces E, F, I (isort), UP (pyupgrade) rules; run before committing.
 - No `print()` statements — use Python `logging` if debug output is needed.
+
+## MCP Tools
+
+Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
