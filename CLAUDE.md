@@ -90,7 +90,8 @@ npx shadcn@latest add <component-name>
 
 - **Next.js over SvelteKit**: Chrome extension shares React components from `packages/ui` — a Svelte build would require a separate pipeline.
 - **FastAPI over Node backend**: ML model (Python/XGBoost) runs in the same process — no cross-language serialization overhead for predictions.
-- **Rankings algorithm**: per-source rank → normalize to 0–1 score → user-defined weights → weighted average → sort descending. Missing sources degrade gracefully (weight redistributed). Results cached in Redis for 6h.
+- **Rankings algorithm**: per-source rank → normalize to 0–1 score → user-defined weights → weighted average → calculate fantasy points using league scoring rules → compute VORP (Value Over Replacement Player) → sort descending. Missing sources degrade gracefully (weight redistributed). Results cached in Redis for 6h.
+- **Category/roto league mode**: instead of a single fantasy-points score, compute a Z-score per scoring category (goals, assists, PP points, etc.) across the player pool, then sum Z-scores for the final rank. Same weighted-average pipeline, different output stage. League format (points vs. roto) is stored in `user_kits`.
 - **Draft monitor**: `MutationObserver` watches ESPN Fantasy DOM for pick events → service worker relays via WebSocket to backend → backend returns best-available suggestions.
 - **Paywalled sources** (Dom Luszczyszyn / The Athletic): user paste UI (CSV/text) at launch; pursue data agreement in 2027.
 - **Extension monetization**: $2–3 one-time per draft session; payment via Stripe on the web app — no payment UI in the extension itself (simplifies Chrome Web Store compliance).
@@ -110,6 +111,7 @@ npx shadcn@latest add <component-name>
 | `draft_sessions` | Live draft state (user_id, league_config, picks[], available[]) |
 | `exports` | Export job records (user_id, type, status, storage_url) |
 | `subscriptions` | Stripe subscription state (user_id, plan, expires_at) |
+| `injury_reports` | Injury tracking (player_id, status, description, updated_at) — feeds Layer 2 "return from injury" signal |
 
 ---
 
