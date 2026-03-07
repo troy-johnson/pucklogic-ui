@@ -2,7 +2,15 @@
 
 ## Project Overview
 
-PuckLogic is a fantasy hockey draft kit targeting casual and competitive/keeper players. It consists of two products: a **free rankings aggregator** (users select sources, assign weights, get a custom consensus ranking) and a **paid real-time draft monitor** delivered as a Chrome browser extension. A secondary **Trends engine** layers ML-powered breakout/regression predictions on top of the rankings. Target launch: September 2026 (before the 2026–27 NHL season).
+PuckLogic is a fantasy hockey draft kit targeting casual and competitive/keeper players.
+
+**v1.0 (target: September 2026)** — two products:
+1. **Free rankings aggregator**: users select sources, assign weights, get a custom consensus ranking
+2. **Paid real-time draft monitor**: Chrome browser extension with live best-available suggestions
+
+The Trends engine (Layer 1 only) ships in v1.0 as pre-season breakout/regression scores overlaid on the rankings.
+
+**v2.0 (post-launch)** — in-season leading indicator engine (Layer 2): 14-day rolling Z-scores for TOI, xGF%, Corsi, PP unit changes, line combos, etc. Surfaces players trending up *before* production shows up in standard stats.
 
 Full architecture details: `pucklogic_architecture.docx`
 
@@ -180,7 +188,9 @@ Each player also gets a **`pucklogic_trends_score`** that blends Layer 1 + Layer
 
 ---
 
-### Monetization Gate
+### Monetization Gate (v2.0)
+
+Applies to the in-season Layer 2 engine when it ships:
 
 - **Free tier**: full Trends access except the top 10 players by `trending_up_score` (or `pucklogic_trends_score` in-season) are paywalled
 - **Paid tier**: full access to all scores + `signals_json` explainability breakdown
@@ -195,7 +205,8 @@ Each player also gets a **`pucklogic_trends_score`** that blends Layer 1 + Layer
 |---|---|---|
 | 1 — Foundation | Mar–Apr 2026 | Turborepo scaffold, NHL.com + MoneyPuck scrapers, core DB schema, Supabase Auth, GitHub Actions cron |
 | 2 — Aggregation Dashboard | May–Jun 2026 | Source weight UI, composite rankings table, Redis cache, Stripe, PDF/Excel exports |
-| 3 — ML Trends Engine | Jul 2026 | Layer 1: XGBoost breakout model, SHAP explainability, yearly retraining; Layer 2: 14-day rolling Z-score engine (TOI, xGF, Corsi, PP unit, shots, line combos), nightly Celery re-scoring; combined PuckLogic Trends Score; free/paid gate (top-10 paywalled) |
+| 3 — ML Trends Engine (v1.0) | Jul 2026 | **Layer 1 only**: XGBoost breakout/regression model, SHAP explainability, yearly retraining, pre-season scores surfaced on rankings dashboard |
+| v2.0 — In-season Trends | Post-launch | **Layer 2**: 14-day rolling Z-score engine (TOI, xGF, Corsi, PP unit, shots, line combos), nightly Celery re-scoring, combined PuckLogic Trends Score, free/paid gate (top-10 paywalled) |
 | 4 — Browser Extension | Aug–Sep 2026 | Chrome MV3 extension, ESPN DOM observer, WebSocket draft sessions, public launch |
 
 ---

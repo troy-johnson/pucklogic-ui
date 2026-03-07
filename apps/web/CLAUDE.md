@@ -57,6 +57,17 @@ apps/web/src/
 
 ---
 
+## Version Scope
+
+| Version | Trends UI |
+|---------|-----------|
+| **v1.0** | Pre-season breakout/regression badges (`breakout_score`, `regression_risk`) displayed inline on the `RankingsTable`. No separate Trends tab. |
+| **v2.0** | Full Trends tab on the dashboard with 14-day in-season signal cards, Z-score explanations, and the paywall gate (free users see all except top 10). Also surfaced in the Chrome extension Trends panel. |
+
+Do not build v2.0 Trends UI components until the in-season engine (Layer 2) is scoped for implementation.
+
+---
+
 ## Phase 2 Status
 
 | Area | Status | Notes |
