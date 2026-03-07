@@ -94,7 +94,7 @@ npx shadcn@latest add <component-name>
 | `players` | NHL player master (id, name, team, position, dob, nhl_id) |
 | `player_rankings` | Per-source rankings (player_id, source, rank, score, season, scraped_at) |
 | `player_stats` | Raw stats per season (goals, assists, TOI, CF%, xGF%, etc.) |
-| `player_trends` | ML output (breakout_score, regression_risk, confidence, updated_at) |
+| `player_trends` | ML output — Layer 1: `breakout_score`, `regression_risk`, `confidence`; Layer 2: `trending_up_score`, `trending_down_score`, `momentum_score`, `signals_json`, `window_days`; Combined: `pucklogic_trends_score`, `updated_at` |
 | `sources` | Registered aggregation sources (name, url, scrape_config, active) |
 | `user_kits` | Saved user weighting configs (user_id, weights JSON, name) |
 | `draft_sessions` | Live draft state (user_id, league_config, picks[], available[]) |
@@ -122,12 +122,70 @@ Scrapers run on GitHub Actions cron (daily or weekly). Each source has a dedicat
 
 ## ML Trends Engine
 
+The Trends engine has two distinct but complementary layers. Each player gets both a per-layer score and a **combined PuckLogic Trends Score** that blends them (weighted by context — pre-season vs. in-season).
+
+---
+
+### Layer 1 — Pre-season Breakout Model (Draft Kit)
+
+Answers: *"Who should I draft?"*
+
 - **Model**: XGBoost / LightGBM (gradient boosted trees — no GPU needed, fast on tabular data)
 - **Label**: "breakout" = 20%+ more fantasy points than trailing 2-season avg; "regression risk" = inverse
 - **Training data**: 10+ NHL seasons (Hockey Reference, MoneyPuck CSVs, NST, NHL Edge API)
 - **Serving**: `joblib`-serialized model loaded at FastAPI startup; inference <10ms per player
 - **Retraining**: yearly (pre-season), triggered via GitHub Action or manually
 - **Explainability**: SHAP values surfaced in UI to show users *why* a player is flagged
+- **Output columns** (stored in `player_trends`): `breakout_score`, `regression_risk`, `confidence`
+
+---
+
+### Layer 2 — In-season Leading Indicator Engine
+
+Answers: *"Who should I pick up before anyone else notices?"*
+
+The differentiator vs. ESPN/Yahoo last-7-days stats. Surfaces **process improvements that precede realized production** — so users act before the waiver wire runs on a player.
+
+**Signals tracked (14-day rolling window):**
+
+| Signal | Source | Leading edge |
+|---|---|---|
+| TOI change (5v5, PP, SH) | NHL.com API | More ice → more opportunity |
+| PP unit movement (PP1 ↔ PP2) | Daily Faceoff / NHL.com | PP1 vs PP2 is a large fantasy multiplier |
+| Shots/game trend | Natural Stat Trick, MoneyPuck | Shot volume leads goal scoring |
+| xGF% shift | MoneyPuck | Chance quality improving before goals come |
+| Corsi rel% shift | Natural Stat Trick | Deployment and usage improving |
+| Line combo changes | Daily Faceoff | Promoted to top-6 → instant value bump |
+| Shooting % vs career mean | MoneyPuck | Unlucky player due for positive regression |
+| Return from injury | NHL.com injury feed | Re-insertion into a top line |
+
+**Scoring method:**
+- Compute a Z-score for each metric: `(player's 14-day rolling avg − player's season baseline) / season σ`
+- Weighted sum of Z-scores → **`trending_up_score`** (0–100)
+- Inverse weighting for regression signals → **`trending_down_score`**
+- Both rolled into a **`momentum_score`** stored alongside pre-season scores in `player_trends`
+
+**Celery job**: runs nightly (or after each game day) to refresh 14-day rolling stats and re-score all active players.
+
+**Output columns added to `player_trends`**: `trending_up_score`, `trending_down_score`, `momentum_score`, `signals_json` (JSONB — per-signal Z-scores for UI explainability), `window_days` (14)
+
+---
+
+### Combined Score
+
+Each player also gets a **`pucklogic_trends_score`** that blends Layer 1 + Layer 2:
+- Pre-season (Aug–Sep): weighted 80% Layer 1 / 20% Layer 2 (small in-season sample)
+- In-season (Oct–Apr): weighted 30% Layer 1 / 70% Layer 2
+- Stored in `player_trends.pucklogic_trends_score`
+
+---
+
+### Monetization Gate
+
+- **Free tier**: full Trends access except the top 10 players by `trending_up_score` (or `pucklogic_trends_score` in-season) are paywalled
+- **Paid tier**: full access to all scores + `signals_json` explainability breakdown
+- Gate enforced at the API layer (`/api/trends` checks subscription status; top-10 rows are stripped for free users)
+- Same gate applies in the Chrome extension's Trends panel
 
 ---
 
@@ -137,7 +195,7 @@ Scrapers run on GitHub Actions cron (daily or weekly). Each source has a dedicat
 |---|---|---|
 | 1 — Foundation | Mar–Apr 2026 | Turborepo scaffold, NHL.com + MoneyPuck scrapers, core DB schema, Supabase Auth, GitHub Actions cron |
 | 2 — Aggregation Dashboard | May–Jun 2026 | Source weight UI, composite rankings table, Redis cache, Stripe, PDF/Excel exports |
-| 3 — ML Trends Engine | Jul 2026 | XGBoost model, SHAP explainability, nightly re-scoring Celery job |
+| 3 — ML Trends Engine | Jul 2026 | Layer 1: XGBoost breakout model, SHAP explainability, yearly retraining; Layer 2: 14-day rolling Z-score engine (TOI, xGF, Corsi, PP unit, shots, line combos), nightly Celery re-scoring; combined PuckLogic Trends Score; free/paid gate (top-10 paywalled) |
 | 4 — Browser Extension | Aug–Sep 2026 | Chrome MV3 extension, ESPN DOM observer, WebSocket draft sessions, public launch |
 
 ---
