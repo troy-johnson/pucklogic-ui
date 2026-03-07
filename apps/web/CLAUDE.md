@@ -228,3 +228,7 @@ it("calls setWeight when slider is moved", async () => {
 - State: Zustand for global client state; SWR or React Query for server data where appropriate.
 - No `any` — use proper TypeScript types from `src/types/index.ts`.
 - Imports: use `@/` path alias (maps to `src/`).
+
+## MCP Tools
+
+Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.

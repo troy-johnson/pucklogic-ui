@@ -183,3 +183,7 @@ async def compute_rankings(
 - Async route handlers are preferred; sync is acceptable for CPU-bound code.
 - `ruff` enforces E, F, I (isort), UP (pyupgrade) rules; run before committing.
 - No `print()` statements — use Python `logging` if debug output is needed.
+
+## MCP Tools
+
+Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.

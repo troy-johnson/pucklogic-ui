@@ -252,3 +252,7 @@ Applies to the in-season Layer 2 engine when it ships:
 - **Scraper ethics**: always check and respect `robots.txt`; add rate-limiting and backoff to all scrapers.
 - **ESPN DOM risk**: ESPN can change their draft room UI at any time. Use multiple selector fallbacks and maintain a test fixture of the draft room HTML. Always have a manual pick-entry fallback mode.
 - **Existing codebase**: treat any legacy PuckLogic code as a reference/parts bin, not a foundation. Archive as `pucklogic-legacy` before starting new build.
+
+## MCP Tools
+
+Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
