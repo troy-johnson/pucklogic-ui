@@ -13,6 +13,8 @@ The Trends engine (Layer 1 only) ships in v1.0 as pre-season breakout/regression
 **v2.0 (post-launch)** — in-season leading indicator engine (Layer 2): 14-day rolling Z-scores for TOI, xGF%, Corsi, PP unit changes, line combos, etc. Surfaces players trending up *before* production shows up in standard stats.
 
 Full architecture details: `pucklogic_architecture.docx`
+ML feature engineering spec (Phase 3): `docs/feature-engineering-spec.md`
+Stats research and methodology: `docs/stats-research.md`
 
 ---
 
