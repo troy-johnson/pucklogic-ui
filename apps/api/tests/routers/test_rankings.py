@@ -5,10 +5,17 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from core.dependencies import get_cache_service, get_rankings_repository
+from core.dependencies import (
+    get_cache_service,
+    get_current_user,
+    get_rankings_repository,
+)
 from main import app
+
+MOCK_USER = {"id": "user-123", "email": "test@example.com"}
 
 SEASON = "2025-26"
 WEIGHTS = {"nhl_com": 50.0, "moneypuck": 50.0}
@@ -61,8 +68,15 @@ def mock_cache() -> MagicMock:
 def override_deps(mock_repo: MagicMock, mock_cache: MagicMock) -> None:
     app.dependency_overrides[get_rankings_repository] = lambda: mock_repo
     app.dependency_overrides[get_cache_service] = lambda: mock_cache
+    app.dependency_overrides[get_current_user] = lambda: MOCK_USER
     yield
     app.dependency_overrides.clear()
+
+
+def _raise_401() -> None:
+    raise HTTPException(
+        status_code=401, detail="Missing or invalid Authorization header"
+    )
 
 
 class TestComputeRankings:
@@ -133,3 +147,19 @@ class TestComputeRankings:
         assert (
             client.post("/rankings/compute", json={"season": SEASON}).status_code == 422
         )
+
+
+class TestAuthRequired:
+    @pytest.fixture(autouse=True)
+    def reject_auth(self) -> None:
+        """Replace the auth bypass with a function that raises 401."""
+        app.dependency_overrides[get_current_user] = _raise_401
+        yield
+
+    def test_unauthenticated_request_returns_401(self, client: TestClient) -> None:
+        resp = client.post("/rankings/compute", json=VALID_BODY)
+        assert resp.status_code == 401
+
+    def test_auth_error_detail_is_informative(self, client: TestClient) -> None:
+        resp = client.post("/rankings/compute", json=VALID_BODY)
+        assert "401" in str(resp.status_code)

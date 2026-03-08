@@ -16,6 +16,7 @@ from fastapi import Header, HTTPException
 from core.config import settings
 from repositories.rankings import RankingsRepository
 from repositories.sources import SourceRepository
+from repositories.subscriptions import SubscriptionRepository
 from services.cache import CacheService
 
 if TYPE_CHECKING:
@@ -69,6 +70,10 @@ def get_source_repository() -> SourceRepository:
 
 def get_rankings_repository() -> RankingsRepository:
     return RankingsRepository(get_db())
+
+
+def get_subscription_repository() -> SubscriptionRepository:
+    return SubscriptionRepository(get_db())
 
 
 # ---------------------------------------------------------------------------

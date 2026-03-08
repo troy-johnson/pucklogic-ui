@@ -1,0 +1,31 @@
+#!/bin/bash
+# Pre-commit hook: lint Python (ruff) and frontend (ESLint via turbo).
+# Install: bash scripts/install-git-hooks.sh
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+FAILED=0
+
+# ── Python: ruff ──────────────────────────────────────────────────────────────
+if git diff --cached --name-only | grep -q "^apps/api/"; then
+  echo "==> ruff check apps/api/"
+  if ! (cd "$ROOT" && ruff check apps/api/); then
+    echo "❌ ruff found errors — fix with: ruff check --fix apps/api/"
+    FAILED=1
+  fi
+fi
+
+# ── Frontend: ESLint via turbo ────────────────────────────────────────────────
+if git diff --cached --name-only | grep -q "^apps/web/"; then
+  echo "==> pnpm lint (apps/web)"
+  if ! (cd "$ROOT" && pnpm --filter web run lint --max-warnings=0 2>/dev/null); then
+    echo "❌ ESLint found errors"
+    FAILED=1
+  fi
+fi
+
+if [ "$FAILED" -ne 0 ]; then
+  echo ""
+  echo "Commit blocked by lint errors. Fix the issues above and re-commit."
+  exit 1
+fi
