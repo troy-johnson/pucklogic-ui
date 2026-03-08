@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from core.dependencies import get_cache_service, get_rankings_repository
+from core.dependencies import get_cache_service, get_current_user, get_rankings_repository
 from models.schemas import RankedPlayer, RankingsComputeRequest, RankingsComputeResponse
 from repositories.rankings import RankingsRepository
 from services.cache import CacheService
@@ -16,6 +17,7 @@ router = APIRouter(prefix="/rankings", tags=["rankings"])
 @router.post("/compute", response_model=RankingsComputeResponse)
 async def compute_rankings(
     req: RankingsComputeRequest,
+    user: dict[str, Any] = Depends(get_current_user),
     repo: RankingsRepository = Depends(get_rankings_repository),
     cache: CacheService = Depends(get_cache_service),
 ) -> RankingsComputeResponse:

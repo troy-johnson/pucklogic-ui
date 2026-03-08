@@ -5,9 +5,10 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from core.dependencies import get_rankings_repository
+from core.dependencies import get_current_user, get_rankings_repository
 from main import app
 
 SEASON = "2025-26"
@@ -25,6 +26,8 @@ DB_ROWS = [
 EXCEL_BODY = {"season": SEASON, "weights": WEIGHTS, "export_type": "excel"}
 PDF_BODY = {"season": SEASON, "weights": WEIGHTS, "export_type": "pdf"}
 
+MOCK_USER = {"id": "user-123", "email": "test@example.com"}
+
 
 @pytest.fixture
 def mock_repo() -> MagicMock:
@@ -36,8 +39,13 @@ def mock_repo() -> MagicMock:
 @pytest.fixture(autouse=True)
 def override_deps(mock_repo: MagicMock) -> None:
     app.dependency_overrides[get_rankings_repository] = lambda: mock_repo
+    app.dependency_overrides[get_current_user] = lambda: MOCK_USER
     yield
     app.dependency_overrides.clear()
+
+
+def _raise_401() -> None:
+    raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
 
 
 class TestGenerateExcelExport:
@@ -87,3 +95,15 @@ class TestExportValidation:
     def test_missing_season_returns_422(self, client: TestClient) -> None:
         body = {"weights": WEIGHTS, "export_type": "excel"}
         assert client.post("/exports/generate", json=body).status_code == 422
+
+
+class TestAuthRequired:
+    @pytest.fixture(autouse=True)
+    def reject_auth(self) -> None:
+        """Replace the auth bypass with a function that raises 401."""
+        app.dependency_overrides[get_current_user] = _raise_401
+        yield
+
+    def test_unauthenticated_request_returns_401(self, client: TestClient) -> None:
+        resp = client.post("/exports/generate", json=EXCEL_BODY)
+        assert resp.status_code == 401

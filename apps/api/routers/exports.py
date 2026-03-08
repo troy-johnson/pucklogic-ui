@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 
-from core.dependencies import get_rankings_repository
+from core.dependencies import get_current_user, get_rankings_repository
 from models.schemas import ExportRequest
 from repositories.rankings import RankingsRepository
 from services.exports import generate_excel, generate_pdf
@@ -15,6 +17,7 @@ router = APIRouter(prefix="/exports", tags=["exports"])
 @router.post("/generate")
 async def generate_export(
     req: ExportRequest,
+    user: dict[str, Any] = Depends(get_current_user),
     repo: RankingsRepository = Depends(get_rankings_repository),
 ) -> Response:
     """Compute rankings and stream the result as a PDF or Excel file."""
