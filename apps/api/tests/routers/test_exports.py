@@ -45,7 +45,9 @@ def override_deps(mock_repo: MagicMock) -> None:
 
 
 def _raise_401() -> None:
-    raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+    raise HTTPException(
+        status_code=401, detail="Missing or invalid Authorization header"
+    )
 
 
 class TestGenerateExcelExport:

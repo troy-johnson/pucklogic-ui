@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -37,7 +37,11 @@ class TestSubscriptionRepositoryUpsert:
     ) -> None:
         repo.upsert(user_id="user-abc", plan="draft_kit")
         upsert_call = mock_db.table.return_value.upsert.call_args
-        data = upsert_call.args[0] if upsert_call.args else upsert_call.kwargs.get("json", {})
+        data = (
+            upsert_call.args[0]
+            if upsert_call.args
+            else upsert_call.kwargs.get("json", {})
+        )
         assert data["user_id"] == "user-abc"
         assert data["plan"] == "draft_kit"
 
@@ -54,5 +58,9 @@ class TestSubscriptionRepositoryUpsert:
     ) -> None:
         repo.upsert(user_id="user-2", plan="premium")
         upsert_call = mock_db.table.return_value.upsert.call_args
-        data = upsert_call.args[0] if upsert_call.args else upsert_call.kwargs.get("json", {})
+        data = (
+            upsert_call.args[0]
+            if upsert_call.args
+            else upsert_call.kwargs.get("json", {})
+        )
         assert data["plan"] == "premium"

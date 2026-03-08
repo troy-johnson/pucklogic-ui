@@ -8,7 +8,11 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from core.dependencies import get_cache_service, get_current_user, get_rankings_repository
+from core.dependencies import (
+    get_cache_service,
+    get_current_user,
+    get_rankings_repository,
+)
 from main import app
 
 MOCK_USER = {"id": "user-123", "email": "test@example.com"}
@@ -70,7 +74,9 @@ def override_deps(mock_repo: MagicMock, mock_cache: MagicMock) -> None:
 
 
 def _raise_401() -> None:
-    raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+    raise HTTPException(
+        status_code=401, detail="Missing or invalid Authorization header"
+    )
 
 
 class TestComputeRankings:

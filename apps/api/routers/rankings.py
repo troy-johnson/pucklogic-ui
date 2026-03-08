@@ -5,7 +5,11 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from core.dependencies import get_cache_service, get_current_user, get_rankings_repository
+from core.dependencies import (
+    get_cache_service,
+    get_current_user,
+    get_rankings_repository,
+)
 from models.schemas import RankedPlayer, RankingsComputeRequest, RankingsComputeResponse
 from repositories.rankings import RankingsRepository
 from services.cache import CacheService

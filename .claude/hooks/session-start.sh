@@ -28,4 +28,10 @@ if [ -f "$PROJECT_DIR/apps/api/pyproject.toml" ]; then
   pip install -e ".[dev]" --quiet
 fi
 
+# ── Git hooks ────────────────────────────────────────────────────────────────
+if [ -f "$PROJECT_DIR/scripts/install-git-hooks.sh" ]; then
+  echo "==> Installing git hooks..."
+  bash "$PROJECT_DIR/scripts/install-git-hooks.sh"
+fi
+
 echo "==> Session start hook complete."
