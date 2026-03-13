@@ -12,7 +12,7 @@ The Trends engine (Layer 1 only) ships in v1.0 as pre-season breakout/regression
 
 **v2.0 (post-launch)** — in-season leading indicator engine (Layer 2): 14-day rolling Z-scores for TOI, xGF%, Corsi, PP unit changes, line combos, etc. Surfaces players trending up *before* production shows up in standard stats.
 
-Full architecture details: `pucklogic_architecture.md`
+Full architecture details: `docs/pucklogic-architecture.md`
 ML feature engineering spec (Phase 3): `docs/feature-engineering-spec.md`
 Stats research and methodology: `docs/stats-research.md`
 
@@ -246,7 +246,7 @@ Applies to the in-season Layer 2 engine when it ships:
 
 ## Important Notes for AI Agents
 
-- **Phase 1 scaffold is complete.** Turborepo monorepo with Next.js (`apps/web`), FastAPI (`apps/api`), and shared UI package (`packages/ui`) are all in place. Refer to `pucklogic_architecture.md` for full design rationale. Per-phase implementation details: `docs/phase-{1,2,3,4}-{backend,frontend}.md` and `docs/v2-{backend,frontend}.md`.
+- **Phase 1 scaffold is complete.** Turborepo monorepo with Next.js (`apps/web`), FastAPI (`apps/api`), and shared UI package (`packages/ui`) are all in place. Refer to `docs/pucklogic-architecture.md` for the system overview, then `docs/backend-reference.md`, `docs/frontend-reference.md`, or `docs/extension-reference.md` for domain-specific detail. Per-phase docs are archived at `docs/archive/`.
 - **Session hook**: `.claude/hooks/session-start.sh` auto-installs Node and Python deps in remote Claude Code sessions.
 - **Secrets**: never commit secrets. Use `.env.local` (Next.js) and `.env` (FastAPI) — both must be gitignored.
 - **Scraper ethics**: always check and respect `robots.txt`; add rate-limiting and backoff to all scrapers.
