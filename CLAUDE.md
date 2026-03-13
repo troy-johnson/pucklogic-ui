@@ -4,7 +4,7 @@
 
 PuckLogic is a fantasy hockey draft kit targeting casual and competitive/keeper players.
 
-**v1.0 (target: September 2026)** — two products:
+**v1.0 (target: late October 2026)** — two products:
 1. **Free rankings aggregator**: users select sources, assign weights, get a custom consensus ranking
 2. **Paid real-time draft monitor**: Chrome browser extension with live best-available suggestions
 
@@ -44,10 +44,15 @@ apps/
 packages/
   ui/           # Shared React components (used by web + extension)
   extension/    # Chrome MV3 extension
+docs/
+  pucklogic-architecture.md  # System overview (start here)
+  backend-reference.md       # DB DDL, API routes, scrapers, ML, exports
+  frontend-reference.md      # App Router, auth, Zustand, SWR, components
+  extension-reference.md     # MV3 manifest, adapters, service worker, popup
+  archive/                   # Superseded per-phase docs
 .claude/
   hooks/        # Claude Code session start hook
   settings.json
-pucklogic_architecture.md
 ```
 
 ---
@@ -100,18 +105,23 @@ npx shadcn@latest add <component-name>
 
 ## Core Database Tables (Supabase PostgreSQL)
 
+> Full DDL and RLS policies: `docs/backend-reference.md § Database Schema`
+
 | Table | Purpose |
 |---|---|
-| `players` | NHL player master (id, name, team, position, dob, nhl_id) |
-| `player_rankings` | Per-source rankings (player_id, source, rank, score, season, scraped_at) |
-| `player_stats` | Raw stats per season (goals, assists, TOI, CF%, xGF%, etc.) |
-| `player_trends` | ML output — Layer 1: `breakout_score`, `regression_risk`, `confidence`; Layer 2: `trending_up_score`, `trending_down_score`, `momentum_score`, `signals_json`, `window_days`; Combined: `pucklogic_trends_score`, `updated_at` |
-| `sources` | Registered aggregation sources (name, url, scrape_config, active) |
-| `user_kits` | Saved user weighting configs (user_id, weights JSON, name) |
-| `draft_sessions` | Live draft state (user_id, league_config, picks[], available[]) |
+| `players` | NHL player master (id, name, team, position, date_of_birth, nhl_id) |
+| `player_aliases` | Name variant mapping for cross-source matching (alias_name, canonical player_id, source) |
+| `player_rankings` | Per-source rankings (player_id, source_id FK, rank, score, season, scraped_at) |
+| `player_rankings_staging` | Staging table for atomic swap pattern (same schema as player_rankings) |
+| `player_stats` | Raw stats per season (goals, assists, TOI, CF%, xGF%, iSCF/60, SH%, PDO, WAR, etc.) |
+| `player_trends` | ML output — `breakout_score`, `regression_risk`, `confidence`, `shap_values` JSONB, `updated_at`; UNIQUE(player_id, season) |
+| `player_projections` | Projected stats per season (`projected_stats` JSONB, `scoring_basis`); UNIQUE(player_id, season) |
+| `sources` | Registered aggregation sources (name, url, scrape_config, active, last_successful_scrape) |
+| `scoring_configs` | Fantasy scoring presets and custom configs (stat_weights JSONB, is_preset, user_id) |
+| `user_kits` | Saved weighting configs (user_id OR session_token, source_weights JSONB, scoring_config_id FK, name) |
+| `draft_sessions` | Live draft state (user_id, platform, league_config, picks[], available[], kit_id, status) |
 | `exports` | Export job records (user_id, type, status, storage_url) |
-| `subscriptions` | Stripe subscription state (user_id, plan, expires_at) |
-| `injury_reports` | Injury tracking (player_id, status, description, updated_at) — feeds Layer 2 "return from injury" signal |
+| `subscriptions` | Stripe subscription state (user_id, stripe_session_id, plan, status, expires_at) |
 
 ---
 
@@ -207,11 +217,11 @@ Applies to the in-season Layer 2 engine when it ships:
 
 | Phase | Period | Key Deliverables |
 |---|---|---|
-| 1 — Foundation | Mar–Apr 2026 | Turborepo scaffold, NHL.com + MoneyPuck scrapers, core DB schema, Supabase Auth, GitHub Actions cron |
-| 2 — Aggregation Dashboard | May–Jun 2026 | Source weight UI, composite rankings table, Redis cache, Stripe, PDF/Excel exports |
-| 3 — ML Trends Engine (v1.0) | Jul 2026 | **Layer 1 only**: XGBoost breakout/regression model, SHAP explainability, yearly retraining, pre-season scores surfaced on rankings dashboard |
+| 1 — Foundation | Mar–May 2026 | Turborepo scaffold, NHL.com + MoneyPuck scrapers, core DB schema, player name/ID matching, Supabase Auth, GitHub Actions cron |
+| 2 — Aggregation Dashboard | Jun–Jul 2026 | Source weight UI, composite rankings table, anonymous kits, scoring config, Redis cache, Stripe, PDF/Excel exports |
+| 3 — ML Trends Engine (v1.0) | Aug 2026 | **Layer 1 only**: XGBoost breakout/regression model, SHAP explainability, yearly retraining, pre-season scores surfaced on rankings dashboard |
+| 4 — Browser Extension | Sep–Oct 2026 | Chrome MV3 extension, ESPN + Yahoo adapters, WebSocket draft sessions, public launch (late October 2026) |
 | v2.0 — In-season Trends | Post-launch | **Layer 2**: 14-day rolling Z-score engine (TOI, xGF, Corsi, PP unit, shots, line combos), nightly Celery re-scoring, combined PuckLogic Trends Score, free/paid gate (top-10 paywalled) |
-| 4 — Browser Extension | Aug–Sep 2026 | Chrome MV3 extension, ESPN DOM observer, WebSocket draft sessions, public launch |
 
 ---
 
