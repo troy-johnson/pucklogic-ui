@@ -108,7 +108,7 @@ export async function middleware(request: NextRequest) {
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { ... } }  // see phase-1-frontend.md for full implementation
+    { cookies: { ... } }  // see docs/archive/phase-1-frontend.md for full implementation
   );
 
   const { data: { session } } = await supabase.auth.getSession();
