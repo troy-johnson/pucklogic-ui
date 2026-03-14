@@ -176,12 +176,22 @@ export interface RankedPlayer {
   player_id: string;
   name: string;
   team: string;
-  position: string;
+  default_position: string;          // NHL.com canonical position
+  platform_positions: string[];       // platform-specific eligibility
   composite_rank: number;
-  composite_score: number;
-  fantasy_pts: number;
-  vorp: number;
-  source_ranks: Record<string, number>;  // { dobber: 12, nhl_com: 14, ... }
+  projected_fantasy_points: number | null;
+  vorp: number | null;               // null if no league_profile_id provided
+  schedule_score: number | null;
+  off_night_games: number | null;
+  source_count: number;
+  projected_stats: {
+    g: number | null; a: number | null; plus_minus: number | null;
+    pim: number | null; ppg: number | null; ppa: number | null;
+    ppp: number | null; shg: number | null; sha: number | null;
+    shp: number | null; sog: number | null; fow: number | null;
+    fol: number | null; hits: number | null; blocks: number | null;
+    gp: number | null;
+  };
   breakout_score?: number;
   regression_risk?: number;
 }
@@ -226,11 +236,11 @@ export interface WeightConfig {
   enabled: boolean;
 }
 
+// user_kits are named source-weight presets only.
+// Full league config (platform, scoring, roster) lives in league_profiles.
 export interface UserKit {
   id: string;
   name: string;
-  league_format: "points" | "roto" | "head_to_head";
-  scoring_settings: Record<string, number>;
   weights: WeightConfig[];
 }
 
@@ -298,10 +308,25 @@ import useSWR from "swr";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-export function useRankings(kitId: string, season: string) {
+export interface RankingsParams {
+  season: string;
+  source_weights: Record<string, number>;   // { source_id: weight }
+  scoring_config_id: string;
+  platform: string;                          // "espn" | "yahoo" | "fantrax"
+  league_profile_id?: string;               // optional; enables VORP
+}
+
+export function useRankings(params: RankingsParams | null) {
+  const key = params
+    ? `/api/rankings/compute`
+    : null;
   const { data, error, isLoading, mutate } = useSWR(
-    kitId ? `/api/rankings?kit_id=${kitId}&season=${season}` : null,
-    fetcher,
+    key ? [key, params] : null,
+    ([url, p]) => fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(p),
+    }).then((r) => r.json()),
     { revalidateOnFocus: false }
   );
   return { rankings: data, error, isLoading, mutate };
@@ -328,8 +353,9 @@ export function useSources() {
 ### RankingsTable
 
 - Location: `apps/web/src/components/RankingsTable.tsx` + `packages/ui/RankingsTable/`
-- Columns: Rank, Player, Team, Position, Composite Score, Fantasy Pts, VORP, per-source ranks, Trends badge
-- Filterable: position (All/C/LW/RW/D), team
+- Columns: Rank, Player, Team, Pos (platform positions), Fantasy Pts, FP/GP, VORP, Positional Rank, GP, Off Nights, full projected stat columns, Trends badge
+- Null stats displayed as `—` (never `0` when unprojected)
+- Filterable: position (All/C/LW/RW/D/G), team
 - Sortable: all numeric columns (click header)
 - Trends badge: shown when `breakout_score > 0.6` or `regression_risk > 0.6`
 
@@ -359,14 +385,14 @@ export function useSources() {
 ## 7. Scoring Translation Display
 
 ```typescript
-// Dashboard shows both raw stats and fantasy points side-by-side
+// Dashboard shows both projected stats and fantasy points side-by-side.
+// Stats are sourced from RankedPlayer.projected_stats — null means no source projected it.
 interface PlayerScoreDisplay {
-  raw: {
-    g: number; a: number; pts: number; ppp: number;
-    toi_per_game: number; sog: number; hits: number; blocks: number;
-  };
-  fantasyPts: number;         // sum(stat × weight) for current scoring config
-  vorp: number;               // value over replacement player
+  projected_stats: RankedPlayer["projected_stats"];  // full stat set, nulls displayed as —
+  projected_fantasy_points: number | null;           // sum(projected_stat × scoring_weight)
+  vorp: number | null;                               // null when no league_profile_id provided
+  schedule_score: number | null;
+  off_night_games: number | null;
 }
 ```
 
