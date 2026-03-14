@@ -409,3 +409,76 @@ After this spec is approved, create Notion cards for:
 6. **Build `player_platform_positions` ingestion** — per-platform position eligibility
 7. **Migrate NHL.com + MoneyPuck scrapers** — write to `player_stats` instead of `player_rankings`
 8. **Build `BaseProjectionScraper`** — new ABC for projection source scrapers
+
+---
+
+## Section 7: Spec Patch Notes (2026-03-14)
+
+These notes resolve open implementation gaps identified during post-approval review.
+
+### 7.1 `source_weights` key contract and validation
+
+`source_weights` keys must use `sources.name` (slug), not display name or UUID.
+
+- Example: `{ "hashtag_hockey": 5, "apples_ginos": 5 }`
+- Keys are matched exactly (case-sensitive) against visible rows in `sources`
+- Unknown keys are rejected with HTTP 400: `Unknown source key: {key}`
+- Keys that reference inaccessible sources (another user's custom source) are rejected with HTTP 400
+- Validation runs before aggregation; request fails fast on the first invalid key
+
+### 7.2 Response field semantics: `source_count`
+
+`source_count` is defined as the number of weighted sources that contributed at least one non-null projected stat for the player in the requested season.
+
+Inclusion criteria:
+- Source exists in `source_weights` with weight > 0
+- Source has a `player_projections` row for that player/season
+- That row contains at least one non-null fixed stat column
+
+For implementation clarity, internal code may name this metric `contributing_source_count`, but the API response remains `source_count` for backward compatibility.
+
+### 7.3 VORP replacement-level handling for `UTIL` and `BN`
+
+Replacement-level thresholds use only positional starter slots: `C`, `LW`, `RW`, `D`, `G`.
+
+- Exclude `UTIL` and `BN` from replacement-level math in v1.0
+- Continue using NHL canonical `players.position` for the replacement group
+- Phase 4 draft-session logic handles dynamic roster need (including UTIL/bench state) separately from static VORP
+
+This keeps VORP stable and prevents artificial inflation from non-positional slots.
+
+### 7.4 Redis invalidation method
+
+`invalidate_rankings(season)` must use cursor-based `SCAN` with batched deletes, not `KEYS`.
+
+- Pattern: `rankings:{season}:*`
+- Delete in batches (recommended batch size: 100 keys)
+- Continue until cursor returns to 0
+
+Reason: `KEYS` can block Redis on large keyspaces and is not production-safe.
+
+### 7.5 Optional baseline source behavior (NHL.com / MoneyPuck)
+
+If a user explicitly enables NHL.com or MoneyPuck as a baseline projection source, values are derived from prior-season actuals with no adjustment model.
+
+- Source label in UI/export: `Prior Season Actuals (Unadjusted)`
+- Transform rule: map available `player_stats` columns from season `S-1` into `player_projections` for season `S`
+- No aging, regression, pace, or deployment adjustment in v1.0
+
+This baseline is intentionally naive and should be down-weighted relative to true projection providers.
+
+### 7.6 Explicit RLS and access policy requirements
+
+RLS policies must be explicit for multi-tenant safety:
+
+- `league_profiles`
+  - `SELECT/INSERT/UPDATE/DELETE`: `user_id = auth.uid()`
+- `sources`
+  - `SELECT`: `user_id IS NULL OR user_id = auth.uid()`
+  - `INSERT/UPDATE/DELETE`: `user_id = auth.uid()` for user-owned rows only
+  - System rows (`user_id IS NULL`) are read-only from user context
+- `player_projections`
+  - Read access only through rows whose `source_id` maps to a source visible under the `sources` policy above
+  - Direct client writes are disallowed; writes occur through trusted backend ingestion paths
+
+These policies are required in addition to API-layer checks.
