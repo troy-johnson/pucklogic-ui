@@ -96,13 +96,11 @@ class ExportJobResponse(BaseModel):
 
 class UserKitCreate(BaseModel):
     name: str
-    season: str
-    weights: dict[str, float]
+    source_weights: dict[str, float]
 
 
 class UserKitOut(BaseModel):
     id: str
     name: str
-    season: str
-    weights: dict[str, float]
+    source_weights: dict[str, float]
     created_at: datetime

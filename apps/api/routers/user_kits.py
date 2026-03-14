@@ -39,8 +39,7 @@ async def create_user_kit(
             {
                 "user_id": user["id"],
                 "name": kit.name,
-                "season": kit.season,
-                "weights": kit.weights,
+                "source_weights": kit.source_weights,
             }
         )
         .execute()

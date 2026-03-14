@@ -15,8 +15,7 @@ MOCK_USER = {"id": "user-123", "email": "test@example.com"}
 KIT_ROW = {
     "id": "kit-1",
     "name": "My Kit",
-    "season": "2025-26",
-    "weights": {"nhl_com": 50.0, "moneypuck": 50.0},
+    "source_weights": {"nhl_com": 50.0, "moneypuck": 50.0},
     "created_at": "2026-03-01T00:00:00+00:00",
 }
 
@@ -58,8 +57,7 @@ class TestListUserKits:
         kit = client.get("/user-kits").json()[0]
         assert "id" in kit
         assert "name" in kit
-        assert "season" in kit
-        assert "weights" in kit
+        assert "source_weights" in kit
         assert "created_at" in kit
 
     def test_filters_by_user_id(self, client: TestClient, mock_db: MagicMock) -> None:
@@ -80,8 +78,7 @@ class TestListUserKits:
 class TestCreateUserKit:
     CREATE_BODY = {
         "name": "My Kit",
-        "season": "2025-26",
-        "weights": {"nhl_com": 60.0, "moneypuck": 40.0},
+        "source_weights": {"nhl_com": 60.0, "moneypuck": 40.0},
     }
 
     def test_returns_201(self, client: TestClient, mock_db: MagicMock) -> None:
@@ -106,6 +103,17 @@ class TestCreateUserKit:
         insert_call = mock_db.table.return_value.insert.call_args.args[0]
         assert insert_call["user_id"] == MOCK_USER["id"]
 
+    def test_inserts_source_weights(
+        self, client: TestClient, mock_db: MagicMock
+    ) -> None:
+        mock_db.table.return_value.insert.return_value.execute.return_value.data = [
+            KIT_ROW
+        ]
+        client.post("/user-kits", json=self.CREATE_BODY)
+        insert_call = mock_db.table.return_value.insert.call_args.args[0]
+        assert insert_call["source_weights"] == self.CREATE_BODY["source_weights"]
+        assert "season" not in insert_call
+
     def test_returns_500_when_insert_fails(
         self, client: TestClient, mock_db: MagicMock
     ) -> None:
@@ -113,7 +121,7 @@ class TestCreateUserKit:
         assert client.post("/user-kits", json=self.CREATE_BODY).status_code == 500
 
     def test_missing_name_returns_422(self, client: TestClient) -> None:
-        body = {"season": "2025-26", "weights": {"nhl_com": 50}}
+        body = {"source_weights": {"nhl_com": 50}}
         assert client.post("/user-kits", json=body).status_code == 422
 
 
