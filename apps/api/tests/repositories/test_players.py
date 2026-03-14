@@ -19,24 +19,22 @@ class TestList:
     def test_queries_players_table(
         self, repo: PlayerRepository, mock_db: MagicMock
     ) -> None:
-        chain = mock_db.table.return_value.select.return_value.eq.return_value
-        chain.execute.return_value.data = []
-        repo.list("2025-26")
+        mock_db.table.return_value.select.return_value.execute.return_value.data = []
+        repo.list()
         mock_db.table.assert_called_once_with("players")
-
-    def test_filters_by_season(
-        self, repo: PlayerRepository, mock_db: MagicMock
-    ) -> None:
-        chain = mock_db.table.return_value.select.return_value.eq
-        chain.return_value.execute.return_value.data = []
-        repo.list("2025-26")
-        chain.assert_called_once_with("season", "2025-26")
 
     def test_returns_data(self, repo: PlayerRepository, mock_db: MagicMock) -> None:
         player = {"id": "p1", "name": "Connor McDavid"}
-        chain = mock_db.table.return_value.select.return_value.eq.return_value
-        chain.execute.return_value.data = [player]
-        assert repo.list("2025-26") == [player]
+        mock_db.table.return_value.select.return_value.execute.return_value.data = [
+            player
+        ]
+        assert repo.list() == [player]
+
+    def test_returns_empty_list_when_no_players(
+        self, repo: PlayerRepository, mock_db: MagicMock
+    ) -> None:
+        mock_db.table.return_value.select.return_value.execute.return_value.data = []
+        assert repo.list() == []
 
 
 class TestGet:
