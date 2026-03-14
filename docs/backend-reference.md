@@ -21,7 +21,7 @@ apps/api/
 │   ├── auth.py             # /api/auth routes
 │   └── stripe.py           # /api/stripe routes
 ├── services/
-│   ├── rankings.py         # Aggregation algorithm, Redis cache
+│   ├── projections.py      # Aggregation pipeline: aggregate_projections, compute_weighted_stats, apply_scoring_config, compute_vorp
 │   ├── exports.py          # PDF/Excel generation
 │   ├── draft.py            # Draft session management
 │   └── scoring.py          # Scoring translation layer
@@ -31,11 +31,18 @@ apps/api/
 │   ├── kits.py
 │   └── exports.py
 ├── scrapers/
-│   ├── base.py             # BaseScraper ABC
-│   ├── nhl_api.py          # NHL.com official API
-│   ├── moneypuck.py        # MoneyPuck CSV downloads
-│   ├── nst.py              # Natural Stat Trick (BeautifulSoup)
-│   ├── dobber.py           # Dobber Hockey (may need Playwright)
+│   ├── base.py             # BaseScraper ABC — stat sources (NHL.com, MoneyPuck) → player_stats
+│   ├── base_projection.py  # BaseProjectionScraper ABC — projection sources → player_projections
+│   ├── nhl_api.py          # NhlComScraper (BaseScraper) → player_stats
+│   ├── moneypuck.py        # MoneyPuckScraper (BaseScraper) → player_stats
+│   ├── nst.py              # Natural Stat Trick (BeautifulSoup) → player_stats
+│   ├── projection/         # Projection source scrapers (BaseProjectionScraper)
+│   │   ├── hashtag_hockey.py
+│   │   ├── daily_faceoff.py
+│   │   ├── apples_ginos.py
+│   │   ├── lineup_experts.py
+│   │   ├── yahoo.py
+│   │   └── fantrax.py
 │   └── matching.py         # Player name/ID resolution (rapidfuzz)
 ├── ml/
 │   ├── train.py            # Model training pipeline
@@ -85,9 +92,16 @@ CREATE TABLE sources (
   url TEXT,
   scrape_config JSONB,
   active BOOLEAN DEFAULT true,
-  last_successful_scrape TIMESTAMPTZ
+  last_successful_scrape TIMESTAMPTZ,
+  default_weight FLOAT,            -- PuckLogic Recommended default weight (projection accuracy)
+  is_paid BOOLEAN DEFAULT false,   -- true for paywalled/premium sources
+  user_id UUID REFERENCES auth.users(id)  -- NULL for system sources; set for user-uploaded custom sources
 );
+-- Custom source privacy: API always filters sources to: user_id IS NULL OR user_id = current_user.id
+-- 2-custom-source limit enforced at upload: count sources WHERE user_id = current_user.id; reject with HTTP 409 if >= 2
 
+-- player_rankings: retained for potential future rank-only sources.
+-- NOT read by POST /rankings/compute — the aggregation pipeline uses player_projections.
 CREATE TABLE player_rankings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   player_id UUID REFERENCES players(id),
@@ -141,14 +155,51 @@ CREATE TABLE player_trends (
   UNIQUE(player_id, season)
 );
 
+-- player_projections: one row per player per source per season.
+-- Written by projection source scrapers (BaseProjectionScraper subclasses) only.
+-- NHL.com and MoneyPuck write to player_stats, not here.
+-- null = source did not project this stat (displayed as —); 0 = projected at zero. Do not conflate.
+-- PPP = PPG + PPA and SHP = SHG + SHA by definition; scoring_configs must not assign non-zero
+-- weights to both PPP and PPG/PPA (or SHP and SHG/SHA) simultaneously — enforced at config creation.
 CREATE TABLE player_projections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   player_id UUID REFERENCES players(id),
+  source_id UUID REFERENCES sources(id),
   season TEXT NOT NULL,
-  projected_stats JSONB,          -- {g: 30, a: 45, pts: 75, ppp: 20, ...}
-  scoring_basis TEXT,             -- 'rate_adjusted_2yr_avg' or similar
+  -- Skater stats (all nullable)
+  g INTEGER, a INTEGER, plus_minus INTEGER, pim INTEGER,
+  ppg INTEGER, ppa INTEGER, ppp INTEGER,
+  shg INTEGER, sha INTEGER, shp INTEGER,
+  sog INTEGER, fow INTEGER, fol INTEGER,
+  hits INTEGER, blocks INTEGER, gp INTEGER,
+  -- Goalie stats (all nullable)
+  gs INTEGER, w INTEGER, l INTEGER, ga INTEGER,
+  sa INTEGER, sv INTEGER, sv_pct FLOAT, so INTEGER, otl INTEGER,
+  -- Overflow for source-specific stats not in the fixed set
+  extra_stats JSONB,
   updated_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(player_id, season)
+  UNIQUE(player_id, source_id, season)
+);
+
+-- Schedule-based supplementary signal (not added to fantasy points)
+-- "Off night" = calendar date where < 16 of 32 NHL teams play.
+-- schedule_score: min-max normalized 0–1 across all players with GP > 0 for the season.
+-- Recomputed in full whenever the NHL schedule changes.
+CREATE TABLE schedule_scores (
+  player_id UUID REFERENCES players(id),
+  season TEXT NOT NULL,
+  off_night_games INTEGER,        -- team games on nights where < 16 teams play
+  total_games INTEGER,            -- projected GP for the season
+  schedule_score FLOAT,           -- min-max normalized 0–1
+  PRIMARY KEY (player_id, season)
+);
+
+-- Platform-specific position eligibility (separate from players.position which is NHL.com canonical)
+CREATE TABLE player_platform_positions (
+  player_id UUID REFERENCES players(id),
+  platform TEXT NOT NULL,         -- 'espn', 'yahoo', 'fantrax'
+  positions TEXT[] NOT NULL,      -- e.g. '{"LW","RW"}'
+  PRIMARY KEY (player_id, platform)
 );
 
 -- User data (RLS-protected)
@@ -161,16 +212,30 @@ CREATE TABLE scoring_configs (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- user_kits: named source-weight presets only. Does NOT store league config.
+-- Full league configuration (platform, num_teams, roster_slots, scoring) lives in league_profiles.
 CREATE TABLE user_kits (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id),  -- NULL for anonymous sessions
   session_token UUID,              -- for anonymous kit building
   name TEXT,
   source_weights JSONB NOT NULL,  -- {source_id: weight, ...}
-  scoring_config_id UUID REFERENCES scoring_configs(id),
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
   CHECK (user_id IS NOT NULL OR session_token IS NOT NULL)
+);
+
+-- Complete league configuration for VORP computation.
+-- Separate from user_kits (which are reusable source-weight presets).
+CREATE TABLE league_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id),
+  name TEXT NOT NULL,             -- e.g. "My ESPN H2H League"
+  platform TEXT NOT NULL,         -- 'espn', 'yahoo', 'fantrax'
+  num_teams INTEGER NOT NULL,
+  roster_slots JSONB NOT NULL,    -- {"C":2,"LW":2,"RW":2,"D":4,"G":2,"UTIL":1,"BN":4}
+  scoring_config_id UUID REFERENCES scoring_configs(id),
+  created_at TIMESTAMPTZ DEFAULT now()
 );
 
 CREATE TABLE draft_sessions (
@@ -202,6 +267,57 @@ CREATE TABLE subscriptions (
   plan TEXT,
   status TEXT DEFAULT 'active',
   expires_at TIMESTAMPTZ
+);
+
+-- Injury tracking — one row per player (upserted daily via NHL.com injury feed).
+-- Feeds the Layer 2 "return from injury" signal in v2.0.
+-- status values: 'healthy' | 'day-to-day' | 'week-to-week' | 'ir' | 'ltir'
+CREATE TABLE injury_reports (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  player_id   UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  status      TEXT NOT NULL CHECK (status IN ('healthy', 'day-to-day', 'week-to-week', 'ir', 'ltir')),
+  description TEXT,
+  updated_at  TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (player_id)
+);
+
+-- Per-run audit trail written by every scraper on start/finish.
+-- Powers the /admin/scraper-health dashboard.
+CREATE TABLE scraper_logs (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  scraper_name   TEXT NOT NULL,
+  status         TEXT NOT NULL CHECK (status IN ('running', 'success', 'failed')),
+  started_at     TIMESTAMPTZ DEFAULT now(),
+  completed_at   TIMESTAMPTZ,
+  rows_inserted  INTEGER,
+  error_message  TEXT,
+  traceback      TEXT
+);
+
+-- Daily line/unit assignments per player — EV, PP, and PK context.
+-- One row per player per date (upserted by DailyFaceoff scraper).
+-- Primary data source for Layer 2 line combo change signals.
+-- Also supplies line quality features for Phase 3 ML training.
+CREATE TABLE player_lines (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  player_id       UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  season          TEXT NOT NULL,
+  date            DATE NOT NULL,
+  -- Even strength
+  ev_line         SMALLINT CHECK (ev_line BETWEEN 1 AND 4),  -- F: 1=top…4=4th; D: 1–3
+  ev_toi_pg       NUMERIC(5,2),   -- EV TOI per game for this stretch
+  ev_linemate_ids UUID[],         -- other skaters on this unit
+  -- Power play
+  pp_unit         SMALLINT CHECK (pp_unit BETWEEN 1 AND 2),  -- NULL = not on PP
+  pp_toi_pg       NUMERIC(5,2),
+  pp_linemate_ids UUID[],
+  -- Penalty kill
+  pk_unit         SMALLINT CHECK (pk_unit BETWEEN 1 AND 2),  -- NULL = not on PK
+  pk_toi_pg       NUMERIC(5,2),
+  pk_linemate_ids UUID[],
+  source          TEXT NOT NULL,  -- e.g. 'dailyfaceoff'
+  recorded_at     TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (player_id, date)
 );
 ```
 
@@ -259,9 +375,12 @@ async def get_kit(kit_id: str, current_user: User = Depends(get_current_user)):
 | Table | Read | Write |
 |-------|------|-------|
 | players, player_rankings, player_stats, player_trends | Public (RLS) | Service role only |
-| player_projections, sources | Public (RLS) | Service role only |
+| player_projections, schedule_scores, player_platform_positions | Public (RLS) | Service role only |
+| sources (user_id IS NULL) | Public (RLS) | Service role only |
+| sources (user_id IS NOT NULL) | Owner only (API filters) | Owner (API check) |
 | scoring_configs (is_preset=true) | Public (RLS) | Service role only |
 | user_kits | Owner or matching session_token | Owner (API check) |
+| league_profiles | Owner (API check) | Owner (API check) |
 | draft_sessions | Owner (API check) | Owner (API check) |
 | exports | Owner (API check) | Owner (API check) |
 | subscriptions | Owner (API check) | Stripe webhook (service role) |
@@ -333,52 +452,74 @@ async def require_auth(user = Depends(get_current_user)):
 
 ---
 
-## 5. Rankings Aggregation Algorithm
+## 5. Aggregation Pipeline (POST /rankings/compute)
+
+The pipeline is **stat-projection-based**, not rank-based. Sources publish projected counting stats; the pipeline aggregates them to fantasy points and VORP.
 
 ```python
-def aggregate_rankings(source_weights: dict[str, float], players: list) -> list:
+# services/projections.py
+
+def compute_weighted_stats(
+    player_rows: list[ProjectionRow],
+    source_weights: dict[str, float],
+) -> dict[str, float | None]:
     """
-    source_weights: {source_id: weight} — weights must sum to 1.0
-    Returns: players sorted by composite score (descending).
-    Missing source data → weight redistributed to present sources.
+    For each stat: SUM(stat × weight) / SUM(weights for sources that have this stat).
+    Nulls are excluded per-stat — a source projecting goals but not hits contributes
+    to the goals average only.
+    Returns null for a stat only if no source projected it.
     """
-    for player in players:
-        available_sources = {
-            s: w for s, w in source_weights.items()
-            if player.has_ranking(s)
-        }
-        # Graceful degradation: redistribute weights for absent sources
-        total_weight = sum(available_sources.values())
-        normalized = {s: w / total_weight for s, w in available_sources.items()}
+    ...
 
-        # Normalized rank: 1 = best, converted to 0-1 (1.0 = best)
-        score = sum(
-            player.get_normalized_rank(s) * w
-            for s, w in normalized.items()
-        )
-        player.composite_score = score
-
-    return sorted(players, key=lambda p: p.composite_score, reverse=True)
-
-
-def translate_to_fantasy_points(projected_stats: dict, scoring_config: dict) -> float:
+def apply_scoring_config(stats: dict, scoring_config: dict) -> float:
     """
     projected_stats: {g: 30, a: 45, ppp: 20, sog: 250, hits: 100, ...}
-    scoring_config:  {g: 3,  a: 2,  ppp: 1,  sog: 0.5, hits: 0.5, ...}
+    scoring_config.stat_weights: {g: 3, a: 2, ppp: 1, sog: 0.5, hits: 0.5, ...}
+    Null stats contribute 0. Keys must match player_projections column names.
+    PPP/PPG/PPA and SHP/SHG/SHA mutual exclusion validated at config creation (HTTP 400).
     """
     return sum(
-        projected_stats.get(stat, 0) * weight
-        for stat, weight in scoring_config.items()
+        (stats.get(stat) or 0) * weight
+        for stat, weight in scoring_config["stat_weights"].items()
     )
+
+def compute_vorp(
+    players: list[AggregatedPlayer],
+    league_profile: LeagueProfile,
+) -> dict[str, float | None]:
+    """
+    Position group = players.position (NHL.com canonical).
+    Replacement level = Nth player where N = (num_teams × position_slots) + 1.
+    If fewer than N players at a position, use the last available as replacement level.
+    If zero players at a position, vorp = null for all in that group.
+    Negative VORP allowed — do not clamp at 0.
+    If player has null projected_fantasy_points, vorp = null.
+    """
+    ...
 ```
 
-**Caching:** Results cached in Upstash Redis for 6 hours. Manual refresh rate-limited: 10 req/min per user, IP-based for anonymous.
+**Request shape:**
+```json
+{
+  "season": "2025-26",
+  "source_weights": {"hashtag_hockey": 10, "apples_ginos": 5, "dobber": 8},
+  "scoring_config_id": "uuid",
+  "platform": "yahoo",
+  "league_profile_id": "uuid"   // optional; omit to skip VORP
+}
+```
+
+**Response per player** includes: `composite_rank`, `player_id`, `name`, `team`, `default_position`, `platform_positions`, `projected_fantasy_points`, `vorp`, `schedule_score`, `off_night_games`, `source_count`, `projected_stats` (full stat object, null for unprojected stats).
+
+**Caching:** Results cached in Upstash Redis for 6h. Cache key: `rankings:{season}:{sha256(source_weights_sorted + scoring_config_id + platform + league_profile_id)}`. Cache invalidated on every new source ingest via `invalidate_rankings(season)` which pattern-deletes `rankings:{season}:*`.
 
 ---
 
 ## 6. Scraper Patterns
 
-### Base Scraper
+### Two scraper ABCs
+
+**`BaseScraper`** — for stat sources (NHL.com, MoneyPuck, Natural Stat Trick). Writes to `player_stats`.
 
 ```python
 from abc import ABC, abstractmethod
@@ -390,38 +531,45 @@ class BaseScraper(ABC):
 
     @abstractmethod
     def normalize(self, raw: list[dict]) -> list[dict]:
-        """Normalize to common schema: {nhl_id, name, rank, score, season}"""
+        """Normalize to common schema for player_stats."""
 
     def run(self):
         raw = self.fetch_raw()
         normalized = self.normalize(raw)
         matched = self.match_players(normalized)  # uses player_aliases + rapidfuzz
-        self.write_staging(matched)
-        self.promote_to_production()  # atomic swap
+        self.write_to_player_stats(matched)
 
     def match_players(self, data: list[dict]) -> list[dict]:
         """
         Resolve player names to canonical IDs via:
         1. Exact match on player_aliases
         2. Fuzzy match (rapidfuzz, threshold >90%)
-        3. Flag unmatched for admin review
-        """
-        ...
-
-    def write_staging(self, data: list[dict]):
-        """Write to player_rankings_staging (never directly to player_rankings)."""
-        ...
-
-    def promote_to_production(self):
-        """
-        Atomic swap: DELETE old rankings + INSERT new in a single transaction.
-        On failure: staging discarded, production unchanged.
+        3. Flag unmatched for admin review; log to scraper_logs
         """
         ...
 ```
 
+**`BaseProjectionScraper`** — for projection sources (HashtagHockey, DailyFaceoff, etc. and user-uploaded custom sources). Writes to `player_projections`.
+
+```python
+class BaseProjectionScraper(ABC):
+    SOURCE_NAME: str   # matches sources.name
+    DISPLAY_NAME: str
+
+    @abstractmethod
+    async def scrape(self, season: str, db: Client) -> int:
+        """Fetch projections, resolve player names, write to player_projections.
+        Returns count of rows upserted."""
+        ...
+```
+
+Name resolution: at ingest time, every source player name is fuzzy-matched against `players.name` (NHL.com canonical) using `scrapers/matching.py` (rapidfuzz). Confidence ≥ threshold → write row with resolved `player_id`. Confidence < threshold → log to `scraper_logs` with unmatched name, skip row. After each ingest job, surface summary to dashboard (e.g. "847 matched, 12 unmatched"). No silent drops.
+
 ### GitHub Actions Cron
 
+Two workflows:
+
+**Daily stat refresh** (NHL.com, MoneyPuck, NST → `player_stats`):
 ```yaml
 # .github/workflows/daily-scrape.yml
 name: Daily Data Refresh
@@ -437,20 +585,26 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
       - run: pip install -r apps/api/requirements.txt
-      - run: python -m apps.api.scrapers.nhl_api
-      - run: python -m apps.api.scrapers.moneypuck
-      - run: python -m apps.api.scrapers.nst
+      - run: python -m apps.api.scrapers.nhl_api        # → player_stats
+      - run: python -m apps.api.scrapers.moneypuck       # → player_stats
+      - run: python -m apps.api.scrapers.nst             # → player_stats
     - if: failure()
       uses: slackapi/slack-github-action@v1
       with:
         webhook: ${{ secrets.SLACK_WEBHOOK }}
 ```
 
+**Pre-season projection scrape** (HashtagHockey, DailyFaceoff, etc. → `player_projections`):
+Each projection scraper runs pre-season; triggers `invalidate_rankings(season)` on completion.
+
+**Schedule ingestion** (one job per season, re-run if schedule changes):
+NHL schedule API → `schedule_scores` (off-night counts, min-max normalized across all players).
+
 ### Scraper Failure Handling
 
-- Scrapers write to staging tables only
-- Full success → atomic swap to production
-- Any failure → discard staging, log error, serve stale data with "last updated X hours ago" badge
+- Stat scrapers write via upsert to `player_stats`; projection scrapers upsert to `player_projections`
+- Any failure → log error to `scraper_logs`, serve stale data with "last updated X hours ago" badge
+- After each ingest, surface unmatched player name summary to dashboard
 - GitHub Actions sends Slack/email alert on failure
 
 ---
@@ -544,11 +698,21 @@ async def get_player_trends(player_id: str):
 
 | Type | Library | Trigger | Delivery |
 |------|---------|---------|---------|
-| PDF cheat sheet | WeasyPrint | `POST /api/exports/pdf` | Supabase Storage (24hr TTL) |
-| Excel workbook | openpyxl | `POST /api/exports/excel` | Supabase Storage (24hr TTL) |
+| PDF — Print & Draft | WeasyPrint | `POST /api/exports/pdf` | Supabase Storage (24hr TTL) |
+| Excel — Draft Kit | openpyxl | `POST /api/exports/excel` | Supabase Storage (24hr TTL) |
 | Bundle (PDF + Excel) | Both | `POST /api/exports/bundle` | Both links |
 
-Exports are generated asynchronously via Celery. Multi-tab Excel: master rankings, by-position tabs, Trends tab (breakout/regression scores).
+Exports are read-only outputs — no import slots, no VBA. Users may export as many times as they want with any weight configuration at no additional cost.
+
+**Excel — 2 sheets:**
+- **Sheet 1 — Full Rankings:** ADP (blank — v1.0 placeholder), TAKEN (user marks `X`, conditional formatting greys/strikes the row), PLAYER, TEAM, POS, FanPts, FP/GP, VORP, PRNK, GP, OFF (off-night games), then all stat columns (skater stats grouped, then goalie stats grouped; null = `—`).
+- **Sheet 2 — Best Available:** Position-grouped (CENTER, LEFT WING, RIGHT WING, DEFENSE, GOALIES, MULTI-POSITIONAL). Driven by Excel `FILTER` formulas referencing Sheet 1's TAKEN column — works in Excel and Google Sheets.
+
+Header block on both sheets: league settings, source weights used, PuckLogic Recommended flag, generated date and season.
+
+**PDF — Print & Draft:** Full player rankings with blank checkbox column for pen-marking taken players; static best-available summary by position (snapshot at export time); league settings and source weights printed at top; generated date and season. Designed for offline drafts.
+
+**`ExportRequest`** schema fields: `season`, `source_weights`, `scoring_config_id`, `platform`, `league_profile_id` (optional). `generate_excel()` and `generate_pdf()` in `services/exports.py` accept and render: fantasy points, VORP, off-night games, full `projected_stats` object.
 
 ```python
 # tasks/export_tasks.py

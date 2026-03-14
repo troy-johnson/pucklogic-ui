@@ -24,12 +24,12 @@ ruff format .                    # format
 apps/api/
   core/
     config.py        # Settings (pydantic-settings, reads .env)
-    dependencies.py  # FastAPI Depends() helpers — get_source_repository, get_rankings_repository, get_cache_service
+    dependencies.py  # FastAPI Depends() helpers — get_source_repository, get_projections_repository, get_cache_service
   models/
     schemas.py       # All Pydantic request/response schemas (Phase 2 complete)
   repositories/
     players.py       # PlayerRepository — Supabase CRUD for `players`
-    rankings.py      # RankingsRepository — get_by_season()
+    projections.py   # ProjectionsRepository — get_by_season(season, platform, user_id)
     sources.py       # SourceRepository — list()
   routers/
     health.py        # GET /health (Phase 1, registered)
@@ -39,15 +39,22 @@ apps/api/
     stripe.py        # POST /stripe/create-checkout-session (Phase 2, TODO: register)
     user_kits.py     # CRUD /user-kits (Phase 2, TODO: register)
   services/
-    rankings.py      # compute_weighted_rankings(), flatten_db_rankings()
+    projections.py   # aggregate_projections(), compute_weighted_stats(), apply_scoring_config(), compute_vorp()
     cache.py         # CacheService — Upstash-compatible Redis, 6h TTL
     exports.py       # generate_excel(), generate_pdf()
+  scrapers/
+    base.py                  # BaseScraper ABC (stat sources: NHL.com, MoneyPuck)
+    base_projection.py       # BaseProjectionScraper ABC (projection sources)
+    nhl_com.py               # NhlComScraper → player_stats
+    moneypuck.py             # MoneyPuckScraper → player_stats
+    matching.py              # Player name/ID resolution (rapidfuzz)
   tests/
     conftest.py      # `client` fixture (TestClient wrapping app)
     test_health.py
-    repositories/    # test_players.py (more needed: sources, rankings)
-    services/        # TODO: test_rankings.py, test_cache.py, test_exports.py
-    routers/         # TODO: test_rankings.py, test_sources.py, test_exports.py, test_stripe.py, test_user_kits.py
+    repositories/    # test_players.py, test_projections.py, test_sources.py, test_subscriptions.py
+    services/        # test_projections.py, test_cache.py, test_exports.py
+    routers/         # test_sources.py, test_rankings.py, test_exports.py, test_stripe.py, test_user_kits.py
+    scrapers/        # test_base.py, test_base_projection.py, test_nhl_com.py, test_moneypuck.py
   main.py            # FastAPI app, CORS, registered routers
   pyproject.toml     # deps + tool config (ruff, pytest, coverage)
 ```
@@ -69,41 +76,71 @@ Do not build Layer 2 Celery jobs, Z-score computation, or the paywall gate until
 
 | Area | Status | Notes |
 |------|--------|-------|
-| `models/schemas.py` | ✅ Complete | All Phase 2 schemas defined |
-| `repositories/` | ✅ Complete | players, rankings, sources |
-| `services/rankings.py` | ✅ Complete | `compute_weighted_rankings`, `flatten_db_rankings` |
-| `services/cache.py` | ✅ Complete | `CacheService` with Upstash Redis |
-| `services/exports.py` | ✅ Complete | `generate_excel`, `generate_pdf` |
+| `models/schemas.py` | ✅ Complete | All Phase 2 schemas defined; `RankingsComputeRequest` uses `source_weights`, `scoring_config_id`, `platform`, `league_profile_id`; `UserKitCreate`/`UserKitOut` are source-weight presets only |
+| `repositories/` | ✅ Complete | players (`list()` takes no args), projections (`get_by_season(season, platform, user_id)`), sources, subscriptions |
+| `services/projections.py` | ✅ Complete | `aggregate_projections`, `compute_weighted_stats`, `apply_scoring_config`, `compute_vorp` |
+| `services/cache.py` | ✅ Complete | `CacheService` with Upstash Redis, graceful no-op when unconfigured; cache key = `rankings:{season}:{sha256(source_weights+scoring_config_id+platform+league_profile_id)}` |
+| `services/exports.py` | ✅ Complete | `generate_excel` (2 sheets: Full Rankings + Best Available), `generate_pdf` (Print & Draft) |
 | `routers/sources.py` | ✅ Complete | GET /sources |
-| `core/dependencies.py` | ⬜ TODO | FastAPI Depends() injection functions |
-| `routers/rankings.py` | ⬜ TODO | POST /rankings/compute |
-| `routers/exports.py` | ⬜ TODO | POST /exports/generate |
-| `routers/stripe.py` | ⬜ TODO | POST /stripe/create-checkout-session + webhook |
-| `routers/user_kits.py` | ⬜ TODO | GET/POST/DELETE /user-kits |
-| `main.py` router includes | ⬜ TODO | include all 4 new routers |
-| `core/config.py` new fields | ⬜ TODO | redis_url, stripe_secret_key, stripe_webhook_secret, frontend_url |
-| `pyproject.toml` new deps | ⬜ TODO | redis, stripe, openpyxl, weasyprint |
-| Backend tests | ⬜ TODO | services/, routers/ test suites |
+| `core/dependencies.py` | ✅ Complete | `get_db`, `get_cache_service`, `get_projections_repository`, `get_source_repository`, `get_subscription_repository`, `get_current_user` |
+| `routers/rankings.py` | ✅ Complete | POST /rankings/compute — auth required, Redis cache, 6h TTL, stat-projection-based pipeline |
+| `routers/exports.py` | ✅ Complete | POST /exports/generate — PDF + Excel streaming response |
+| `routers/stripe.py` | ✅ Complete | POST /stripe/create-checkout-session + /webhook (signature-verified) |
+| `routers/user_kits.py` | ✅ Complete | GET/POST/DELETE /user-kits — owner-scoped source-weight presets |
+| `main.py` router includes | ✅ Complete | All 6 routers registered |
+| `core/config.py` new fields | ✅ Complete | `redis_url`, `stripe_secret_key`, `stripe_webhook_secret`, `stripe_price_id`, `frontend_url`, `current_season` |
+| `pyproject.toml` new deps | ✅ Complete | redis, stripe, openpyxl, weasyprint, httpx |
+| Backend tests | ✅ Complete | Full suite: services/ (projections, cache, exports), routers/ (all 6), repositories/ |
+
+### Phase 2 — Still Needed
+
+| Area | Status | Notes |
+|------|--------|-------|
+| `routers/auth.py` | ⬜ TODO | POST /auth/login, /auth/register |
+| `routers/players.py` | ⬜ TODO | GET /players, GET /players/{id} |
+| `routers/scoring.py` | ⬜ TODO | Scoring config CRUD (presets + custom); must enforce PPP/PPG/PPA and SHP/SHG/SHA double-count validation at creation |
+| `routers/league_profiles.py` | ⬜ TODO | CRUD /league-profiles — owner-scoped; required for VORP computation |
+| `scrapers/base_projection.py` | ⬜ TODO | `BaseProjectionScraper` ABC for projection source scrapers |
+| `scrapers/projection/` | ⬜ TODO | HashtagHockey, DailyFaceoff, Apples & Ginos, LineupExperts, Yahoo, Fantrax scrapers |
+| `scrapers/nst.py` | ⬜ TODO | Natural Stat Trick HTML scraper — writes to `player_stats` |
+| `scrapers/matching.py` | ⬜ TODO | Player name/ID resolution via rapidfuzz (Phase 1 backlog) |
+| Schedule ingestion job | ⬜ TODO | GitHub Actions: NHL schedule API → `schedule_scores` (off-night counts, min-max normalized) |
+| `player_platform_positions` ingestion | ⬜ TODO | Per-platform position eligibility for ESPN, Yahoo, Fantrax |
+| Custom upload UI + handler | ⬜ TODO | 2 slots per user, CSV/Excel, column mapping, `sources.user_id` set, triggers cache invalidation |
 
 ---
 
-## Rankings Algorithm
+## Aggregation Pipeline (POST /rankings/compute)
 
 ```
 POST /rankings/compute:
-  1. Validate weights (all values >= 0)
-  2. CacheService.get_rankings(season, weights)  →  cache hit: return with cached=True
+  Request: { season, source_weights, scoring_config_id, platform, league_profile_id? }
+
+  1. Validate: at least one source_weight > 0; if league_profile_id provided, verify owner
+  2. Check cache: CacheService.get(rankings:{season}:{digest})  →  cache hit: return cached=True
   3. Cache miss:
-       rows = RankingsRepository.get_by_season(season)
-       source_rankings = flatten_db_rankings(rows)
-       ranked = compute_weighted_rankings(source_rankings, weights)
-       CacheService.set_rankings(season, weights, ranked)
-  4. Return RankingsComputeResponse(cached=False, rankings=ranked)
+       rows = ProjectionsRepository.get_by_season(season, platform, current_user.id)
+         # Filters sources to: user_id IS NULL OR user_id = current_user.id
+       weighted_stats = compute_weighted_stats(rows, source_weights)
+         # Per stat: SUM(stat × weight) / SUM(weights for sources with this stat)
+         # Nulls excluded per-stat; result is null only if no source projected that stat
+       fantasy_points = apply_scoring_config(weighted_stats, scoring_config)
+         # SUM(stat × scoring_config.stat_weights[stat]); null stats contribute 0
+       vorp = compute_vorp(players, league_profile)  # null if no league_profile_id
+         # Replacement level = Nth player per position (N = num_teams × position_slots + 1)
+         # Position group = players.position (NHL.com canonical); negative VORP allowed
+       schedule_scores = fetch from schedule_scores table (null if not yet populated)
+       ranked = sort by fantasy_points descending (null fantasy_points sort last)
+       CacheService.set(key, ranked, ttl=6h)
+  4. Return RankingsComputeResponse with per-player: composite_rank, projected_fantasy_points,
+       vorp, schedule_score, off_night_games, source_count, projected_stats (full stat object)
+
+  Cache invalidation: new source ingest → cache.invalidate_rankings(season)
+    pattern-deletes all keys matching rankings:{season}:*
 ```
 
-Normalisation: rank 1 → score 1.0, rank N → score ≈ 0.0.
-Missing-source grace: only sources with data for a player contribute to its
-total weight — no redistribution needed by the caller.
+Missing-source grace: nulls are excluded per-stat. A source projecting goals but not hits
+contributes to the goals average only. A stat is null in output only if no source projected it.
 
 ---
 
@@ -112,11 +149,14 @@ total weight — no redistribution needed by the caller.
 | Schema | Used by |
 |--------|---------|
 | `SourceOut` | GET /sources |
-| `RankingsComputeRequest` / `RankingsComputeResponse` | POST /rankings/compute |
-| `RankedPlayer` | nested in RankingsComputeResponse.rankings |
-| `ExportRequest` / `ExportJobResponse` | POST /exports/generate |
+| `RankingsComputeRequest` | POST /rankings/compute — fields: `season`, `source_weights` (renamed from `weights`), `scoring_config_id`, `platform`, `league_profile_id` (optional) |
+| `RankingsComputeResponse` | POST /rankings/compute |
+| `RankedPlayer` | nested in RankingsComputeResponse.rankings — includes `projected_fantasy_points`, `vorp`, `schedule_score`, `off_night_games`, `source_count`, `projected_stats` |
+| `ExportRequest` | POST /exports/generate — same new fields as RankingsComputeRequest |
+| `ExportJobResponse` | POST /exports/generate |
 | `CheckoutSessionRequest` / `CheckoutSessionResponse` | POST /stripe/create-checkout-session |
-| `UserKitCreate` / `UserKitOut` | POST/GET /user-kits |
+| `UserKitCreate` / `UserKitOut` | POST/GET /user-kits — source-weight presets only (no league config) |
+| `LeagueProfileCreate` / `LeagueProfileOut` | POST/GET /league-profiles — platform, num_teams, roster_slots, scoring_config_id |
 
 ---
 

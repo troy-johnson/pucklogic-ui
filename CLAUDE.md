@@ -95,10 +95,13 @@ npx shadcn@latest add <component-name>
 
 - **Next.js over SvelteKit**: Chrome extension shares React components from `packages/ui` — a Svelte build would require a separate pipeline.
 - **FastAPI over Node backend**: ML model (Python/XGBoost) runs in the same process — no cross-language serialization overhead for predictions.
-- **Rankings algorithm**: per-source rank → normalize to 0–1 score → user-defined weights → weighted average → calculate fantasy points using league scoring rules → compute VORP (Value Over Replacement Player) → sort descending. Missing sources degrade gracefully (weight redistributed). Results cached in Redis for 6h.
-- **Category/roto league mode**: instead of a single fantasy-points score, compute a Z-score per scoring category (goals, assists, PP points, etc.) across the player pool, then sum Z-scores for the final rank. Same weighted-average pipeline, different output stage. League format (points vs. roto) is stored in `user_kits`.
+- **Aggregation pipeline (stat-projection-based)**: projection sources publish per-player projected counting stats (G, A, PIM, SOG, hits, blocks, PPP, etc.) into `player_projections`. `POST /rankings/compute` computes a weighted average of each stat across sources (nulls excluded per-stat), applies the user's `scoring_config` → projected fantasy points, computes VORP relative to replacement-level per position, attaches a schedule score (off-night game count), and sorts by projected fantasy points descending. Results cached in Redis for 6h. Cache key includes a SHA-256 digest of `(source_weights, scoring_config_id, platform, league_profile_id)`; invalidated on every new source ingest via `invalidate_rankings(season)`.
+- **`player_rankings` is not part of the aggregation pipeline.** The table is retained for potential future rank-only sources but is not read by `POST /rankings/compute`. NHL.com and MoneyPuck write to `player_stats` only — they are stat sources, not projection sources.
+- **VORP**: `player.projected_fantasy_points − replacement_level.projected_fantasy_points` per position group. Primary position (`players.position`, NHL.com canonical) determines the position group. Replacement level = Nth ranked player where N = `(num_teams × position_slots) + 1`. Negative VORP is allowed. Requires `league_profile_id` in the request; omitting it returns `vorp: null` for all players.
+- **Scoring config validation**: `PPP` and `PPG`/`PPA` cannot both be non-zero in the same config (same rule for `SHP`/`SHG`/`SHA`). Enforced at config creation time with HTTP 400.
+- **`user_kits`**: retained as named source-weight presets only. Full league configuration (platform, num_teams, roster_slots, scoring_config_id) lives in `league_profiles`.
 - **Draft monitor**: `MutationObserver` watches ESPN Fantasy DOM for pick events → service worker relays via WebSocket to backend → backend returns best-available suggestions.
-- **Paywalled sources** (Dom Luszczyszyn / The Athletic): user paste UI (CSV/text) at launch; pursue data agreement in 2027.
+- **Paywalled sources** (e.g. Dom Luszczyszyn): marked `is_paid=true` in `sources` table. For public users, paid source stat columns are present but empty — aggregation runs over free sources only. User uploads their own copy via paste/upload UI (2 custom source slots per user).
 - **Extension monetization**: $2–3 one-time per draft session; payment via Stripe on the web app — no payment UI in the extension itself (simplifies Chrome Web Store compliance).
 
 ---
@@ -109,16 +112,19 @@ npx shadcn@latest add <component-name>
 
 | Table | Purpose |
 |---|---|
-| `players` | NHL player master (id, name, team, position, date_of_birth, nhl_id) |
+| `players` | NHL player master (id, name, team, position, date_of_birth, nhl_id). `position` is NHL.com canonical — never overwritten by other sources. |
 | `player_aliases` | Name variant mapping for cross-source matching (alias_name, canonical player_id, source) |
-| `player_rankings` | Per-source rankings (player_id, source_id FK, rank, score, season, scraped_at) |
+| `player_rankings` | Per-source rank positions (player_id, source_id FK, rank, score, season, scraped_at). Retained for potential future rank-only sources; **not used by the aggregation pipeline**. |
 | `player_rankings_staging` | Staging table for atomic swap pattern (same schema as player_rankings) |
-| `player_stats` | Raw stats per season (goals, assists, TOI, CF%, xGF%, iSCF/60, SH%, PDO, WAR, etc.) |
+| `player_stats` | Raw/actual stats per season (goals, assists, TOI, CF%, xGF%, iSCF/60, SH%, PDO, WAR, etc.). Written by NHL.com and MoneyPuck scrapers. |
 | `player_trends` | ML output — `breakout_score`, `regression_risk`, `confidence`, `shap_values` JSONB, `updated_at`; UNIQUE(player_id, season) |
-| `player_projections` | Projected stats per season (`projected_stats` JSONB, `scoring_basis`); UNIQUE(player_id, season) |
-| `sources` | Registered aggregation sources (name, url, scrape_config, active, last_successful_scrape) |
+| `player_projections` | Per-source projected stats (source_id FK, fixed nullable stat columns for all skater/goalie stats, `extra_stats` JSONB overflow); UNIQUE(player_id, source_id, season). Written by projection source scrapers only. |
+| `schedule_scores` | Off-night game counts per player per season (`off_night_games`, `total_games`, `schedule_score` 0–1 normalized); UNIQUE(player_id, season). Populated from NHL schedule API. |
+| `player_platform_positions` | Platform-specific position eligibility per player (`platform`, `positions` text[]); UNIQUE(player_id, platform). Separate from `players.position`. |
+| `sources` | Registered aggregation sources (name, url, scrape_config, active, last_successful_scrape, `default_weight` float, `is_paid` boolean, `user_id` nullable FK for custom user sources) |
 | `scoring_configs` | Fantasy scoring presets and custom configs (stat_weights JSONB, is_preset, user_id) |
-| `user_kits` | Saved weighting configs (user_id OR session_token, source_weights JSONB, scoring_config_id FK, name) |
+| `league_profiles` | Complete league config (user_id, name, platform, num_teams, roster_slots JSONB, scoring_config_id FK). Used for VORP computation. |
+| `user_kits` | Named source-weight presets only (user_id OR session_token, source_weights JSONB, name). Not a full league config — see `league_profiles`. |
 | `draft_sessions` | Live draft state (user_id, platform, league_config, picks[], available[], kit_id, status) |
 | `exports` | Export job records (user_id, type, status, storage_url) |
 | `subscriptions` | Stripe subscription state (user_id, stripe_session_id, plan, status, expires_at) |
@@ -127,16 +133,27 @@ npx shadcn@latest add <component-name>
 
 ## Data Sources & Ingestion
 
-Scrapers run on GitHub Actions cron (daily or weekly). Each source has a dedicated scraper.
+Scrapers run on GitHub Actions cron (daily or weekly). Each source has a dedicated scraper. Scrapers subclass either `BaseScraper` (stat sources → `player_stats`) or `BaseProjectionScraper` (projection sources → `player_projections`).
 
-| Source | Method | Frequency |
-|---|---|---|
-| NHL.com | Official API | Daily |
-| MoneyPuck | CSV downloads | Daily |
-| Natural Stat Trick | HTML scraper (BeautifulSoup) | Daily |
-| Dobber Hockey | HTML scraper (may need Playwright) | Weekly |
-| Dom Luszczyszyn | User paste UI | On demand |
-| Elite Prospects | HTML scraper or EP API | Weekly |
+| Source | Type | Method | Frequency | Paid |
+|---|---|---|---|---|
+| NHL.com | Actual stats | Official API | Daily | No |
+| MoneyPuck | Actual stats (advanced) | CSV downloads | Daily | No |
+| Natural Stat Trick | Actual stats (advanced) | HTML scraper (BeautifulSoup) | Daily | No |
+| HashtagHockey | Projections | Auto-scrape | Pre-season | No |
+| DailyFaceoff | Projections | Auto-scrape | Pre-season | No |
+| Apples & Ginos | Projections | Auto-scrape | Pre-season | No |
+| LineupExperts | Projections | Auto-scrape | Pre-season | No |
+| Yahoo | Projections | Auto-scrape / API | Pre-season | No |
+| Fantrax | Projections | Auto-scrape / API | Pre-season | No |
+| DatsyukToZetterberg | Projections | Paste / upload | On demand | No |
+| Bangers Fantasy Hockey | Projections | Paste / upload | On demand | No |
+| KUBOTA | Projections | Paste / upload | On demand | No |
+| Scott Cullen | Projections | Paste / upload | On demand | No |
+| Steve Laidlaw | Projections | Paste / upload | On demand | No |
+| Dom Luszczyszyn | Projections | Paste / upload | On demand | Yes |
+
+NHL.com and MoneyPuck write to `player_stats` only — they are not projection sources. Users get 2 custom projection source upload slots (CSV/Excel with column mapping UI).
 
 **Always respect `robots.txt` and rate-limit scraper requests.**
 
