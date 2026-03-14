@@ -280,6 +280,7 @@ Applies to the in-season Layer 2 engine when it ships:
 - **ESPN DOM risk**: ESPN can change their draft room UI at any time. Use multiple selector fallbacks and maintain a test fixture of the draft room HTML. Always have a manual pick-entry fallback mode.
 - **Existing codebase**: treat any legacy PuckLogic code as a reference/parts bin, not a foundation. Archive as `pucklogic-legacy` before starting new build.
 - **PR descriptions are mandatory**: every pull request must have a filled-out description — never leave it blank or use a placeholder. The description must include: (1) a summary of what changed and why, (2) a test plan or confirmation that existing tests cover the change, and (3) any follow-up tasks or known limitations. Update the description when additional commits are pushed to the PR (e.g. fixes from review, lint corrections).
+- **Keep docs and Notion in sync**: whenever a task or feature is completed, update the relevant reference docs (`docs/`) to reflect any design changes, then update or close the corresponding Notion task card. Do this before considering the work done — docs and Notion are the source of truth for future sessions.
 
 ## MCP Tools
 
