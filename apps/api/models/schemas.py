@@ -53,7 +53,7 @@ class RankingsComputeRequest(BaseModel):
     )
 
     @model_validator(mode="after")
-    def source_weights_not_all_zero(self) -> "RankingsComputeRequest":
+    def source_weights_not_all_zero(self) -> RankingsComputeRequest:
         if not self.source_weights or all(v == 0 for v in self.source_weights.values()):
             raise ValueError("source_weights: at least one source must have a non-zero weight")
         return self
@@ -79,7 +79,7 @@ class ProjectedStats(BaseModel):
     # Goalie
     gs: int | None = None
     w: int | None = None
-    l: int | None = None
+    l: int | None = None  # noqa: E741
     ga: int | None = None
     sa: int | None = None
     sv: int | None = None
@@ -169,7 +169,7 @@ class ExportRequest(BaseModel):
     export_type: str = Field(..., pattern="^(pdf|excel|bundle)$")
 
     @model_validator(mode="after")
-    def source_weights_not_all_zero(self) -> "ExportRequest":
+    def source_weights_not_all_zero(self) -> ExportRequest:
         if not self.source_weights or all(v == 0 for v in self.source_weights.values()):
             raise ValueError("source_weights: at least one source must have a non-zero weight")
         return self

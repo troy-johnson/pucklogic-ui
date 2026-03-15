@@ -8,11 +8,18 @@ import { create } from "zustand";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { createRankingsSlice, type RankingsSlice } from "@/store/slices/rankings";
-import type { RankingsResult } from "@/types";
+import type { ProjectedStats, RankingsResult } from "@/types";
 
 function makeStore() {
   return create<RankingsSlice>()((...a) => ({ ...createRankingsSlice(...a) }));
 }
+
+const NULL_STATS: ProjectedStats = {
+  g: null, a: null, plus_minus: null, pim: null, ppg: null, ppa: null,
+  ppp: null, shg: null, sha: null, shp: null, sog: null, fow: null,
+  fol: null, hits: null, blocks: null, gp: null, gs: null, w: null,
+  l: null, ga: null, sa: null, sv: null, sv_pct: null, so: null, otl: null,
+};
 
 const RESULT: RankingsResult = {
   season: "2025-26",
@@ -21,12 +28,19 @@ const RESULT: RankingsResult = {
   rankings: [
     {
       composite_rank: 1,
-      composite_score: 0.95,
       player_id: "p1",
       name: "Connor McDavid",
       team: "EDM",
-      position: "C",
-      source_ranks: { nhl_com: 1 },
+      default_position: "C",
+      platform_positions: [],
+      projected_fantasy_points: 30.5,
+      vorp: null,
+      schedule_score: null,
+      off_night_games: null,
+      source_count: 1,
+      projected_stats: NULL_STATS,
+      breakout_score: null,
+      regression_risk: null,
     },
   ],
 };

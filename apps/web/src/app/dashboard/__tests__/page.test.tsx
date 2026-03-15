@@ -28,18 +28,25 @@ import type { Source, RankedPlayer } from "@/types";
 import DashboardPage from "../page";
 
 const SOURCES: Source[] = [
-  { id: "s1", name: "nhl_com", display_name: "NHL.com", url: null, active: true },
+  { id: "s1", name: "nhl_com", display_name: "NHL.com", url: null, active: true, default_weight: null, is_paid: false },
 ];
 
 const RANKINGS: RankedPlayer[] = [
   {
     composite_rank: 1,
-    composite_score: 0.95,
     player_id: "p1",
     name: "Connor McDavid",
     team: "EDM",
-    position: "C",
-    source_ranks: { nhl_com: 1 },
+    default_position: "C",
+    platform_positions: [],
+    projected_fantasy_points: 30.5,
+    vorp: null,
+    schedule_score: null,
+    off_night_games: null,
+    source_count: 1,
+    projected_stats: { g: null, a: null, plus_minus: null, pim: null, ppg: null, ppa: null, ppp: null, shg: null, sha: null, shp: null, sog: null, fow: null, fol: null, hits: null, blocks: null, gp: null, gs: null, w: null, l: null, ga: null, sa: null, sv: null, sv_pct: null, so: null, otl: null },
+    breakout_score: null,
+    regression_risk: null,
   },
 ];
 
@@ -149,7 +156,9 @@ describe("DashboardPage", () => {
       await user.click(screen.getByRole("button", { name: /compute/i }));
       expect(computeRankings).toHaveBeenCalledWith({
         season: "2025-26",
-        weights: { nhl_com: 100 },
+        source_weights: { nhl_com: 100 },
+        scoring_config_id: "default",
+        platform: "espn",
       });
     });
 

@@ -95,3 +95,8 @@ export interface UserKit {
 }
 
 export type WeightsMap = Record<string, number>;
+
+export interface CreateUserKitRequest {
+  name: string;
+  source_weights: Record<string, number>;
+}

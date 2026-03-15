@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import pytest
-from fastapi.testclient import TestClient
 from unittest.mock import MagicMock
 
-from main import app
+import pytest
+from fastapi.testclient import TestClient
+
 from core.dependencies import get_current_user, get_scoring_config_repository
+from main import app
 
 MOCK_USER = {"id": "u-1", "email": "test@example.com"}
 
@@ -82,7 +83,7 @@ class TestCreateScoringConfig:
         client.post("/scoring-configs", json=body)
         mock_repo.create.assert_called_once()
 
-    def test_sets_user_id_and_is_preset_false(self, client: TestClient, mock_repo: MagicMock) -> None:
+    def test_sets_user_id_and_is_preset_false(self, client: TestClient, mock_repo: MagicMock) -> None:  # noqa: E501
         body = {"name": "My Custom", "stat_weights": {"g": 5}}
         client.post("/scoring-configs", json=body)
         call_data = mock_repo.create.call_args.args[0]

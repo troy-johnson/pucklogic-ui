@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
 
 class ScoringConfigRepository:
-    def __init__(self, db: "Client") -> None:
+    def __init__(self, db: Client) -> None:
         self._db = db
 
     def list(self, user_id: str) -> list[dict[str, Any]]:

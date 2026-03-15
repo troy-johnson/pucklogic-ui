@@ -2,7 +2,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
-from routers import exports, health, league_profiles, rankings, scoring_configs, sources, stripe, user_kits
+from routers import (
+    exports,
+    health,
+    league_profiles,
+    rankings,
+    scoring_configs,
+    sources,
+    stripe,
+    user_kits,
+)
 
 app = FastAPI(
     title="PuckLogic API",

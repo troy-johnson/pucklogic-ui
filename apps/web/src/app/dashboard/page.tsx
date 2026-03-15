@@ -33,7 +33,7 @@ export default function DashboardPage() {
   async function handleCompute() {
     setLoading(true);
     try {
-      const result = await computeRankings({ season, weights: activeWeights() });
+      const result = await computeRankings({ season, source_weights: activeWeights(), scoring_config_id: "default", platform: "espn" });
       setRankings(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");

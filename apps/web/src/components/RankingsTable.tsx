@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { RankedPlayer, Source } from "@/types";
 
-type SortKey = "composite_rank" | "name" | "team" | "position" | "composite_score";
+type SortKey = "composite_rank" | "name" | "team" | "default_position" | "projected_fantasy_points";
 type SortDir = "asc" | "desc";
 
 interface Props {
@@ -14,11 +14,14 @@ interface Props {
 function compare(a: RankedPlayer, b: RankedPlayer, key: SortKey, dir: SortDir): number {
   const av = a[key];
   const bv = b[key];
-  const cmp = typeof av === "string" ? av.localeCompare(bv as string) : (av as number) - (bv as number);
+  const cmp =
+    typeof av === "string"
+      ? (av ?? "").localeCompare((bv as string | null) ?? "")
+      : ((av ?? 0) as number) - ((bv ?? 0) as number);
   return dir === "asc" ? cmp : -cmp;
 }
 
-export function RankingsTable({ rankings, sources }: Props) {
+export function RankingsTable({ rankings, sources: _sources }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("composite_rank");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
@@ -58,17 +61,10 @@ export function RankingsTable({ rankings, sources }: Props) {
             <SortHeader colKey="composite_rank" label="Rank" />
             <SortHeader colKey="name" label="Name" />
             <SortHeader colKey="team" label="Team" />
-            <SortHeader colKey="position" label="Pos" />
-            <SortHeader colKey="composite_score" label="Score" />
-            {sources.map((s) => (
-              <th
-                key={s.name}
-                role="columnheader"
-                className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600"
-              >
-                {s.display_name}
-              </th>
-            ))}
+            <SortHeader colKey="default_position" label="Pos" />
+            <SortHeader colKey="projected_fantasy_points" label="FanPts" />
+            <th role="columnheader" className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">VORP</th>
+            <th role="columnheader" className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Sources</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -77,13 +73,10 @@ export function RankingsTable({ rankings, sources }: Props) {
               <td className="px-3 py-2 tabular-nums">{player.composite_rank}</td>
               <td className="px-3 py-2 font-medium">{player.name}</td>
               <td className="px-3 py-2">{player.team}</td>
-              <td className="px-3 py-2">{player.position}</td>
-              <td className="px-3 py-2 tabular-nums">{player.composite_score.toFixed(2)}</td>
-              {sources.map((s) => (
-                <td key={s.name} className="px-3 py-2 tabular-nums">
-                  {player.source_ranks[s.name] ?? "—"}
-                </td>
-              ))}
+              <td className="px-3 py-2">{player.default_position}</td>
+              <td className="px-3 py-2 tabular-nums">{player.projected_fantasy_points?.toFixed(2) ?? "—"}</td>
+              <td className="px-3 py-2 tabular-nums">{player.vorp?.toFixed(2) ?? "—"}</td>
+              <td className="px-3 py-2 tabular-nums">{player.source_count}</td>
             </tr>
           ))}
         </tbody>

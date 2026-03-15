@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import pytest
-from fastapi.testclient import TestClient
 from unittest.mock import MagicMock
 
-from main import app
+import pytest
+from fastapi.testclient import TestClient
+
 from core.dependencies import get_current_user, get_league_profile_repository
+from main import app
 
 MOCK_USER = {"id": "u-1", "email": "test@example.com"}
 PROFILE_ROW = {

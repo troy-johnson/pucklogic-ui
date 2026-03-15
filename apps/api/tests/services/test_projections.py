@@ -238,7 +238,7 @@ class TestAggregateProjections:
     def test_sorted_by_fantasy_points_descending(self) -> None:
         rows = self._make_db_rows()
         result = aggregate_projections(rows, {"dobber": 10}, {"g": 3.0})
-        fps = [r["projected_fantasy_points"] for r in result if r["projected_fantasy_points"] is not None]
+        fps = [r["projected_fantasy_points"] for r in result if r["projected_fantasy_points"] is not None]  # noqa: E501
         assert fps == sorted(fps, reverse=True)
 
     def test_composite_rank_assigned(self) -> None:

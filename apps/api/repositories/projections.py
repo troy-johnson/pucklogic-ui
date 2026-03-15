@@ -37,7 +37,7 @@ _STAT_COLUMNS = (
 
 
 class ProjectionRepository:
-    def __init__(self, db: "Client") -> None:
+    def __init__(self, db: Client) -> None:
         self._db = db
 
     def get_by_season(

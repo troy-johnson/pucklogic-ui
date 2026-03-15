@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 from repositories.scoring_configs import ScoringConfigRepository
 
@@ -37,14 +38,14 @@ class TestList:
     def test_queries_scoring_configs(
         self, repo: ScoringConfigRepository, mock_db: MagicMock
     ) -> None:
-        mock_db.table.return_value.select.return_value.or_.return_value.execute.return_value.data = []
+        mock_db.table.return_value.select.return_value.or_.return_value.execute.return_value.data = []  # noqa: E501
         repo.list(user_id="u-1")
         mock_db.table.assert_called_once_with("scoring_configs")
 
     def test_returns_presets_and_user_configs(
         self, repo: ScoringConfigRepository, mock_db: MagicMock
     ) -> None:
-        mock_db.table.return_value.select.return_value.or_.return_value.execute.return_value.data = [
+        mock_db.table.return_value.select.return_value.or_.return_value.execute.return_value.data = [  # noqa: E501
             PRESET_ROW, CUSTOM_ROW
         ]
         result = repo.list(user_id="u-1")
@@ -55,14 +56,14 @@ class TestGet:
     def test_returns_config_when_found(
         self, repo: ScoringConfigRepository, mock_db: MagicMock
     ) -> None:
-        mock_db.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data = PRESET_ROW
+        mock_db.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data = PRESET_ROW  # noqa: E501
         result = repo.get("sc-1")
         assert result == PRESET_ROW
 
     def test_returns_none_when_not_found(
         self, repo: ScoringConfigRepository, mock_db: MagicMock
     ) -> None:
-        mock_db.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data = None
+        mock_db.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data = None  # noqa: E501
         assert repo.get("missing") is None
 
 

@@ -9,8 +9,7 @@ import { createUserKit, deleteUserKit, fetchUserKits } from "@/lib/api/user-kits
 const KIT = {
   id: "kit-1",
   name: "My Kit",
-  season: "2025-26",
-  weights: { nhl_com: 60, moneypuck: 40 },
+  source_weights: { nhl_com: 60, moneypuck: 40 },
   created_at: "2026-03-01T00:00:00Z",
 };
 
@@ -40,14 +39,14 @@ describe("fetchUserKits", () => {
     const kits = await fetchUserKits();
     expect(kits).toHaveLength(1);
     expect(kits[0].id).toBe("kit-1");
-    expect(kits[0].weights).toEqual({ nhl_com: 60, moneypuck: 40 });
+    expect(kits[0].source_weights).toEqual({ nhl_com: 60, moneypuck: 40 });
   });
 });
 
 describe("createUserKit", () => {
   beforeEach(() => mockFetch(KIT, 201));
 
-  const REQ = { name: "My Kit", season: "2025-26", weights: { nhl_com: 60 } };
+  const REQ = { name: "My Kit", source_weights: { nhl_com: 60 } };
 
   it("calls POST /user-kits", async () => {
     await createUserKit(REQ);
@@ -61,8 +60,7 @@ describe("createUserKit", () => {
     const [, init] = (fetch as ReturnType<typeof vi.spyOn>).mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(init.body as string);
     expect(body.name).toBe("My Kit");
-    expect(body.season).toBe("2025-26");
-    expect(body.weights).toEqual({ nhl_com: 60 });
+    expect(body.source_weights).toEqual({ nhl_com: 60 });
   });
 
   it("returns the created UserKit", async () => {

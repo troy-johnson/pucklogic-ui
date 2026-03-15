@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 from repositories.projections import ProjectionRepository
 
@@ -60,7 +61,7 @@ class TestGetBySeason:
     def test_queries_player_projections_table(
         self, repo: ProjectionRepository, mock_db: MagicMock
     ) -> None:
-        mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []
+        mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []  # noqa: E501
         repo.get_by_season("2025-26", "espn", "user-1")
         mock_db.table.assert_called_once_with("player_projections")
 
@@ -76,14 +77,14 @@ class TestGetBySeason:
         self, repo: ProjectionRepository, mock_db: MagicMock
     ) -> None:
         row = _make_db_row()
-        mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [row]
+        mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [row]  # noqa: E501
         result = repo.get_by_season("2025-26", "espn", "user-1")
         assert len(result) == 1
 
     def test_returns_empty_list_when_no_data(
         self, repo: ProjectionRepository, mock_db: MagicMock
     ) -> None:
-        mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []
+        mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []  # noqa: E501
         assert repo.get_by_season("2025-26", "espn", "user-1") == []
 
     def test_excludes_other_users_custom_sources(
