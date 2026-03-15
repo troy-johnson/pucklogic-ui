@@ -81,7 +81,31 @@ create index if not exists player_projections_season_idx on player_projections (
 create index if not exists player_projections_source_idx on player_projections (source_id);
 
 alter table player_projections enable row level security;
-create policy "Public read" on player_projections for select using (true);
+-- Read access filtered through source visibility: system sources (user_id IS NULL)
+-- or the requesting user's own custom sources. Spec §7.6.
+create policy "Read through visible sources" on player_projections
+  for select using (
+    exists (
+      select 1 from sources
+      where sources.id = player_projections.source_id
+        and (sources.user_id is null or sources.user_id = auth.uid())
+    )
+  );
+-- Writes restricted to service role (trusted backend ingestion paths only)
+create policy "Service write" on player_projections
+  for insert with check (auth.role() = 'service_role');
+
+-- ---------------------------------------------------------------------------
+-- sources — RLS policies per spec §7.6
+-- ---------------------------------------------------------------------------
+-- SELECT: system sources + own custom sources
+drop policy if exists "Public read" on sources;
+create policy "Visible sources read" on sources
+  for select using (user_id is null or user_id = auth.uid());
+-- INSERT/UPDATE/DELETE: only own custom sources
+create policy "Owner manage custom sources" on sources
+  for all using (user_id = auth.uid());
+-- System rows (user_id IS NULL) remain read-only from user context
 
 -- ---------------------------------------------------------------------------
 -- sources additions
@@ -473,6 +497,12 @@ class ExportRequest(BaseModel):
     platform: str
     league_profile_id: str | None = None
     export_type: str = Field(..., pattern="^(pdf|excel|bundle)$")
+
+    @model_validator(mode="after")
+    def source_weights_not_all_zero(self) -> "ExportRequest":
+        if not self.source_weights or all(v == 0 for v in self.source_weights.values()):
+            raise ValueError("source_weights: at least one source must have a non-zero weight")
+        return self
 ```
 
 - [ ] **Step 2: Run existing tests to catch breakage**
@@ -2105,7 +2135,7 @@ async def compute_rankings(
         if league_profile is None:
             raise HTTPException(
                 status_code=403,
-                detail="League profile not found or does not belong to this user",
+                detail="Not authorized to access this league profile",
             )
 
     # 4. Fetch projections and run pipeline
@@ -2478,15 +2508,1372 @@ git commit -m "feat(exports): update Excel and PDF generation for projection-bas
 
 ---
 
+## Chunk 6: Scoring Config CRUD + Double-Count Validation
+
+> **Spec reference:** §1 (`scoring_configs`), §2 (PPP/PPG validation), §7.1 (source_weights key contract)
+>
+> This chunk removes the `_get_scoring_config` stub from the rankings router and replaces it with a real `ScoringConfigRepository` + CRUD router with PPP/PPG/PPA double-counting validation.
+
+### Task 12: ScoringConfigRepository
+
+**Files:**
+- Create: `apps/api/repositories/scoring_configs.py`
+- Create: `apps/api/tests/repositories/test_scoring_configs.py`
+
+- [ ] **Step 1: Write failing tests**
+
+```python
+# apps/api/tests/repositories/test_scoring_configs.py
+from __future__ import annotations
+
+import pytest
+from unittest.mock import MagicMock
+
+from repositories.scoring_configs import ScoringConfigRepository
+
+PRESET_ROW = {
+    "id": "sc-1",
+    "name": "Standard Points",
+    "stat_weights": {"g": 3, "a": 2, "ppp": 1},
+    "is_preset": True,
+    "user_id": None,
+    "created_at": "2026-03-01T00:00:00+00:00",
+}
+CUSTOM_ROW = {
+    "id": "sc-2",
+    "name": "My Custom",
+    "stat_weights": {"g": 5, "a": 3},
+    "is_preset": False,
+    "user_id": "u-1",
+    "created_at": "2026-03-01T00:00:00+00:00",
+}
+
+
+@pytest.fixture
+def mock_db() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
+def repo(mock_db: MagicMock) -> ScoringConfigRepository:
+    return ScoringConfigRepository(mock_db)
+
+
+class TestList:
+    def test_queries_scoring_configs(
+        self, repo: ScoringConfigRepository, mock_db: MagicMock
+    ) -> None:
+        mock_db.table.return_value.select.return_value.or_.return_value.execute.return_value.data = []
+        repo.list(user_id="u-1")
+        mock_db.table.assert_called_once_with("scoring_configs")
+
+    def test_returns_presets_and_user_configs(
+        self, repo: ScoringConfigRepository, mock_db: MagicMock
+    ) -> None:
+        mock_db.table.return_value.select.return_value.or_.return_value.execute.return_value.data = [
+            PRESET_ROW, CUSTOM_ROW
+        ]
+        result = repo.list(user_id="u-1")
+        assert len(result) == 2
+
+
+class TestGet:
+    def test_returns_config_when_found(
+        self, repo: ScoringConfigRepository, mock_db: MagicMock
+    ) -> None:
+        mock_db.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data = PRESET_ROW
+        result = repo.get("sc-1")
+        assert result == PRESET_ROW
+
+    def test_returns_none_when_not_found(
+        self, repo: ScoringConfigRepository, mock_db: MagicMock
+    ) -> None:
+        mock_db.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data = None
+        assert repo.get("missing") is None
+
+
+class TestCreate:
+    def test_inserts_config(
+        self, repo: ScoringConfigRepository, mock_db: MagicMock
+    ) -> None:
+        mock_db.table.return_value.insert.return_value.execute.return_value.data = [CUSTOM_ROW]
+        result = repo.create({
+            "name": "My Custom",
+            "stat_weights": {"g": 5},
+            "is_preset": False,
+            "user_id": "u-1",
+        })
+        assert result == CUSTOM_ROW
+```
+
+- [ ] **Step 2: Run to verify they fail**
+
+```bash
+cd apps/api && pytest tests/repositories/test_scoring_configs.py -v
+# Expected: FAIL — ModuleNotFoundError
+```
+
+- [ ] **Step 3: Implement ScoringConfigRepository**
+
+```python
+# apps/api/repositories/scoring_configs.py
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from supabase import Client
+
+
+class ScoringConfigRepository:
+    def __init__(self, db: "Client") -> None:
+        self._db = db
+
+    def list(self, user_id: str) -> list[dict[str, Any]]:
+        """Return all presets + this user's custom configs."""
+        result = (
+            self._db.table("scoring_configs")
+            .select("*")
+            .or_(f"is_preset.eq.true,user_id.eq.{user_id}")
+            .execute()
+        )
+        return result.data
+
+    def get(self, config_id: str) -> dict[str, Any] | None:
+        result = (
+            self._db.table("scoring_configs")
+            .select("*")
+            .eq("id", config_id)
+            .maybe_single()
+            .execute()
+        )
+        return result.data
+
+    def create(self, data: dict[str, Any]) -> dict[str, Any]:
+        result = self._db.table("scoring_configs").insert(data).execute()
+        return result.data[0]
+```
+
+- [ ] **Step 4: Run tests**
+
+```bash
+cd apps/api && pytest tests/repositories/test_scoring_configs.py -v
+# Expected: all pass
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add repositories/scoring_configs.py tests/repositories/test_scoring_configs.py
+git commit -m "feat(repo): add ScoringConfigRepository"
+```
+
+---
+
+### Task 13: Scoring config validation service
+
+**Files:**
+- Create: `apps/api/services/scoring_validation.py`
+- Create: `apps/api/tests/services/test_scoring_validation.py`
+
+PPP and PPG/PPA cannot both be non-zero in the same config. Same rule for SHP/SHG/SHA. This is enforced at config creation time.
+
+- [ ] **Step 1: Write failing tests**
+
+```python
+# apps/api/tests/services/test_scoring_validation.py
+from __future__ import annotations
+
+import pytest
+
+from services.scoring_validation import validate_scoring_config
+
+
+class TestValidateScoringConfig:
+    def test_valid_config_passes(self) -> None:
+        # No conflict: ppp > 0, ppg and ppa are 0 (or absent)
+        validate_scoring_config({"g": 3, "a": 2, "ppp": 1})
+
+    def test_ppp_and_ppg_both_nonzero_raises(self) -> None:
+        with pytest.raises(ValueError, match="PPP.*PPG"):
+            validate_scoring_config({"ppp": 1, "ppg": 1})
+
+    def test_ppp_and_ppa_both_nonzero_raises(self) -> None:
+        with pytest.raises(ValueError, match="PPP.*PPA"):
+            validate_scoring_config({"ppp": 1, "ppa": 1})
+
+    def test_shp_and_shg_both_nonzero_raises(self) -> None:
+        with pytest.raises(ValueError, match="SHP.*SHG"):
+            validate_scoring_config({"shp": 1, "shg": 1})
+
+    def test_shp_and_sha_both_nonzero_raises(self) -> None:
+        with pytest.raises(ValueError, match="SHP.*SHA"):
+            validate_scoring_config({"shp": 1, "sha": 1})
+
+    def test_ppg_and_ppa_without_ppp_is_valid(self) -> None:
+        # ppg + ppa are fine if ppp is 0 or absent
+        validate_scoring_config({"ppg": 2, "ppa": 1})
+
+    def test_ppp_zero_with_ppg_nonzero_is_valid(self) -> None:
+        validate_scoring_config({"ppp": 0, "ppg": 2})
+
+    def test_empty_config_is_valid(self) -> None:
+        validate_scoring_config({})
+
+    def test_shg_and_sha_without_shp_is_valid(self) -> None:
+        validate_scoring_config({"shg": 2, "sha": 1})
+```
+
+- [ ] **Step 2: Run to verify they fail**
+
+```bash
+cd apps/api && pytest tests/services/test_scoring_validation.py -v
+# Expected: FAIL — ModuleNotFoundError
+```
+
+- [ ] **Step 3: Implement validation**
+
+```python
+# apps/api/services/scoring_validation.py
+"""Scoring config validation — enforces double-counting rules."""
+from __future__ import annotations
+
+
+def validate_scoring_config(stat_weights: dict[str, float]) -> None:
+    """Raise ValueError if stat_weights double-counts PP or SH stats.
+
+    Rules:
+      - PPP and PPG/PPA cannot both be non-zero
+      - SHP and SHG/SHA cannot both be non-zero
+    """
+    ppp = stat_weights.get("ppp", 0)
+    ppg = stat_weights.get("ppg", 0)
+    ppa = stat_weights.get("ppa", 0)
+    shp = stat_weights.get("shp", 0)
+    shg = stat_weights.get("shg", 0)
+    sha = stat_weights.get("sha", 0)
+
+    if ppp and ppg:
+        raise ValueError(
+            "Cannot score both PPP and PPG simultaneously — this double-counts power play goals"
+        )
+    if ppp and ppa:
+        raise ValueError(
+            "Cannot score both PPP and PPA simultaneously — this double-counts power play assists"
+        )
+    if shp and shg:
+        raise ValueError(
+            "Cannot score both SHP and SHG simultaneously — this double-counts short-handed goals"
+        )
+    if shp and sha:
+        raise ValueError(
+            "Cannot score both SHP and SHA simultaneously — this double-counts short-handed assists"
+        )
+```
+
+- [ ] **Step 4: Run tests**
+
+```bash
+cd apps/api && pytest tests/services/test_scoring_validation.py -v
+# Expected: all pass
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add services/scoring_validation.py tests/services/test_scoring_validation.py
+git commit -m "feat(validation): add PPP/PPG and SHP/SHG double-counting validation"
+```
+
+---
+
+### Task 14: Scoring config CRUD router
+
+**Files:**
+- Create: `apps/api/routers/scoring_configs.py`
+- Create: `apps/api/tests/routers/test_scoring_configs.py`
+- Modify: `apps/api/models/schemas.py` (add `ScoringConfigCreate`)
+- Modify: `apps/api/core/dependencies.py` (add `get_scoring_config_repository`)
+- Modify: `apps/api/main.py` (register router)
+
+- [ ] **Step 1: Add ScoringConfigCreate schema to schemas.py**
+
+Add after the existing `ScoringConfigOut` class:
+
+```python
+class ScoringConfigCreate(BaseModel):
+    name: str
+    stat_weights: dict[str, float]
+```
+
+- [ ] **Step 2: Write failing router tests**
+
+```python
+# apps/api/tests/routers/test_scoring_configs.py
+from __future__ import annotations
+
+import pytest
+from fastapi.testclient import TestClient
+from unittest.mock import MagicMock
+
+from main import app
+from core.dependencies import get_current_user, get_scoring_config_repository
+
+MOCK_USER = {"id": "u-1", "email": "test@example.com"}
+
+PRESET_ROW = {
+    "id": "sc-1",
+    "name": "Standard Points",
+    "stat_weights": {"g": 3, "a": 2, "ppp": 1},
+    "is_preset": True,
+}
+CUSTOM_ROW = {
+    "id": "sc-2",
+    "name": "My Custom",
+    "stat_weights": {"g": 5},
+    "is_preset": False,
+    "user_id": "u-1",
+    "created_at": "2026-03-01T00:00:00+00:00",
+}
+
+
+@pytest.fixture
+def mock_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.list.return_value = [PRESET_ROW]
+    repo.create.return_value = CUSTOM_ROW
+    return repo
+
+
+@pytest.fixture(autouse=True)
+def override_deps(mock_repo: MagicMock) -> None:
+    app.dependency_overrides[get_current_user] = lambda: MOCK_USER
+    app.dependency_overrides[get_scoring_config_repository] = lambda: mock_repo
+    yield
+    app.dependency_overrides.clear()
+
+
+class TestListScoringConfigs:
+    def test_returns_200(self, client: TestClient) -> None:
+        assert client.get("/scoring-configs").status_code == 200
+
+    def test_returns_list(self, client: TestClient, mock_repo: MagicMock) -> None:
+        mock_repo.list.return_value = [PRESET_ROW]
+        data = client.get("/scoring-configs").json()
+        assert isinstance(data, list)
+        assert len(data) == 1
+
+    def test_filters_by_user(self, client: TestClient, mock_repo: MagicMock) -> None:
+        client.get("/scoring-configs")
+        mock_repo.list.assert_called_once_with(user_id=MOCK_USER["id"])
+
+
+class TestCreateScoringConfig:
+    def test_returns_201(self, client: TestClient) -> None:
+        body = {"name": "My Custom", "stat_weights": {"g": 5}}
+        assert client.post("/scoring-configs", json=body).status_code == 201
+
+    def test_ppp_ppg_double_count_returns_400(self, client: TestClient) -> None:
+        body = {"name": "Bad", "stat_weights": {"ppp": 1, "ppg": 1}}
+        resp = client.post("/scoring-configs", json=body)
+        assert resp.status_code == 400
+        assert "PPP" in resp.json()["detail"]
+
+    def test_shp_shg_double_count_returns_400(self, client: TestClient) -> None:
+        body = {"name": "Bad", "stat_weights": {"shp": 1, "shg": 1}}
+        resp = client.post("/scoring-configs", json=body)
+        assert resp.status_code == 400
+
+    def test_valid_config_calls_create(self, client: TestClient, mock_repo: MagicMock) -> None:
+        body = {"name": "My Custom", "stat_weights": {"g": 5}}
+        client.post("/scoring-configs", json=body)
+        mock_repo.create.assert_called_once()
+
+    def test_sets_user_id_and_is_preset_false(self, client: TestClient, mock_repo: MagicMock) -> None:
+        body = {"name": "My Custom", "stat_weights": {"g": 5}}
+        client.post("/scoring-configs", json=body)
+        call_data = mock_repo.create.call_args.args[0]
+        assert call_data["user_id"] == MOCK_USER["id"]
+        assert call_data["is_preset"] is False
+```
+
+- [ ] **Step 3: Run to verify they fail**
+
+```bash
+cd apps/api && pytest tests/routers/test_scoring_configs.py -v
+# Expected: FAIL
+```
+
+- [ ] **Step 4: Implement scoring_configs router**
+
+```python
+# apps/api/routers/scoring_configs.py
+from __future__ import annotations
+
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException
+
+from core.dependencies import get_current_user, get_scoring_config_repository
+from models.schemas import ScoringConfigCreate, ScoringConfigOut
+from repositories.scoring_configs import ScoringConfigRepository
+from services.scoring_validation import validate_scoring_config
+
+router = APIRouter(prefix="/scoring-configs", tags=["scoring-configs"])
+
+
+@router.get("", response_model=list[ScoringConfigOut])
+async def list_scoring_configs(
+    user: dict[str, Any] = Depends(get_current_user),
+    repo: ScoringConfigRepository = Depends(get_scoring_config_repository),
+) -> list[ScoringConfigOut]:
+    return repo.list(user_id=user["id"])
+
+
+@router.post("", response_model=ScoringConfigOut, status_code=201)
+async def create_scoring_config(
+    body: ScoringConfigCreate,
+    user: dict[str, Any] = Depends(get_current_user),
+    repo: ScoringConfigRepository = Depends(get_scoring_config_repository),
+) -> ScoringConfigOut:
+    try:
+        validate_scoring_config(body.stat_weights)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    row = repo.create({
+        **body.model_dump(),
+        "user_id": user["id"],
+        "is_preset": False,
+    })
+    return ScoringConfigOut(**row)
+```
+
+- [ ] **Step 5: Add dependency + register router**
+
+In `apps/api/core/dependencies.py`, add:
+
+```python
+from repositories.scoring_configs import ScoringConfigRepository
+
+def get_scoring_config_repository() -> ScoringConfigRepository:
+    return ScoringConfigRepository(get_db())
+```
+
+In `apps/api/main.py`, add:
+
+```python
+from routers import (
+    exports, health, league_profiles, rankings, scoring_configs, sources, stripe, user_kits
+)
+# ...
+app.include_router(scoring_configs.router)
+```
+
+- [ ] **Step 6: Run tests**
+
+```bash
+cd apps/api && pytest tests/routers/test_scoring_configs.py -v
+# Expected: all pass
+```
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add routers/scoring_configs.py tests/routers/test_scoring_configs.py \
+        repositories/scoring_configs.py models/schemas.py \
+        core/dependencies.py main.py
+git commit -m "feat(scoring-configs): add CRUD router with PPP/SHP double-counting validation"
+```
+
+---
+
+### Task 15: Wire ScoringConfigRepository into rankings router
+
+Remove the `_get_scoring_config` stub and inject the real repository.
+
+**Files:**
+- Modify: `apps/api/routers/rankings.py`
+- Modify: `apps/api/tests/routers/test_rankings.py`
+
+- [ ] **Step 1: Update rankings router**
+
+In `apps/api/routers/rankings.py`:
+
+1. Remove the `_get_scoring_config` stub function entirely.
+2. Add `ScoringConfigRepository` dependency:
+
+```python
+from core.dependencies import (
+    get_cache_service,
+    get_current_user,
+    get_league_profile_repository,
+    get_projection_repository,
+    get_scoring_config_repository,
+)
+from repositories.scoring_configs import ScoringConfigRepository
+```
+
+3. Add parameter to the route handler:
+
+```python
+@router.post("/compute", response_model=RankingsComputeResponse)
+async def compute_rankings(
+    req: RankingsComputeRequest,
+    user: dict[str, Any] = Depends(get_current_user),
+    proj_repo: ProjectionRepository = Depends(get_projection_repository),
+    lp_repo: LeagueProfileRepository = Depends(get_league_profile_repository),
+    sc_repo: ScoringConfigRepository = Depends(get_scoring_config_repository),
+    cache: CacheService = Depends(get_cache_service),
+) -> RankingsComputeResponse:
+```
+
+4. Replace the `_get_scoring_config` call block with:
+
+```python
+    # 2. Fetch scoring config
+    sc_row = sc_repo.get(req.scoring_config_id)
+    if sc_row is None:
+        raise HTTPException(status_code=404, detail="Scoring config not found")
+    scoring_config = sc_row["stat_weights"]
+```
+
+- [ ] **Step 2: Update ranking router tests**
+
+In `apps/api/tests/routers/test_rankings.py`:
+
+1. Remove the `patch("routers.rankings._get_scoring_config", ...)` context manager.
+2. Add a `mock_sc_repo` fixture:
+
+```python
+from core.dependencies import get_scoring_config_repository
+
+SCORING_CONFIG_ROW = {
+    "id": "sc-1",
+    "name": "Standard",
+    "stat_weights": {"g": 3.0, "a": 2.0},
+    "is_preset": True,
+    "user_id": None,
+}
+
+@pytest.fixture
+def mock_sc_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.get.return_value = SCORING_CONFIG_ROW
+    return repo
+```
+
+3. Add `mock_sc_repo` to the `client` fixture and override `get_scoring_config_repository`:
+
+```python
+@pytest.fixture
+def client(
+    mock_proj_repo: MagicMock,
+    mock_cache: MagicMock,
+    mock_lp_repo: MagicMock,
+    mock_sc_repo: MagicMock,
+) -> TestClient:
+    app.dependency_overrides[get_current_user] = lambda: MOCK_USER
+    app.dependency_overrides[get_projection_repository] = lambda: mock_proj_repo
+    app.dependency_overrides[get_cache_service] = lambda: mock_cache
+    app.dependency_overrides[get_league_profile_repository] = lambda: mock_lp_repo
+    app.dependency_overrides[get_scoring_config_repository] = lambda: mock_sc_repo
+    yield TestClient(app)
+    app.dependency_overrides.clear()
+```
+
+4. Add a test for missing scoring config:
+
+```python
+    def test_missing_scoring_config_returns_404(
+        self, mock_sc_repo: MagicMock, mock_proj_repo: MagicMock,
+        mock_cache: MagicMock, mock_lp_repo: MagicMock,
+    ) -> None:
+        mock_sc_repo.get.return_value = None
+        app.dependency_overrides[get_current_user] = lambda: MOCK_USER
+        app.dependency_overrides[get_projection_repository] = lambda: mock_proj_repo
+        app.dependency_overrides[get_cache_service] = lambda: mock_cache
+        app.dependency_overrides[get_league_profile_repository] = lambda: mock_lp_repo
+        app.dependency_overrides[get_scoring_config_repository] = lambda: mock_sc_repo
+        resp = TestClient(app).post("/rankings/compute", json=COMPUTE_BODY)
+        app.dependency_overrides.clear()
+        assert resp.status_code == 404
+```
+
+- [ ] **Step 3: Run tests**
+
+```bash
+cd apps/api && pytest tests/routers/test_rankings.py -v
+# Expected: all pass
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add routers/rankings.py tests/routers/test_rankings.py
+git commit -m "feat(router): wire ScoringConfigRepository into rankings/compute, remove stub"
+```
+
+---
+
+## Chunk 7: Gap Fixes (SCAN invalidation, source key validation, VORP UTIL/BN, exports router)
+
+> **Spec references:** §7.1 (source_weights key validation), §7.3 (UTIL/BN exclusion from VORP), §7.4 (SCAN-based invalidation)
+
+### Task 16: SCAN-based cache invalidation
+
+**Files:**
+- Modify: `apps/api/services/cache.py`
+- Modify: `apps/api/tests/services/test_cache.py`
+
+The current `invalidate_rankings` uses `KEYS` which blocks Redis. Replace with cursor-based `SCAN` + batched deletes.
+
+- [ ] **Step 1: Write failing test for SCAN-based invalidation**
+
+Add to `apps/api/tests/services/test_cache.py`:
+
+```python
+class TestInvalidateRankingsWithScan:
+    def test_uses_scan_not_keys(
+        self, cache_with_redis: CacheService, mock_redis: MagicMock
+    ) -> None:
+        # scan_iter should be called instead of keys
+        mock_redis.scan_iter.return_value = iter(["rankings:2025-26:abc"])
+        cache_with_redis.invalidate_rankings("2025-26")
+        mock_redis.scan_iter.assert_called_once()
+        mock_redis.keys.assert_not_called()
+
+    def test_deletes_in_batches(
+        self, cache_with_redis: CacheService, mock_redis: MagicMock
+    ) -> None:
+        # 250 keys → 3 batches of 100, 100, 50
+        fake_keys = [f"rankings:2025-26:{i:064d}" for i in range(250)]
+        mock_redis.scan_iter.return_value = iter(fake_keys)
+        cache_with_redis.invalidate_rankings("2025-26")
+        assert mock_redis.delete.call_count == 3
+
+    def test_no_keys_means_no_delete(
+        self, cache_with_redis: CacheService, mock_redis: MagicMock
+    ) -> None:
+        mock_redis.scan_iter.return_value = iter([])
+        cache_with_redis.invalidate_rankings("2025-26")
+        mock_redis.delete.assert_not_called()
+```
+
+- [ ] **Step 2: Run to verify they fail**
+
+```bash
+cd apps/api && pytest tests/services/test_cache.py::TestInvalidateRankingsWithScan -v
+# Expected: FAIL — scan_iter not called
+```
+
+- [ ] **Step 3: Update invalidate_rankings**
+
+In `apps/api/services/cache.py`, replace the `invalidate_rankings` method:
+
+```python
+    _INVALIDATE_BATCH_SIZE = 100
+
+    def invalidate_rankings(self, season: str) -> None:
+        """Delete all cached rankings for a season using cursor-based SCAN.
+
+        Uses SCAN (not KEYS) to avoid blocking Redis on large keyspaces.
+        Deletes in batches of 100 keys.
+        """
+        if not self._client:
+            return
+        try:
+            pattern = f"rankings:{season}:*"
+            batch: list[str] = []
+            for key in self._client.scan_iter(match=pattern, count=self._INVALIDATE_BATCH_SIZE):
+                batch.append(key)
+                if len(batch) >= self._INVALIDATE_BATCH_SIZE:
+                    self._client.delete(*batch)
+                    batch = []
+            if batch:
+                self._client.delete(*batch)
+        except Exception as exc:
+            logger.warning("Cache invalidate failed: %s", exc)
+```
+
+- [ ] **Step 4: Update old invalidation test**
+
+In `apps/api/tests/services/test_cache.py`, remove or update the existing `test_invalidate_calls_keys_then_delete` and `test_invalidate_skips_delete_when_no_keys` tests to use `scan_iter` instead of `keys`:
+
+```python
+    def test_invalidate_calls_scan_iter_with_pattern(
+        self, cache_with_redis: CacheService, mock_redis: MagicMock
+    ) -> None:
+        mock_redis.scan_iter.return_value = iter(["rankings:2025-26:abc123"])
+        cache_with_redis.invalidate_rankings(SEASON)
+        mock_redis.scan_iter.assert_called_once_with(
+            match=f"rankings:{SEASON}:*", count=100
+        )
+
+    def test_invalidate_skips_delete_when_no_keys(
+        self, cache_with_redis: CacheService, mock_redis: MagicMock
+    ) -> None:
+        mock_redis.scan_iter.return_value = iter([])
+        cache_with_redis.invalidate_rankings(SEASON)
+        mock_redis.delete.assert_not_called()
+```
+
+- [ ] **Step 5: Run cache tests**
+
+```bash
+cd apps/api && pytest tests/services/test_cache.py -v
+# Expected: all pass
+```
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add services/cache.py tests/services/test_cache.py
+git commit -m "fix(cache): use SCAN-based invalidation instead of KEYS"
+```
+
+---
+
+### Task 17: Source weights key validation
+
+**Files:**
+- Modify: `apps/api/routers/rankings.py`
+- Modify: `apps/api/tests/routers/test_rankings.py`
+
+Unknown source keys in `source_weights` must be rejected with HTTP 400.
+
+- [ ] **Step 1: Write failing test**
+
+Add to `apps/api/tests/routers/test_rankings.py`:
+
+```python
+class TestSourceWeightsValidation:
+    def test_unknown_source_key_returns_400(
+        self, mock_proj_repo: MagicMock, mock_cache: MagicMock,
+        mock_lp_repo: MagicMock, mock_sc_repo: MagicMock,
+    ) -> None:
+        # Source repo returns no source matching "ghost_source"
+        mock_source_repo = MagicMock()
+        mock_source_repo.get_by_name.return_value = None
+        app.dependency_overrides[get_current_user] = lambda: MOCK_USER
+        app.dependency_overrides[get_projection_repository] = lambda: mock_proj_repo
+        app.dependency_overrides[get_cache_service] = lambda: mock_cache
+        app.dependency_overrides[get_league_profile_repository] = lambda: mock_lp_repo
+        app.dependency_overrides[get_scoring_config_repository] = lambda: mock_sc_repo
+        app.dependency_overrides[get_source_repository] = lambda: mock_source_repo
+        body = {**COMPUTE_BODY, "source_weights": {"ghost_source": 10}}
+        resp = TestClient(app).post("/rankings/compute", json=body)
+        app.dependency_overrides.clear()
+        assert resp.status_code == 400
+        assert "ghost_source" in resp.json()["detail"]
+
+    def test_inaccessible_source_key_returns_400(
+        self, mock_proj_repo: MagicMock, mock_cache: MagicMock,
+        mock_lp_repo: MagicMock, mock_sc_repo: MagicMock,
+    ) -> None:
+        # Source exists but belongs to another user
+        mock_source_repo = MagicMock()
+        mock_source_repo.get_by_name.return_value = {
+            "name": "other_custom", "user_id": "other-user-99",
+        }
+        app.dependency_overrides[get_current_user] = lambda: MOCK_USER
+        app.dependency_overrides[get_projection_repository] = lambda: mock_proj_repo
+        app.dependency_overrides[get_cache_service] = lambda: mock_cache
+        app.dependency_overrides[get_league_profile_repository] = lambda: mock_lp_repo
+        app.dependency_overrides[get_scoring_config_repository] = lambda: mock_sc_repo
+        app.dependency_overrides[get_source_repository] = lambda: mock_source_repo
+        body = {**COMPUTE_BODY, "source_weights": {"other_custom": 10}}
+        resp = TestClient(app).post("/rankings/compute", json=body)
+        app.dependency_overrides.clear()
+        assert resp.status_code == 400
+        assert "other_custom" in resp.json()["detail"]
+```
+
+- [ ] **Step 2: Run to verify they fail**
+
+```bash
+cd apps/api && pytest tests/routers/test_rankings.py::TestSourceWeightsValidation -v
+# Expected: FAIL — no validation yet, returns 200
+```
+
+- [ ] **Step 3: Add validation to rankings router**
+
+In `apps/api/routers/rankings.py`, add `get_source_repository` to imports, add `SourceRepository` dependency, and insert validation between cache check and scoring config fetch:
+
+```python
+from core.dependencies import (
+    get_cache_service,
+    get_current_user,
+    get_league_profile_repository,
+    get_projection_repository,
+    get_scoring_config_repository,
+    get_source_repository,
+)
+from repositories.sources import SourceRepository
+
+# In the route handler, add the dependency:
+    src_repo: SourceRepository = Depends(get_source_repository),
+
+# After cache check, before scoring config fetch, add:
+    # 1b. Validate source_weights keys
+    for key in req.source_weights:
+        source = src_repo.get_by_name(key)
+        if source is None:
+            raise HTTPException(status_code=400, detail=f"Unknown source key: {key}")
+        # Check accessibility: user's own sources or system sources
+        source_uid = source.get("user_id")
+        if source_uid is not None and source_uid != user["id"]:
+            raise HTTPException(status_code=400, detail=f"Unknown source key: {key}")
+```
+
+- [ ] **Step 4: Run tests**
+
+```bash
+cd apps/api && pytest tests/routers/test_rankings.py -v
+# Expected: all pass
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add routers/rankings.py tests/routers/test_rankings.py
+git commit -m "feat(router): validate source_weights keys against sources table"
+```
+
+---
+
+### Task 18: VORP — exclude UTIL and BN from replacement-level math
+
+**Files:**
+- Modify: `apps/api/services/projections.py`
+- Modify: `apps/api/tests/services/test_projections.py`
+
+Per spec §7.3, only positional starter slots (C, LW, RW, D, G) count for replacement-level thresholds. The existing `compute_vorp` already works correctly because it looks up `roster_slots.get(pos, 0)` by the player's NHL canonical position — and no player has `default_position = "UTIL"` or `"BN"`. This task adds a defensive guard and explicit test to document the invariant.
+
+- [ ] **Step 1: Write test**
+
+Add to `TestComputeVorp` in `apps/api/tests/services/test_projections.py`:
+
+```python
+    def test_util_and_bn_excluded_from_replacement_level(self) -> None:
+        """UTIL and BN roster slots must not inflate replacement-level thresholds.
+
+        Defensive: no real player has default_position="UTIL" or "BN", but
+        roster_slots may contain these keys. compute_vorp must only use
+        positional starter slots (C, LW, RW, D, G) for threshold calculation.
+        """
+        players = self._make_players([100.0, 90.0, 80.0])
+        # roster_slots includes UTIL and BN — they should be ignored
+        profile = {
+            "num_teams": 1,
+            "roster_slots": {"C": 1, "UTIL": 2, "BN": 4},
+        }
+        result = compute_vorp(players, profile)
+        # replacement level uses C=1 slot only: threshold = 1*1+1 = rank 2 (index 1) = 90
+        assert result["p0"] == pytest.approx(10.0)
+```
+
+- [ ] **Step 2: Run test to verify it passes (defensive — should already pass)**
+
+```bash
+cd apps/api && pytest tests/services/test_projections.py::TestComputeVorp::test_util_and_bn_excluded_from_replacement_level -v
+# Expected: PASS (existing code handles this correctly by design)
+```
+
+- [ ] **Step 3: Add defensive guard to compute_vorp**
+
+In `apps/api/services/projections.py`, in `compute_vorp`, add a constant and filter as defensive programming. This ensures correctness even if unexpected position values appear:
+
+```python
+# At module level, add:
+_VORP_POSITION_SLOTS = frozenset({"C", "LW", "RW", "D", "G"})
+
+# In compute_vorp, when reading roster_slots, change:
+        slots = roster_slots.get(pos, 0)
+# To:
+        if pos not in _VORP_POSITION_SLOTS:
+            result[pid] = None
+            continue
+        slots = roster_slots.get(pos, 0)
+```
+
+- [ ] **Step 4: Run tests**
+
+```bash
+cd apps/api && pytest tests/services/test_projections.py::TestComputeVorp -v
+# Expected: all pass
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add services/projections.py tests/services/test_projections.py
+git commit -m "fix(vorp): exclude UTIL and BN slots from replacement-level calculation"
+```
+
+---
+
+### Task 19: Update exports router for new pipeline
+
+**Files:**
+- Modify: `apps/api/routers/exports.py`
+- Modify: `apps/api/tests/routers/test_exports.py`
+
+The exports router still uses the old rank-based pipeline. It must use the new `ExportRequest` schema (with `source_weights`, `scoring_config_id`, `platform`, `league_profile_id`) and call `aggregate_projections`.
+
+- [ ] **Step 1: Write failing tests**
+
+Replace `apps/api/tests/routers/test_exports.py`:
+
+```python
+# apps/api/tests/routers/test_exports.py
+from __future__ import annotations
+
+from unittest.mock import MagicMock, patch
+
+import pytest
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
+
+from main import app
+from core.dependencies import (
+    get_current_user,
+    get_league_profile_repository,
+    get_projection_repository,
+    get_scoring_config_repository,
+)
+
+MOCK_USER = {"id": "u-1", "email": "test@example.com"}
+
+SCORING_CONFIG_ROW = {
+    "id": "sc-1",
+    "name": "Standard",
+    "stat_weights": {"g": 3.0, "a": 2.0},
+    "is_preset": True,
+    "user_id": None,
+}
+
+DB_ROW = {
+    "player_id": "p1",
+    "season": "2025-26",
+    "g": 50, "a": 45,
+    "plus_minus": None, "pim": None, "ppg": None, "ppa": None, "ppp": None,
+    "shg": None, "sha": None, "shp": None, "sog": None, "fow": None,
+    "fol": None, "hits": None, "blocks": None, "gp": 82,
+    "gs": None, "w": None, "l": None, "ga": None, "sa": None,
+    "sv": None, "sv_pct": None, "so": None, "otl": None,
+    "sources": {"name": "dobber", "is_paid": False, "user_id": None},
+    "players": {"name": "McDavid", "team": "EDM", "position": "C"},
+    "player_platform_positions": [{"positions": ["C"]}],
+    "schedule_scores": [],
+}
+
+EXCEL_BODY = {
+    "season": "2025-26",
+    "source_weights": {"dobber": 10},
+    "scoring_config_id": "sc-1",
+    "platform": "espn",
+    "export_type": "excel",
+}
+PDF_BODY = {**EXCEL_BODY, "export_type": "pdf"}
+
+
+@pytest.fixture
+def mock_proj_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.get_by_season.return_value = [DB_ROW]
+    return repo
+
+
+@pytest.fixture
+def mock_sc_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.get.return_value = SCORING_CONFIG_ROW
+    return repo
+
+
+@pytest.fixture
+def mock_lp_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.get.return_value = None
+    return repo
+
+
+@pytest.fixture(autouse=True)
+def override_deps(
+    mock_proj_repo: MagicMock,
+    mock_sc_repo: MagicMock,
+    mock_lp_repo: MagicMock,
+) -> None:
+    app.dependency_overrides[get_current_user] = lambda: MOCK_USER
+    app.dependency_overrides[get_projection_repository] = lambda: mock_proj_repo
+    app.dependency_overrides[get_scoring_config_repository] = lambda: mock_sc_repo
+    app.dependency_overrides[get_league_profile_repository] = lambda: mock_lp_repo
+    yield
+    app.dependency_overrides.clear()
+
+
+class TestGenerateExcelExport:
+    def test_returns_200(self, client: TestClient) -> None:
+        with patch("routers.exports.generate_excel", return_value=b"XLSX"):
+            assert client.post("/exports/generate", json=EXCEL_BODY).status_code == 200
+
+    def test_content_type_is_xlsx(self, client: TestClient) -> None:
+        with patch("routers.exports.generate_excel", return_value=b"XLSX"):
+            resp = client.post("/exports/generate", json=EXCEL_BODY)
+        assert "spreadsheetml" in resp.headers["content-type"]
+
+
+class TestGeneratePdfExport:
+    def test_returns_200(self, client: TestClient) -> None:
+        with patch("routers.exports.generate_pdf", return_value=b"%PDF"):
+            assert client.post("/exports/generate", json=PDF_BODY).status_code == 200
+
+    def test_content_type_is_pdf(self, client: TestClient) -> None:
+        with patch("routers.exports.generate_pdf", return_value=b"%PDF"):
+            resp = client.post("/exports/generate", json=PDF_BODY)
+        assert resp.headers["content-type"] == "application/pdf"
+
+
+class TestExportValidation:
+    def test_invalid_export_type_returns_422(self, client: TestClient) -> None:
+        body = {**EXCEL_BODY, "export_type": "csv"}
+        assert client.post("/exports/generate", json=body).status_code == 422
+
+    def test_missing_scoring_config_id_returns_422(self, client: TestClient) -> None:
+        body = {k: v for k, v in EXCEL_BODY.items() if k != "scoring_config_id"}
+        assert client.post("/exports/generate", json=body).status_code == 422
+
+    def test_missing_scoring_config_returns_404(
+        self, client: TestClient, mock_sc_repo: MagicMock
+    ) -> None:
+        mock_sc_repo.get.return_value = None
+        resp = client.post("/exports/generate", json=EXCEL_BODY)
+        assert resp.status_code == 404
+
+
+class TestAuthRequired:
+    @pytest.fixture(autouse=True)
+    def reject_auth(self) -> None:
+        app.dependency_overrides[get_current_user] = lambda: (_ for _ in ()).throw(
+            HTTPException(status_code=401, detail="Unauthorized")
+        )
+        yield
+
+    def test_unauthenticated_returns_401(self, client: TestClient) -> None:
+        assert client.post("/exports/generate", json=EXCEL_BODY).status_code == 401
+```
+
+- [ ] **Step 2: Run to verify they fail**
+
+```bash
+cd apps/api && pytest tests/routers/test_exports.py -v
+# Expected: FAIL — old imports and pipeline
+```
+
+- [ ] **Step 3: Rewrite exports router**
+
+```python
+# apps/api/routers/exports.py
+from __future__ import annotations
+
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
+
+from core.dependencies import (
+    get_current_user,
+    get_league_profile_repository,
+    get_projection_repository,
+    get_scoring_config_repository,
+    get_source_repository,
+)
+from models.schemas import ExportRequest
+from repositories.league_profiles import LeagueProfileRepository
+from repositories.projections import ProjectionRepository
+from repositories.scoring_configs import ScoringConfigRepository
+from repositories.sources import SourceRepository
+from services.exports import generate_excel, generate_pdf
+from services.projections import aggregate_projections
+
+router = APIRouter(prefix="/exports", tags=["exports"])
+
+
+@router.post("/generate")
+async def generate_export(
+    req: ExportRequest,
+    user: dict[str, Any] = Depends(get_current_user),
+    proj_repo: ProjectionRepository = Depends(get_projection_repository),
+    sc_repo: ScoringConfigRepository = Depends(get_scoring_config_repository),
+    lp_repo: LeagueProfileRepository = Depends(get_league_profile_repository),
+    src_repo: SourceRepository = Depends(get_source_repository),
+) -> Response:
+    """Compute projection-based rankings and stream as PDF or Excel."""
+    # Validate source_weights keys (same rules as POST /rankings/compute)
+    for key in req.source_weights:
+        source = src_repo.get_by_name(key)
+        if source is None:
+            raise HTTPException(status_code=400, detail=f"Unknown source key: {key}")
+        source_uid = source.get("user_id")
+        if source_uid is not None and source_uid != user["id"]:
+            raise HTTPException(status_code=400, detail=f"Unknown source key: {key}")
+
+    # Fetch scoring config
+    sc_row = sc_repo.get(req.scoring_config_id)
+    if sc_row is None:
+        raise HTTPException(status_code=404, detail="Scoring config not found")
+
+    # Optionally fetch league profile for VORP
+    league_profile: dict[str, Any] | None = None
+    if req.league_profile_id:
+        league_profile = lp_repo.get(req.league_profile_id, user["id"])
+        if league_profile is None:
+            raise HTTPException(status_code=403, detail="Not authorized to access this league profile")
+
+    # Run projection pipeline
+    rows = proj_repo.get_by_season(req.season, req.platform, user["id"])
+    ranked = aggregate_projections(
+        rows, req.source_weights, sc_row["stat_weights"], league_profile
+    )
+
+    filename = f"pucklogic-rankings-{req.season}"
+
+    if req.export_type == "excel":
+        content = generate_excel(ranked, req.season)
+        return Response(
+            content=content,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{filename}.xlsx"'},
+        )
+
+    content = generate_pdf(ranked, req.season)
+    return Response(
+        content=content,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}.pdf"'},
+    )
+```
+
+- [ ] **Step 4: Run tests**
+
+```bash
+cd apps/api && pytest tests/routers/test_exports.py -v
+# Expected: all pass
+```
+
+- [ ] **Step 5: Run full test suite**
+
+```bash
+cd apps/api && pytest tests/ -v --tb=short
+# Expected: all pass
+```
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add routers/exports.py tests/routers/test_exports.py
+git commit -m "feat(exports): rewrite exports router to use projection aggregation pipeline"
+```
+
+---
+
+## Chunk 8: Frontend Updates
+
+### Task 20: Update TypeScript types
+
+**Files:**
+- Modify: `apps/web/src/types/index.ts`
+
+- [ ] **Step 1: Replace types**
+
+Replace the contents of `apps/web/src/types/index.ts`:
+
+```typescript
+/** Shared TypeScript types for PuckLogic — used by web app and (eventually) extension. */
+
+export interface Source {
+  id: string;
+  name: string;
+  display_name: string;
+  url: string | null;
+  active: boolean;
+  default_weight: number | null;
+  is_paid: boolean;
+}
+
+export interface ProjectedStats {
+  g: number | null;
+  a: number | null;
+  plus_minus: number | null;
+  pim: number | null;
+  ppg: number | null;
+  ppa: number | null;
+  ppp: number | null;
+  shg: number | null;
+  sha: number | null;
+  shp: number | null;
+  sog: number | null;
+  fow: number | null;
+  fol: number | null;
+  hits: number | null;
+  blocks: number | null;
+  gp: number | null;
+  gs: number | null;
+  w: number | null;
+  l: number | null;
+  ga: number | null;
+  sa: number | null;
+  sv: number | null;
+  sv_pct: number | null;
+  so: number | null;
+  otl: number | null;
+}
+
+export interface RankedPlayer {
+  composite_rank: number;
+  player_id: string;
+  name: string;
+  team: string | null;
+  default_position: string | null;
+  platform_positions: string[];
+  projected_fantasy_points: number | null;
+  vorp: number | null;
+  schedule_score: number | null;
+  off_night_games: number | null;
+  source_count: number;
+  projected_stats: ProjectedStats;
+  breakout_score: number | null;
+  regression_risk: number | null;
+}
+
+export interface RankingsResult {
+  season: string;
+  computed_at: string;
+  cached: boolean;
+  rankings: RankedPlayer[];
+}
+
+export interface ComputeRankingsRequest {
+  season: string;
+  source_weights: Record<string, number>;
+  scoring_config_id: string;
+  platform: string;
+  league_profile_id?: string | null;
+}
+
+export interface ScoringConfig {
+  id: string;
+  name: string;
+  stat_weights: Record<string, number>;
+  is_preset: boolean;
+}
+
+export interface LeagueProfile {
+  id: string;
+  name: string;
+  platform: string;
+  num_teams: number;
+  roster_slots: Record<string, number>;
+  scoring_config_id: string;
+  created_at: string;
+}
+
+export interface UserKit {
+  id: string;
+  name: string;
+  source_weights: Record<string, number>;
+  created_at: string;
+}
+
+export type WeightsMap = Record<string, number>;
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add apps/web/src/types/index.ts
+git commit -m "feat(types): update TypeScript types for projection-based pipeline"
+```
+
+---
+
+### Task 21: Update API client
+
+**Files:**
+- Modify: `apps/web/src/lib/api/rankings.ts`
+
+- [ ] **Step 1: Update computeRankings request shape**
+
+```typescript
+// apps/web/src/lib/api/rankings.ts
+import type { ComputeRankingsRequest, RankingsResult } from "@/types";
+import { apiFetch } from "./index";
+
+export async function computeRankings(req: ComputeRankingsRequest): Promise<RankingsResult> {
+  return apiFetch<RankingsResult>("/rankings/compute", {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+}
+```
+
+> Note: The `ComputeRankingsRequest` type now includes `source_weights` (renamed from `weights`), `scoring_config_id`, `platform`, and optional `league_profile_id`. Callers (dashboard page, store actions) must be updated to pass these fields.
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add apps/web/src/lib/api/rankings.ts
+git commit -m "feat(api-client): update computeRankings for new request shape"
+```
+
+---
+
+### Task 22: Update Zustand store
+
+**Files:**
+- Modify: `apps/web/src/store/slices/rankings.ts`
+
+- [ ] **Step 1: Update rankings slice to include new request fields**
+
+The store slice's `computeRankings` action must now accept and pass `scoring_config_id`, `platform`, and optionally `league_profile_id`. Update the slice state and action accordingly.
+
+Specific changes depend on the current store implementation — the slice must construct a `ComputeRankingsRequest` with all required fields and call the updated `computeRankings` API function.
+
+- [ ] **Step 2: Run frontend tests**
+
+```bash
+cd apps/web && pnpm test
+# Expected: some tests may need updates for new request shape
+```
+
+- [ ] **Step 3: Fix any broken tests**
+
+Update test mocks and assertions to use `source_weights` (not `weights`) and include `scoring_config_id`, `platform`.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add apps/web/src/store/slices/rankings.ts
+git commit -m "feat(store): update rankings slice for projection-based request"
+```
+
+---
+
 ## Final Verification
 
-> ⚠️ **Production note:** All tests mock `_get_scoring_config`, so the full suite will pass even though `POST /rankings/compute` returns HTTP 501 for every non-mocked call. The endpoint is NOT production-ready until `ScoringConfigRepository` is implemented and injected into `_get_scoring_config`. This is tracked as a Known Follow-Up below.
-
-- [ ] **Run full test suite one more time**
+- [ ] **Run full backend test suite**
 
 ```bash
 cd apps/api && pytest tests/ -v --tb=short
 # Expected: all pass, no skipped
+```
+
+- [ ] **Run full frontend test suite**
+
+```bash
+cd apps/web && pnpm test
+# Expected: all pass
 ```
 
 - [ ] **Verify migration file count**
@@ -2499,9 +3886,9 @@ ls supabase/migrations/
 - [ ] **Open PR**
 
 Use `commit-commands:commit-push-pr` skill. PR description must include:
-1. Summary of all changes (migration, schemas, services, repo, cache, router, exports)
-2. Test plan: `cd apps/api && pytest tests/ -v`
-3. Follow-up: ScoringConfigRepository + `_get_scoring_config` implementation (stubbed in router — returns 501 until built)
+1. Summary of all changes (migration, schemas, services, repos, cache, routers, exports, frontend types)
+2. Test plan: `cd apps/api && pytest tests/ -v` and `cd apps/web && pnpm test`
+3. Follow-up items from the table below
 
 ---
 
@@ -2509,10 +3896,12 @@ Use `commit-commands:commit-push-pr` skill. PR description must include:
 
 | Item | Notes |
 |------|-------|
-| `ScoringConfigRepository` | Fetch `scoring_configs` from DB. Router currently raises 501. Build as a separate task. |
 | `GET /rankings/sources` | List available projection sources with weights. Currently returns old data from `SourceRepository`. |
 | Platform position filter in repo | PostgREST join filter on `player_platform_positions.platform` may need a Supabase RPC — verify with actual client. |
 | NHL.com / MoneyPuck scraper migration | Update `BaseScraper.scrape()` return value: was "rows upserted to player_rankings", now should write to `player_stats`. |
 | First concrete `BaseProjectionScraper` | HashtagHockey scraper is highest priority (most reliable free projection source). |
 | `schedule_scores` ingestion job | GitHub Actions job pulling NHL schedule API, computing off-night counts. |
 | `player_platform_positions` ingestion | Per-platform position eligibility for ESPN, Yahoo, Fantrax. |
+| Source `default_weight` in `SourceOut` schema | Add `default_weight` and `is_paid` to `SourceOut` Pydantic model + frontend `Source` type. |
+| Dashboard page update | `apps/web/src/app/dashboard/page.tsx` needs scoring config selector, platform dropdown, and league profile picker. |
+| `RankingsTable` component rewrite | Update to display `projected_fantasy_points`, `vorp`, stat columns instead of `composite_score` and `source_ranks`. |
