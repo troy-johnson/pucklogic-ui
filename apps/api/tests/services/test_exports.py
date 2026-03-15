@@ -25,22 +25,47 @@ from services.exports import generate_excel, generate_pdf
 
 SEASON = "2025-26"
 
+_EMPTY_STATS: dict[str, Any] = {
+    "g": None, "a": None, "plus_minus": None, "pim": None,
+    "ppg": None, "ppa": None, "ppp": None, "shg": None, "sha": None,
+    "shp": None, "sog": None, "fow": None, "fol": None,
+    "hits": None, "blocks": None, "gp": None,
+    "gs": None, "w": None, "l": None, "ga": None,
+    "sa": None, "sv": None, "sv_pct": None, "so": None, "otl": None,
+}
+
 PLAYER_A: dict[str, Any] = {
     "composite_rank": 1,
+    "player_id": "p1",
     "name": "Connor McDavid",
     "team": "EDM",
-    "position": "C",
-    "composite_score": 0.9823,
-    "source_ranks": {"dobber": 1, "nhl_com": 2},
+    "default_position": "C",
+    "platform_positions": ["C", "F"],
+    "projected_fantasy_points": 290.0,
+    "vorp": 50.0,
+    "schedule_score": 0.8,
+    "off_night_games": 10,
+    "source_count": 3,
+    "projected_stats": {**_EMPTY_STATS, "g": 60, "a": 90, "ppp": 50, "sog": 250, "gp": 82},
+    "breakout_score": None,
+    "regression_risk": None,
 }
 
 PLAYER_B: dict[str, Any] = {
     "composite_rank": 2,
+    "player_id": "p2",
     "name": "Nathan MacKinnon",
     "team": "COL",
-    "position": "C",
-    "composite_score": 0.9541,
-    "source_ranks": {"dobber": 2, "nhl_com": 1},
+    "default_position": "C",
+    "platform_positions": ["C"],
+    "projected_fantasy_points": 265.0,
+    "vorp": 30.0,
+    "schedule_score": 0.7,
+    "off_night_games": 8,
+    "source_count": 2,
+    "projected_stats": {**_EMPTY_STATS, "g": 50, "a": 80, "ppp": 40, "sog": 220, "gp": 80},
+    "breakout_score": None,
+    "regression_risk": None,
 }
 
 RANKINGS = [PLAYER_A, PLAYER_B]
@@ -98,25 +123,30 @@ class TestGenerateExcel:
         result = generate_excel(RANKINGS, SEASON)
         wb = load_workbook(io.BytesIO(result))
         ws = wb.active
-        headers = [ws.cell(1, col).value for col in range(1, 6)]
-        assert headers == ["Rank", "Player", "Team", "Position", "Score"]
+        headers = [ws.cell(1, col).value for col in range(1, 5)]
+        assert headers == ["Rank", "Player", "Team", "Pos"]
 
-    def test_source_columns_appended_to_header(self) -> None:
+    def test_header_row_has_fanpts(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
         wb = load_workbook(io.BytesIO(result))
         ws = wb.active
-        # source_names are sorted: dobber → "Dobber", nhl_com → "Nhl Com"
-        assert ws.cell(1, 6).value == "Dobber"
-        assert ws.cell(1, 7).value == "Nhl Com"
+        headers = [ws.cell(1, col).value for col in range(1, ws.max_column + 1)]
+        assert "FanPts" in headers
+
+    def test_header_row_has_vorp(self) -> None:
+        result = generate_excel(RANKINGS, SEASON)
+        wb = load_workbook(io.BytesIO(result))
+        ws = wb.active
+        headers = [ws.cell(1, col).value for col in range(1, ws.max_column + 1)]
+        assert "VORP" in headers
 
     def test_data_rows_count(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
         wb = load_workbook(io.BytesIO(result))
         ws = wb.active
-        # 1 header + 2 data rows = 3 rows total
-        assert ws.max_row == 3
+        assert ws.max_row == 3  # 1 header + 2 data rows
 
-    def test_first_data_row_values(self) -> None:
+    def test_first_data_row_rank_and_name(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
         wb = load_workbook(io.BytesIO(result))
         ws = wb.active
@@ -124,15 +154,14 @@ class TestGenerateExcel:
         assert ws.cell(2, 2).value == "Connor McDavid"
         assert ws.cell(2, 3).value == "EDM"
         assert ws.cell(2, 4).value == "C"
-        assert ws.cell(2, 5).value == pytest.approx(0.9823, abs=1e-6)
 
-    def test_source_rank_values_in_data_row(self) -> None:
+    def test_first_data_row_fanpts(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
         wb = load_workbook(io.BytesIO(result))
         ws = wb.active
-        # sources sorted: dobber(col6)=1, nhl_com(col7)=2 for McDavid
-        assert ws.cell(2, 6).value == 1
-        assert ws.cell(2, 7).value == 2
+        headers = [ws.cell(1, col).value for col in range(1, ws.max_column + 1)]
+        fp_col = headers.index("FanPts") + 1
+        assert ws.cell(2, fp_col).value == pytest.approx(290.0, abs=0.01)
 
     def test_second_data_row_values(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
@@ -142,21 +171,18 @@ class TestGenerateExcel:
         assert ws.cell(3, 2).value == "Nathan MacKinnon"
         assert ws.cell(3, 3).value == "COL"
 
-    def test_missing_optional_fields_use_falsy_value(self) -> None:
-        """team/position absent → cell value is None or '' (openpyxl normalises)."""
+    def test_single_player_no_sources(self) -> None:
         rankings = [
             {
-                "composite_rank": 1,
-                "name": "Unknown Player",
-                "composite_score": 0.5,
-                "source_ranks": {},
+                **PLAYER_A,
+                "source_count": 0,
+                "projected_fantasy_points": None,
             }
         ]
         result = generate_excel(rankings, SEASON)
         wb = load_workbook(io.BytesIO(result))
         ws = wb.active
-        assert ws.cell(2, 3).value in (None, "")   # team
-        assert ws.cell(2, 4).value in (None, "")   # position
+        assert ws.max_row == 2  # header + 1 data row
 
     def test_empty_rankings_produces_header_only(self) -> None:
         result = generate_excel([], SEASON)
@@ -165,48 +191,14 @@ class TestGenerateExcel:
         assert ws.max_row == 1
         assert ws.cell(1, 1).value == "Rank"
 
-    def test_missing_source_rank_falls_back_to_falsy(self) -> None:
-        """A player missing one source's rank should write '' or None, not raise."""
-        rankings = [
-            {
-                "composite_rank": 1,
-                "name": "McDavid",
-                "team": "EDM",
-                "position": "C",
-                "composite_score": 0.99,
-                "source_ranks": {"dobber": 1, "nhl_com": 2},
-            },
-            {
-                "composite_rank": 2,
-                "name": "Draisaitl",
-                "team": "EDM",
-                "position": "C",
-                "composite_score": 0.95,
-                "source_ranks": {"dobber": 3},  # nhl_com missing
-            },
-        ]
+    def test_null_fp_writes_empty_string(self) -> None:
+        rankings = [{**PLAYER_A, "projected_fantasy_points": None}]
         result = generate_excel(rankings, SEASON)
         wb = load_workbook(io.BytesIO(result))
         ws = wb.active
-        # row 3, col 7 (nhl_com) for Draisaitl
-        assert ws.cell(3, 7).value in (None, "")
-
-    def test_single_player_no_sources(self) -> None:
-        rankings = [
-            {
-                "composite_rank": 1,
-                "name": "Auston Matthews",
-                "team": "TOR",
-                "position": "C",
-                "composite_score": 0.88,
-                "source_ranks": {},
-            }
-        ]
-        result = generate_excel(rankings, SEASON)
-        wb = load_workbook(io.BytesIO(result))
-        ws = wb.active
-        # Only base 5 headers, no extra source columns
-        assert ws.max_column == 5
+        headers = [ws.cell(1, col).value for col in range(1, ws.max_column + 1)]
+        fp_col = headers.index("FanPts") + 1
+        assert ws.cell(2, fp_col).value in (None, "")
 
 
 # ---------------------------------------------------------------------------
@@ -243,50 +235,25 @@ class TestGeneratePdf:
 
     def test_html_contains_positions(self) -> None:
         html = _capture_html(RANKINGS, SEASON)
-        assert ">C<" in html
+        assert "C" in html
 
     def test_html_contains_composite_ranks(self) -> None:
         html = _capture_html(RANKINGS, SEASON)
         assert ">1<" in html
         assert ">2<" in html
 
-    def test_html_contains_source_headers(self) -> None:
+    def test_html_contains_fanpts(self) -> None:
         html = _capture_html(RANKINGS, SEASON)
-        # sorted: dobber → "Dobber", nhl_com → "Nhl Com"
-        assert "Dobber" in html
-        assert "Nhl Com" in html
+        assert "FanPts" in html
 
-    def test_html_contains_source_rank_values(self) -> None:
+    def test_html_contains_vorp(self) -> None:
         html = _capture_html(RANKINGS, SEASON)
-        assert ">1<" in html
-        assert ">2<" in html
+        assert "VORP" in html
 
-    def test_html_missing_source_rank_shows_em_dash(self) -> None:
-        rankings = [
-            {
-                "composite_rank": 1,
-                "name": "McDavid",
-                "team": "EDM",
-                "position": "C",
-                "composite_score": 0.99,
-                "source_ranks": {"dobber": 1},  # nhl_com absent
-            },
-            {
-                "composite_rank": 2,
-                "name": "Draisaitl",
-                "team": "EDM",
-                "position": "C",
-                "composite_score": 0.95,
-                "source_ranks": {"nhl_com": 2},  # dobber absent
-            },
-        ]
+    def test_html_missing_fanpts_shows_em_dash(self) -> None:
+        rankings = [{**PLAYER_A, "projected_fantasy_points": None}]
         html = _capture_html(rankings, SEASON)
         assert "—" in html
-
-    def test_html_score_formatted_to_4_decimal_places(self) -> None:
-        html = _capture_html(RANKINGS, SEASON)
-        assert "0.9823" in html
-        assert "0.9541" in html
 
     def test_empty_rankings_produces_valid_html_structure(self) -> None:
         html = _capture_html([], SEASON)

@@ -8,37 +8,90 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from core.dependencies import get_current_user, get_rankings_repository
+from core.dependencies import (
+    get_current_user,
+    get_league_profile_repository,
+    get_projection_repository,
+    get_scoring_config_repository,
+    get_source_repository,
+)
 from main import app
 
-SEASON = "2025-26"
-WEIGHTS = {"nhl_com": 50.0}
-
-DB_ROWS = [
-    {
-        "rank": 1,
-        "season": SEASON,
-        "players": {"id": "p1", "name": "McDavid", "team": "EDM", "position": "C"},
-        "sources": {"name": "nhl_com", "display_name": "NHL.com"},
-    },
-]
-
-EXCEL_BODY = {"season": SEASON, "weights": WEIGHTS, "export_type": "excel"}
-PDF_BODY = {"season": SEASON, "weights": WEIGHTS, "export_type": "pdf"}
-
 MOCK_USER = {"id": "user-123", "email": "test@example.com"}
+SEASON = "2025-26"
+
+EXCEL_BODY = {
+    "season": SEASON,
+    "source_weights": {"hashtag": 1.0},
+    "scoring_config_id": "sc-1",
+    "platform": "espn",
+    "export_type": "excel",
+}
+PDF_BODY = {**EXCEL_BODY, "export_type": "pdf"}
+
+SCORING_CONFIG_ROW = {
+    "id": "sc-1",
+    "name": "Standard",
+    "stat_weights": {"g": 3, "a": 2},
+    "is_preset": True,
+}
+
+PROJECTION_ROWS = [
+    {
+        "player_id": "p1",
+        "players": {"name": "Connor McDavid", "team": "EDM", "position": "C"},
+        "sources": {"name": "hashtag", "user_id": None},
+        "player_platform_positions": [{"positions": ["C"]}],
+        "schedule_scores": [{"schedule_score": 0.8, "off_night_games": 10}],
+        "g": 60, "a": 90, "plus_minus": None, "pim": None,
+        "ppg": None, "ppa": None, "ppp": 50, "shg": None, "sha": None,
+        "shp": None, "sog": 250, "fow": None, "fol": None,
+        "hits": None, "blocks": None, "gp": 82,
+        "gs": None, "w": None, "l": None, "ga": None,
+        "sa": None, "sv": None, "sv_pct": None, "so": None, "otl": None,
+    }
+]
 
 
 @pytest.fixture
-def mock_repo() -> MagicMock:
+def mock_proj_repo() -> MagicMock:
     repo = MagicMock()
-    repo.get_by_season.return_value = DB_ROWS
+    repo.get_by_season.return_value = PROJECTION_ROWS
+    return repo
+
+
+@pytest.fixture
+def mock_sc_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.get.return_value = SCORING_CONFIG_ROW
+    return repo
+
+
+@pytest.fixture
+def mock_lp_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.get.return_value = None
+    return repo
+
+
+@pytest.fixture
+def mock_src_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.get_by_name.return_value = {"name": "hashtag", "user_id": None}
     return repo
 
 
 @pytest.fixture(autouse=True)
-def override_deps(mock_repo: MagicMock) -> None:
-    app.dependency_overrides[get_rankings_repository] = lambda: mock_repo
+def override_deps(
+    mock_proj_repo: MagicMock,
+    mock_sc_repo: MagicMock,
+    mock_lp_repo: MagicMock,
+    mock_src_repo: MagicMock,
+) -> None:
+    app.dependency_overrides[get_projection_repository] = lambda: mock_proj_repo
+    app.dependency_overrides[get_scoring_config_repository] = lambda: mock_sc_repo
+    app.dependency_overrides[get_league_profile_repository] = lambda: mock_lp_repo
+    app.dependency_overrides[get_source_repository] = lambda: mock_src_repo
     app.dependency_overrides[get_current_user] = lambda: MOCK_USER
     yield
     app.dependency_overrides.clear()
@@ -91,18 +144,21 @@ class TestGeneratePdfExport:
 
 class TestExportValidation:
     def test_invalid_export_type_returns_422(self, client: TestClient) -> None:
-        body = {"season": SEASON, "weights": WEIGHTS, "export_type": "csv"}
+        body = {**EXCEL_BODY, "export_type": "csv"}
         assert client.post("/exports/generate", json=body).status_code == 422
 
     def test_missing_season_returns_422(self, client: TestClient) -> None:
-        body = {"weights": WEIGHTS, "export_type": "excel"}
+        body = {k: v for k, v in EXCEL_BODY.items() if k != "season"}
+        assert client.post("/exports/generate", json=body).status_code == 422
+
+    def test_all_zero_weights_returns_422(self, client: TestClient) -> None:
+        body = {**EXCEL_BODY, "source_weights": {"hashtag": 0.0}}
         assert client.post("/exports/generate", json=body).status_code == 422
 
 
 class TestAuthRequired:
     @pytest.fixture(autouse=True)
     def reject_auth(self) -> None:
-        """Replace the auth bypass with a function that raises 401."""
         app.dependency_overrides[get_current_user] = _raise_401
         yield
 
