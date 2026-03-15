@@ -14,7 +14,10 @@ from typing import TYPE_CHECKING, Any
 from fastapi import Header, HTTPException
 
 from core.config import settings
+from repositories.league_profiles import LeagueProfileRepository
+from repositories.projections import ProjectionRepository
 from repositories.rankings import RankingsRepository
+from repositories.scoring_configs import ScoringConfigRepository
 from repositories.sources import SourceRepository
 from repositories.subscriptions import SubscriptionRepository
 from services.cache import CacheService
@@ -74,6 +77,18 @@ def get_rankings_repository() -> RankingsRepository:
 
 def get_subscription_repository() -> SubscriptionRepository:
     return SubscriptionRepository(get_db())
+
+
+def get_projection_repository() -> ProjectionRepository:
+    return ProjectionRepository(get_db())
+
+
+def get_league_profile_repository() -> LeagueProfileRepository:
+    return LeagueProfileRepository(get_db())
+
+
+def get_scoring_config_repository() -> ScoringConfigRepository:
+    return ScoringConfigRepository(get_db())
 
 
 # ---------------------------------------------------------------------------
