@@ -60,7 +60,7 @@ class ProjectionRepository:
                 "sources!inner(name, default_weight, is_paid, user_id), "
                 "players!inner(name, team, position), "
                 "player_platform_positions(platform, positions), "
-                "schedule_scores(schedule_score, off_night_games)"
+                "schedule_scores(season, schedule_score, off_night_games)"
             )
             .eq("season", season)
             .execute()
@@ -80,6 +80,10 @@ class ProjectionRepository:
                 "player_platform_positions": [
                     p for p in row["player_platform_positions"]
                     if p.get("platform") == platform
+                ],
+                "schedule_scores": [
+                    s for s in row["schedule_scores"]
+                    if s.get("season") == season
                 ],
             })
         return filtered

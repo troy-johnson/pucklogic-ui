@@ -38,7 +38,7 @@ PROJECTION_ROWS = [
         "players": {"name": "Connor McDavid", "team": "EDM", "position": "C"},
         "sources": {"name": "hashtag", "user_id": None},
         "player_platform_positions": [{"positions": ["C", "F"]}],
-        "schedule_scores": [{"schedule_score": 0.75, "off_night_games": 12}],
+        "schedule_scores": [{"season": "2025-26", "schedule_score": 0.75, "off_night_games": 12}],
         "g": 60,
         "a": 90,
         "plus_minus": None,
@@ -243,6 +243,15 @@ class TestComputeRankings:
     def test_all_zero_weights_returns_422(self, client: TestClient) -> None:
         body = {**VALID_BODY, "source_weights": {"hashtag": 0.0}}
         assert client.post("/rankings/compute", json=body).status_code == 422
+
+    def test_auth_checked_even_on_cache_hit(
+        self, client: TestClient, mock_cache: MagicMock, mock_src_repo: MagicMock
+    ) -> None:
+        """A warm cache must not bypass access control — unknown source → 400 even if cached."""
+        mock_cache.get_rankings.return_value = CACHED_RANKINGS
+        mock_src_repo.get_by_names.return_value = {}  # none of the requested sources exist
+        resp = client.post("/rankings/compute", json=VALID_BODY)
+        assert resp.status_code == 400
 
     def test_scoring_config_not_found_returns_404(
         self, client: TestClient, mock_sc_repo: MagicMock

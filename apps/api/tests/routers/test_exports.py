@@ -43,7 +43,7 @@ PROJECTION_ROWS = [
         "players": {"name": "Connor McDavid", "team": "EDM", "position": "C"},
         "sources": {"name": "hashtag", "user_id": None},
         "player_platform_positions": [{"positions": ["C"]}],
-        "schedule_scores": [{"schedule_score": 0.8, "off_night_games": 10}],
+        "schedule_scores": [{"season": "2025-26", "schedule_score": 0.8, "off_night_games": 10}],
         "g": 60, "a": 90, "plus_minus": None, "pim": None,
         "ppg": None, "ppa": None, "ppp": 50, "shg": None, "sha": None,
         "shp": None, "sog": 250, "fow": None, "fol": None,

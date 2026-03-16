@@ -47,6 +47,25 @@ def client() -> TestClient:
     return TestClient(app)
 
 
+class TestListPresets:
+    def test_returns_200_without_auth(self, client: TestClient, mock_repo: MagicMock) -> None:
+        mock_repo.list_presets.return_value = [PRESET_ROW]
+        assert client.get("/scoring-configs/presets").status_code == 200
+
+    def test_returns_only_preset_rows(self, client: TestClient, mock_repo: MagicMock) -> None:
+        mock_repo.list_presets.return_value = [PRESET_ROW]
+        data = client.get("/scoring-configs/presets").json()
+        assert isinstance(data, list)
+        assert len(data) == 1
+        assert data[0]["is_preset"] is True
+
+    def test_calls_list_presets_not_list(self, client: TestClient, mock_repo: MagicMock) -> None:
+        mock_repo.list_presets.return_value = [PRESET_ROW]
+        client.get("/scoring-configs/presets")
+        mock_repo.list_presets.assert_called_once()
+        mock_repo.list.assert_not_called()
+
+
 class TestListScoringConfigs:
     def test_returns_200(self, client: TestClient) -> None:
         assert client.get("/scoring-configs").status_code == 200

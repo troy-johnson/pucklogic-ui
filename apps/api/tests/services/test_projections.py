@@ -215,7 +215,7 @@ class TestAggregateProjections:
                 "sources": {"name": "dobber", "is_paid": False, "user_id": None},
                 "players": {"name": "McDavid", "team": "EDM", "position": "C"},
                 "player_platform_positions": [{"positions": ["C"]}],
-                "schedule_scores": [{"schedule_score": 0.8, "off_night_games": 24}],
+                "schedule_scores": [{"season": "2025-26", "schedule_score": 0.8, "off_night_games": 24}],  # noqa: E501
             },
             {
                 **base,

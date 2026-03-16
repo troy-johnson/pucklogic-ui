@@ -12,6 +12,14 @@ from services.scoring_validation import validate_scoring_config
 router = APIRouter(prefix="/scoring-configs", tags=["scoring-configs"])
 
 
+@router.get("/presets", response_model=list[ScoringConfigOut])
+async def list_preset_scoring_configs(
+    repo: ScoringConfigRepository = Depends(get_scoring_config_repository),
+) -> list[ScoringConfigOut]:
+    """Return all preset scoring configs. Public — no authentication required."""
+    return [ScoringConfigOut(**row) for row in repo.list_presets()]
+
+
 @router.get("", response_model=list[ScoringConfigOut])
 async def list_scoring_configs(
     user: dict[str, Any] = Depends(get_current_user),

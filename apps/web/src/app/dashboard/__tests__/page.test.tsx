@@ -21,9 +21,14 @@ vi.mock("@/lib/api/rankings", () => ({
   computeRankings: vi.fn(),
 }));
 
+vi.mock("@/lib/api/scoring-configs", () => ({
+  fetchScoringConfigPresets: vi.fn(),
+}));
+
 import { useStore } from "@/store";
 import { fetchSources } from "@/lib/api/sources";
 import { computeRankings } from "@/lib/api/rankings";
+import { fetchScoringConfigPresets } from "@/lib/api/scoring-configs";
 import type { Source, RankedPlayer } from "@/types";
 import DashboardPage from "../page";
 
@@ -73,8 +78,11 @@ function makeStoreMock(overrides = {}) {
   };
 }
 
+const PRESET_CONFIG = { id: "sc-preset-1", name: "Standard Points", stat_weights: {}, is_preset: true };
+
 beforeEach(() => {
   vi.mocked(fetchSources).mockResolvedValue(SOURCES);
+  vi.mocked(fetchScoringConfigPresets).mockResolvedValue([PRESET_CONFIG]);
   vi.mocked(computeRankings).mockResolvedValue({
     season: "2025-26",
     computed_at: "2026-03-06T00:00:00Z",
@@ -138,7 +146,9 @@ describe("DashboardPage", () => {
       );
       const user = userEvent.setup();
       render(<DashboardPage />);
-      await user.click(screen.getByRole("button", { name: /compute/i }));
+      const button = screen.getByRole("button", { name: /compute/i });
+      await waitFor(() => expect(button).not.toBeDisabled());
+      await user.click(button);
       expect(setLoading).toHaveBeenCalledWith(true);
     });
 
@@ -153,11 +163,13 @@ describe("DashboardPage", () => {
       );
       const user = userEvent.setup();
       render(<DashboardPage />);
-      await user.click(screen.getByRole("button", { name: /compute/i }));
+      const button = screen.getByRole("button", { name: /compute/i });
+      await waitFor(() => expect(button).not.toBeDisabled());
+      await user.click(button);
       expect(computeRankings).toHaveBeenCalledWith({
         season: "2025-26",
         source_weights: { nhl_com: 100 },
-        scoring_config_id: "default",
+        scoring_config_id: "sc-preset-1",
         platform: "espn",
       });
     });
@@ -174,7 +186,9 @@ describe("DashboardPage", () => {
       );
       const user = userEvent.setup();
       render(<DashboardPage />);
-      await user.click(screen.getByRole("button", { name: /compute/i }));
+      const button = screen.getByRole("button", { name: /compute/i });
+      await waitFor(() => expect(button).not.toBeDisabled());
+      await user.click(button);
       await waitFor(() => {
         expect(setRankings).toHaveBeenCalled();
       });
@@ -193,7 +207,9 @@ describe("DashboardPage", () => {
       );
       const user = userEvent.setup();
       render(<DashboardPage />);
-      await user.click(screen.getByRole("button", { name: /compute/i }));
+      const button = screen.getByRole("button", { name: /compute/i });
+      await waitFor(() => expect(button).not.toBeDisabled());
+      await user.click(button);
       await waitFor(() => {
         expect(setError).toHaveBeenCalledWith("Server error");
       });
@@ -211,7 +227,9 @@ describe("DashboardPage", () => {
       );
       const user = userEvent.setup();
       render(<DashboardPage />);
-      await user.click(screen.getByRole("button", { name: /compute/i }));
+      const button = screen.getByRole("button", { name: /compute/i });
+      await waitFor(() => expect(button).not.toBeDisabled());
+      await user.click(button);
       await waitFor(() => {
         expect(setLoading).toHaveBeenCalledWith(false);
       });
@@ -230,7 +248,9 @@ describe("DashboardPage", () => {
       );
       const user = userEvent.setup();
       render(<DashboardPage />);
-      await user.click(screen.getByRole("button", { name: /compute/i }));
+      const button = screen.getByRole("button", { name: /compute/i });
+      await waitFor(() => expect(button).not.toBeDisabled());
+      await user.click(button);
       await waitFor(() => {
         expect(setLoading).toHaveBeenCalledWith(false);
       });

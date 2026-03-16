@@ -53,7 +53,7 @@ def _make_db_row(
             "position": "C",
         },
         "player_platform_positions": [{"platform": "espn", "positions": ["C"]}],
-        "schedule_scores": [{"schedule_score": 0.8, "off_night_games": 24}],
+        "schedule_scores": [{"season": "2025-26", "schedule_score": 0.8, "off_night_games": 24}],
     }
 
 
@@ -130,3 +130,27 @@ class TestGetBySeason:
         result = repo.get_by_season("2025-26", "espn", "user-1")
         assert len(result) == 1
         assert result[0]["player_platform_positions"] == []
+
+    def test_filters_schedule_scores_to_requested_season(
+        self, repo: ProjectionRepository, mock_db: MagicMock
+    ) -> None:
+        row = _make_db_row("p1")
+        row["schedule_scores"] = [
+            {"season": "2025-26", "schedule_score": 0.8, "off_night_games": 24},
+            {"season": "2024-25", "schedule_score": 0.5, "off_night_games": 10},
+        ]
+        mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [row]  # noqa: E501
+        result = repo.get_by_season("2025-26", "espn", "user-1")
+        assert len(result) == 1
+        assert result[0]["schedule_scores"] == [
+            {"season": "2025-26", "schedule_score": 0.8, "off_night_games": 24}
+        ]
+
+    def test_wrong_season_schedule_scores_filtered_out(
+        self, repo: ProjectionRepository, mock_db: MagicMock
+    ) -> None:
+        row = _make_db_row("p1")
+        row["schedule_scores"] = [{"season": "2024-25", "schedule_score": 0.5, "off_night_games": 5}]  # noqa: E501
+        mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [row]  # noqa: E501
+        result = repo.get_by_season("2025-26", "espn", "user-1")
+        assert result[0]["schedule_scores"] == []

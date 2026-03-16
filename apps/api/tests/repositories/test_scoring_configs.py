@@ -84,6 +84,37 @@ class TestGet:
         chain.or_.assert_not_called()
 
 
+class TestListPresets:
+    def test_queries_scoring_configs(
+        self, repo: ScoringConfigRepository, mock_db: MagicMock
+    ) -> None:
+        mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []  # noqa: E501
+        repo.list_presets()
+        mock_db.table.assert_called_once_with("scoring_configs")
+
+    def test_filters_to_presets_only(
+        self, repo: ScoringConfigRepository, mock_db: MagicMock
+    ) -> None:
+        chain = mock_db.table.return_value.select.return_value.eq
+        chain.return_value.execute.return_value.data = [PRESET_ROW]
+        repo.list_presets()
+        chain.assert_called_once_with("is_preset", True)
+
+    def test_returns_only_preset_rows(
+        self, repo: ScoringConfigRepository, mock_db: MagicMock
+    ) -> None:
+        mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [PRESET_ROW]  # noqa: E501
+        result = repo.list_presets()
+        assert len(result) == 1
+        assert result[0]["is_preset"] is True
+
+    def test_returns_empty_when_no_presets(
+        self, repo: ScoringConfigRepository, mock_db: MagicMock
+    ) -> None:
+        mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []  # noqa: E501
+        assert repo.list_presets() == []
+
+
 class TestCreate:
     def test_inserts_config(
         self, repo: ScoringConfigRepository, mock_db: MagicMock
