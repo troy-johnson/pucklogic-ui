@@ -33,9 +33,11 @@ apps/web/
 │   │   ├── supabase.ts               # Browser Supabase client
 │   │   ├── supabase-server.ts        # Server Supabase client factory
 │   │   └── api/
-│   │       ├── rankings.ts           # SWR hooks for rankings API
-│   │       ├── players.ts            # SWR hooks for player API
-│   │       └── exports.ts            # Export job polling
+│   │       ├── rankings.ts           # computeRankings() — POST /rankings/compute
+│   │       ├── sources.ts            # fetchSources() — GET /sources
+│   │       ├── scoring-configs.ts    # fetchScoringConfigPresets() — GET /scoring-configs/presets (public)
+│   │       ├── user-kits.ts          # User kit CRUD
+│   │       └── index.ts              # apiFetch() base wrapper + ApiError
 │   ├── store/
 │   │   ├── rankings.ts               # Zustand: rankings state
 │   │   ├── kits.ts                   # Zustand: kit weights + dirty tracking

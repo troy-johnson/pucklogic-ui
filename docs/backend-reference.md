@@ -399,6 +399,7 @@ POST   /rankings/compute             — Projection aggregation pipeline (auth r
                                        Body: { season, source_weights, scoring_config_id,
                                                platform, league_profile_id? }
 
+GET    /scoring-configs/presets      — List preset scoring configs (public — no auth required)
 GET    /scoring-configs              — List presets + user's custom configs (auth required)
 POST   /scoring-configs              — Create custom scoring config (auth required)
                                        Validates: PPP+PPG/PPA and SHP+SHG/SHA mutual exclusion → HTTP 400
@@ -412,7 +413,8 @@ POST   /user-kits                    — Create source-weight preset (auth requi
 DELETE /user-kits/{id}               — Delete preset (auth required, owner only)
 
 POST   /exports/generate             — Run pipeline and stream PDF or Excel (auth required)
-                                       Body: same as /rankings/compute + export_type: pdf|excel|bundle
+                                       Body: same as /rankings/compute + export_type: pdf|excel
+                                       Returns streaming bytes (Content-Disposition: attachment)
 
 POST   /stripe/create-checkout-session  — Stripe checkout (auth required)
 POST   /stripe/webhook               — Stripe webhook (signature-verified)
@@ -706,15 +708,14 @@ async def get_player_trends(player_id: str):
 
 | Type | Library | Trigger | Delivery |
 |------|---------|---------|---------|
-| PDF — Print & Draft | WeasyPrint | `POST /api/exports/pdf` | Supabase Storage (24hr TTL) |
-| Excel — Draft Kit | openpyxl | `POST /api/exports/excel` | Supabase Storage (24hr TTL) |
-| Bundle (PDF + Excel) | Both | `POST /api/exports/bundle` | Both links |
+| PDF — Print & Draft | WeasyPrint | `POST /exports/generate` (`export_type: pdf`) | Streaming bytes — browser download |
+| Excel — Draft Kit | openpyxl | `POST /exports/generate` (`export_type: excel`) | Streaming bytes — browser download |
 
 Exports are read-only outputs — no import slots, no VBA. Users may export as many times as they want with any weight configuration at no additional cost.
 
 **Excel — 2 sheets:**
-- **Sheet 1 — Full Rankings:** ADP (blank — v1.0 placeholder), TAKEN (user marks `X`, conditional formatting greys/strikes the row), PLAYER, TEAM, POS, FanPts, FP/GP, VORP, PRNK, GP, OFF (off-night games), then all stat columns (skater stats grouped, then goalie stats grouped; null = `—`).
-- **Sheet 2 — Best Available:** Position-grouped (CENTER, LEFT WING, RIGHT WING, DEFENSE, GOALIES, MULTI-POSITIONAL). Driven by Excel `FILTER` formulas referencing Sheet 1's TAKEN column — works in Excel and Google Sheets.
+- **Sheet 1 — "Full Rankings {season}":** Rank, Player, Team, Pos, FanPts, VORP, ScheduleScore, OffNightGames, SourceCount, then all stat columns (skater stats, then goalie stats; null = `—`).
+- **Sheet 2 — "By Position":** Players grouped by position (C, LW, RW, D, G) with a header row per group. Same columns as Sheet 1.
 
 Header block on both sheets: league settings, source weights used, PuckLogic Recommended flag, generated date and season.
 
@@ -722,21 +723,7 @@ Header block on both sheets: league settings, source weights used, PuckLogic Rec
 
 **`ExportRequest`** schema fields: `season`, `source_weights`, `scoring_config_id`, `platform`, `league_profile_id` (optional). `generate_excel()` and `generate_pdf()` in `services/exports.py` accept and render: fantasy points, VORP, off-night games, full `projected_stats` object.
 
-```python
-# tasks/export_tasks.py
-from celery import shared_task
-
-@shared_task
-def generate_pdf_export(export_id: str, kit_id: str, user_id: str):
-    """
-    1. Fetch ranked players for kit_id
-    2. Generate PDF via WeasyPrint
-    3. Upload to Supabase Storage
-    4. Update exports.status = 'complete', set storage_url
-    5. On failure: update exports.status = 'failed'
-    """
-    ...
-```
+Exports are synchronous streaming responses — no Celery job or Supabase Storage upload. `services/exports.py` exposes `generate_excel(ranked, season)` and `generate_pdf(ranked, season)` which return raw bytes; the router wraps them in `StreamingResponse` with the appropriate `Content-Disposition: attachment` header.
 
 ---
 
