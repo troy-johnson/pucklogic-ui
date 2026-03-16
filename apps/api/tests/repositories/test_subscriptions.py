@@ -64,3 +64,50 @@ class TestSubscriptionRepositoryUpsert:
             else upsert_call.kwargs.get("json", {})
         )
         assert data["plan"] == "premium"
+
+
+class TestIsActive:
+    def _chain(self, mock_db: MagicMock) -> MagicMock:
+        chain = (
+            mock_db.table.return_value.select.return_value
+            .eq.return_value.eq.return_value
+            .maybe_single.return_value.execute.return_value
+        )
+        return chain
+
+    def test_returns_true_when_active_no_expiry(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._chain(mock_db).data = {"status": "active", "expires_at": None}
+        assert repo.is_active("user-1") is True
+
+    def test_returns_false_when_no_row(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._chain(mock_db).data = None
+        assert repo.is_active("user-1") is False
+
+    def test_returns_true_when_expires_in_future(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._chain(mock_db).data = {
+            "status": "active",
+            "expires_at": "2099-01-01T00:00:00+00:00",
+        }
+        assert repo.is_active("user-1") is True
+
+    def test_returns_false_when_expired(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._chain(mock_db).data = {
+            "status": "active",
+            "expires_at": "2000-01-01T00:00:00+00:00",
+        }
+        assert repo.is_active("user-1") is False
+
+    def test_queries_subscriptions_table(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._chain(mock_db).data = None
+        repo.is_active("user-1")
+        mock_db.table.assert_called_with("subscriptions")

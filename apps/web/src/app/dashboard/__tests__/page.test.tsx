@@ -198,6 +198,43 @@ describe("DashboardPage", () => {
         expect(setError).toHaveBeenCalledWith("Server error");
       });
     });
+
+    it("calls setLoading(false) after successful compute", async () => {
+      const setLoading = vi.fn();
+      vi.mocked(useStore).mockReturnValue(
+        makeStoreMock({
+          sources: SOURCES,
+          weights: { nhl_com: 100 },
+          setLoading,
+          activeWeights: vi.fn().mockReturnValue({ nhl_com: 100 }),
+        })
+      );
+      const user = userEvent.setup();
+      render(<DashboardPage />);
+      await user.click(screen.getByRole("button", { name: /compute/i }));
+      await waitFor(() => {
+        expect(setLoading).toHaveBeenCalledWith(false);
+      });
+    });
+
+    it("calls setLoading(false) after compute error", async () => {
+      const setLoading = vi.fn();
+      vi.mocked(computeRankings).mockRejectedValue(new Error("fail"));
+      vi.mocked(useStore).mockReturnValue(
+        makeStoreMock({
+          sources: SOURCES,
+          weights: { nhl_com: 100 },
+          setLoading,
+          activeWeights: vi.fn().mockReturnValue({ nhl_com: 100 }),
+        })
+      );
+      const user = userEvent.setup();
+      render(<DashboardPage />);
+      await user.click(screen.getByRole("button", { name: /compute/i }));
+      await waitFor(() => {
+        expect(setLoading).toHaveBeenCalledWith(false);
+      });
+    });
   });
 
   describe("loading state", () => {

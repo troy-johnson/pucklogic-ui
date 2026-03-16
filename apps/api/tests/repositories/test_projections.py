@@ -52,7 +52,7 @@ def _make_db_row(
             "team": "EDM",
             "position": "C",
         },
-        "player_platform_positions": [{"positions": ["C"]}],
+        "player_platform_positions": [{"platform": "espn", "positions": ["C"]}],
         "schedule_scores": [{"schedule_score": 0.8, "off_night_games": 24}],
     }
 
@@ -103,3 +103,30 @@ class TestGetBySeason:
         assert "p1" in player_ids   # system source — visible
         assert "p2" in player_ids   # own custom source — visible
         assert "p3" not in player_ids  # another user's source — excluded
+
+    def test_filters_platform_positions_to_requested_platform(
+        self, repo: ProjectionRepository, mock_db: MagicMock
+    ) -> None:
+        row = _make_db_row("p1")
+        # Row has both espn and yahoo platform entries
+        row["player_platform_positions"] = [
+            {"platform": "espn", "positions": ["C"]},
+            {"platform": "yahoo", "positions": ["C", "F"]},
+        ]
+        mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [row]  # noqa: E501
+        result = repo.get_by_season("2025-26", "espn", "user-1")
+        assert len(result) == 1
+        # Only the espn entry should remain
+        assert result[0]["player_platform_positions"] == [
+            {"platform": "espn", "positions": ["C"]}
+        ]
+
+    def test_non_matching_platform_positions_filtered_out(
+        self, repo: ProjectionRepository, mock_db: MagicMock
+    ) -> None:
+        row = _make_db_row("p1")
+        row["player_platform_positions"] = [{"platform": "yahoo", "positions": ["C"]}]
+        mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [row]  # noqa: E501
+        result = repo.get_by_season("2025-26", "espn", "user-1")
+        assert len(result) == 1
+        assert result[0]["player_platform_positions"] == []

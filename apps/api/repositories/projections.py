@@ -18,7 +18,7 @@ Join shape (each row):
         "team": str | None,
         "position": str | None,   # NHL.com canonical
     },
-    "player_platform_positions": [{"positions": list[str]}],  # 0 or 1 element
+    "player_platform_positions": [{"platform": str, "positions": list[str]}],  # noqa: E501
     "schedule_scores": [{"schedule_score": float, "off_night_games": int}],  # 0 or 1
   }
 """
@@ -59,7 +59,7 @@ class ProjectionRepository:
                 f"player_id, season, {_STAT_COLUMNS}, "
                 "sources!inner(name, default_weight, is_paid, user_id), "
                 "players!inner(name, team, position), "
-                "player_platform_positions(positions), "
+                "player_platform_positions(platform, positions), "
                 "schedule_scores(schedule_score, off_night_games)"
             )
             .eq("season", season)
@@ -67,8 +67,19 @@ class ProjectionRepository:
         )
         # Privacy filter: RLS on `sources` may not be enforced via the join.
         # Post-query: keep only system sources (user_id IS NULL) or the requesting user's own.
-        return [
-            row for row in result.data
-            if row["sources"]["user_id"] is None
-            or row["sources"]["user_id"] == user_id
-        ]
+        # Also filter player_platform_positions to the requested platform only.
+        filtered = []
+        for row in result.data:
+            if (
+                row["sources"]["user_id"] is not None
+                and row["sources"]["user_id"] != user_id
+            ):
+                continue
+            filtered.append({
+                **row,
+                "player_platform_positions": [
+                    p for p in row["player_platform_positions"]
+                    if p.get("platform") == platform
+                ],
+            })
+        return filtered

@@ -14,6 +14,7 @@ from core.dependencies import (
     get_projection_repository,
     get_scoring_config_repository,
     get_source_repository,
+    get_subscription_repository,
 )
 from main import app
 
@@ -124,7 +125,17 @@ def mock_lp_repo() -> MagicMock:
 @pytest.fixture
 def mock_src_repo() -> MagicMock:
     repo = MagicMock()
-    repo.get_by_name.return_value = {"name": "hashtag", "user_id": None}
+    repo.get_by_names.return_value = {
+        "hashtag": {"name": "hashtag", "user_id": None, "is_paid": False},
+        "dailyfaceoff": {"name": "dailyfaceoff", "user_id": None, "is_paid": False},
+    }
+    return repo
+
+
+@pytest.fixture
+def mock_sub_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.is_active.return_value = True
     return repo
 
 
@@ -141,12 +152,14 @@ def override_deps(
     mock_sc_repo: MagicMock,
     mock_lp_repo: MagicMock,
     mock_src_repo: MagicMock,
+    mock_sub_repo: MagicMock,
     mock_cache: MagicMock,
 ) -> None:
     app.dependency_overrides[get_projection_repository] = lambda: mock_proj_repo
     app.dependency_overrides[get_scoring_config_repository] = lambda: mock_sc_repo
     app.dependency_overrides[get_league_profile_repository] = lambda: mock_lp_repo
     app.dependency_overrides[get_source_repository] = lambda: mock_src_repo
+    app.dependency_overrides[get_subscription_repository] = lambda: mock_sub_repo
     app.dependency_overrides[get_cache_service] = lambda: mock_cache
     app.dependency_overrides[get_current_user] = lambda: MOCK_USER
     yield
@@ -242,7 +255,7 @@ class TestSourceWeightsValidation:
     def test_unknown_source_key_returns_400(
         self, client: TestClient, mock_src_repo: MagicMock
     ) -> None:
-        mock_src_repo.get_by_name.return_value = None
+        mock_src_repo.get_by_names.return_value = {}  # none found
         resp = client.post("/rankings/compute", json=VALID_BODY)
         assert resp.status_code == 400
         assert "Unknown source key" in resp.json()["detail"]
@@ -250,9 +263,32 @@ class TestSourceWeightsValidation:
     def test_inaccessible_user_source_returns_400(
         self, client: TestClient, mock_src_repo: MagicMock
     ) -> None:
-        mock_src_repo.get_by_name.return_value = {
-            "name": "hashtag",
-            "user_id": "other-user",
+        mock_src_repo.get_by_names.return_value = {
+            "hashtag": {"name": "hashtag", "user_id": "other-user", "is_paid": False},
+            "dailyfaceoff": {"name": "dailyfaceoff", "user_id": None, "is_paid": False},
         }
         resp = client.post("/rankings/compute", json=VALID_BODY)
         assert resp.status_code == 400
+
+    def test_paid_source_without_subscription_returns_403(
+        self, client: TestClient, mock_src_repo: MagicMock, mock_sub_repo: MagicMock
+    ) -> None:
+        mock_src_repo.get_by_names.return_value = {
+            "hashtag": {"name": "hashtag", "user_id": None, "is_paid": True},
+        }
+        mock_sub_repo.is_active.return_value = False
+        body = {**VALID_BODY, "source_weights": {"hashtag": 1.0}}
+        resp = client.post("/rankings/compute", json=body)
+        assert resp.status_code == 403
+        assert "subscription" in resp.json()["detail"]
+
+    def test_paid_source_with_subscription_succeeds(
+        self, client: TestClient, mock_src_repo: MagicMock, mock_sub_repo: MagicMock
+    ) -> None:
+        mock_src_repo.get_by_names.return_value = {
+            "hashtag": {"name": "hashtag", "user_id": None, "is_paid": True},
+        }
+        mock_sub_repo.is_active.return_value = True
+        body = {**VALID_BODY, "source_weights": {"hashtag": 1.0}}
+        resp = client.post("/rankings/compute", json=body)
+        assert resp.status_code == 200

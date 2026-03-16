@@ -12,12 +12,14 @@ from core.dependencies import (
     get_projection_repository,
     get_scoring_config_repository,
     get_source_repository,
+    get_subscription_repository,
 )
 from models.schemas import RankedPlayer, RankingsComputeRequest, RankingsComputeResponse
 from repositories.league_profiles import LeagueProfileRepository
 from repositories.projections import ProjectionRepository
 from repositories.scoring_configs import ScoringConfigRepository
 from repositories.sources import SourceRepository
+from repositories.subscriptions import SubscriptionRepository
 from services.cache import CacheService
 from services.projections import aggregate_projections
 
@@ -32,6 +34,7 @@ async def compute_rankings(
     lp_repo: LeagueProfileRepository = Depends(get_league_profile_repository),
     sc_repo: ScoringConfigRepository = Depends(get_scoring_config_repository),
     src_repo: SourceRepository = Depends(get_source_repository),
+    sub_repo: SubscriptionRepository = Depends(get_subscription_repository),
     cache: CacheService = Depends(get_cache_service),
 ) -> RankingsComputeResponse:
     # 1. Cache check
@@ -50,17 +53,27 @@ async def compute_rankings(
             rankings=[RankedPlayer(**p) for p in cached_data],
         )
 
-    # 1b. Validate source_weights keys
-    for key in req.source_weights:
-        source = src_repo.get_by_name(key)
+    # 1b. Batch-validate source_weights keys (single DB query)
+    source_names = list(req.source_weights.keys())
+    sources_by_name = src_repo.get_by_names(source_names)
+    for key in source_names:
+        source = sources_by_name.get(key)
         if source is None:
             raise HTTPException(status_code=400, detail=f"Unknown source key: {key}")
-        source_uid = source.get("user_id")
-        if source_uid is not None and source_uid != user["id"]:
+        if source.get("user_id") is not None and source.get("user_id") != user["id"]:
             raise HTTPException(status_code=400, detail=f"Unknown source key: {key}")
 
-    # 2. Fetch scoring config
-    sc_row = sc_repo.get(req.scoring_config_id)
+    # 1c. Enforce paid source access
+    has_subscription = sub_repo.is_active(user["id"])
+    for key, source in sources_by_name.items():
+        if source.get("is_paid") and source.get("user_id") is None and not has_subscription:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Source '{key}' requires an active subscription",
+            )
+
+    # 2. Fetch scoring config (ownership-scoped)
+    sc_row = sc_repo.get(req.scoring_config_id, user_id=user["id"])
     if sc_row is None:
         raise HTTPException(status_code=404, detail="Scoring config not found")
     scoring_config = sc_row["stat_weights"]

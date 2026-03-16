@@ -14,6 +14,7 @@ from core.dependencies import (
     get_projection_repository,
     get_scoring_config_repository,
     get_source_repository,
+    get_subscription_repository,
 )
 from main import app
 
@@ -77,7 +78,16 @@ def mock_lp_repo() -> MagicMock:
 @pytest.fixture
 def mock_src_repo() -> MagicMock:
     repo = MagicMock()
-    repo.get_by_name.return_value = {"name": "hashtag", "user_id": None}
+    repo.get_by_names.return_value = {
+        "hashtag": {"name": "hashtag", "user_id": None, "is_paid": False},
+    }
+    return repo
+
+
+@pytest.fixture
+def mock_sub_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.is_active.return_value = True
     return repo
 
 
@@ -87,11 +97,13 @@ def override_deps(
     mock_sc_repo: MagicMock,
     mock_lp_repo: MagicMock,
     mock_src_repo: MagicMock,
+    mock_sub_repo: MagicMock,
 ) -> None:
     app.dependency_overrides[get_projection_repository] = lambda: mock_proj_repo
     app.dependency_overrides[get_scoring_config_repository] = lambda: mock_sc_repo
     app.dependency_overrides[get_league_profile_repository] = lambda: mock_lp_repo
     app.dependency_overrides[get_source_repository] = lambda: mock_src_repo
+    app.dependency_overrides[get_subscription_repository] = lambda: mock_sub_repo
     app.dependency_overrides[get_current_user] = lambda: MOCK_USER
     yield
     app.dependency_overrides.clear()
@@ -145,6 +157,10 @@ class TestGeneratePdfExport:
 class TestExportValidation:
     def test_invalid_export_type_returns_422(self, client: TestClient) -> None:
         body = {**EXCEL_BODY, "export_type": "csv"}
+        assert client.post("/exports/generate", json=body).status_code == 422
+
+    def test_bundle_export_type_returns_422(self, client: TestClient) -> None:
+        body = {**EXCEL_BODY, "export_type": "bundle"}
         assert client.post("/exports/generate", json=body).status_code == 422
 
     def test_missing_season_returns_422(self, client: TestClient) -> None:

@@ -20,14 +20,16 @@ class ScoringConfigRepository:
         )
         return result.data
 
-    def get(self, config_id: str) -> dict[str, Any] | None:
-        result = (
-            self._db.table("scoring_configs")
-            .select("*")
-            .eq("id", config_id)
-            .maybe_single()
-            .execute()
-        )
+    def get(self, config_id: str, user_id: str | None = None) -> dict[str, Any] | None:
+        """Fetch a scoring config by ID.
+
+        When user_id is provided, restricts results to presets or configs owned
+        by that user — preventing access to another user's custom configs.
+        """
+        query = self._db.table("scoring_configs").select("*").eq("id", config_id)
+        if user_id is not None:
+            query = query.or_(f"is_preset.eq.true,user_id.eq.{user_id}")
+        result = query.maybe_single().execute()
         return result.data
 
     def create(self, data: dict[str, Any]) -> dict[str, Any]:

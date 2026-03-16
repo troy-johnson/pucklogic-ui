@@ -66,6 +66,23 @@ class TestGet:
         mock_db.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data = None  # noqa: E501
         assert repo.get("missing") is None
 
+    def test_applies_ownership_filter_when_user_id_provided(
+        self, repo: ScoringConfigRepository, mock_db: MagicMock
+    ) -> None:
+        chain = mock_db.table.return_value.select.return_value.eq.return_value
+        chain.or_.return_value.maybe_single.return_value.execute.return_value.data = PRESET_ROW  # noqa: E501
+        result = repo.get("sc-1", user_id="u-1")
+        chain.or_.assert_called_once_with("is_preset.eq.true,user_id.eq.u-1")
+        assert result == PRESET_ROW
+
+    def test_no_ownership_filter_when_user_id_is_none(
+        self, repo: ScoringConfigRepository, mock_db: MagicMock
+    ) -> None:
+        chain = mock_db.table.return_value.select.return_value.eq.return_value
+        chain.maybe_single.return_value.execute.return_value.data = PRESET_ROW
+        repo.get("sc-1", user_id=None)
+        chain.or_.assert_not_called()
+
 
 class TestCreate:
     def test_inserts_config(

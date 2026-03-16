@@ -166,7 +166,7 @@ class ExportRequest(BaseModel):
     scoring_config_id: str
     platform: str
     league_profile_id: str | None = None
-    export_type: str = Field(..., pattern="^(pdf|excel|bundle)$")
+    export_type: str = Field(..., pattern="^(pdf|excel)$")
 
     @model_validator(mode="after")
     def source_weights_not_all_zero(self) -> ExportRequest:

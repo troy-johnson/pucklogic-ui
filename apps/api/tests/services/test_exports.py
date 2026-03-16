@@ -119,6 +119,11 @@ class TestGenerateExcel:
         wb = load_workbook(io.BytesIO(result))
         assert SEASON in wb.active.title
 
+    def test_worksheet_title_starts_with_full_rankings(self) -> None:
+        result = generate_excel(RANKINGS, SEASON)
+        wb = load_workbook(io.BytesIO(result))
+        assert wb.active.title.startswith("Full Rankings")
+
     def test_header_row_base_columns(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
         wb = load_workbook(io.BytesIO(result))
@@ -199,6 +204,54 @@ class TestGenerateExcel:
         headers = [ws.cell(1, col).value for col in range(1, ws.max_column + 1)]
         fp_col = headers.index("FanPts") + 1
         assert ws.cell(2, fp_col).value in (None, "")
+
+    def test_header_uses_ga_not_gaa(self) -> None:
+        result = generate_excel(RANKINGS, SEASON)
+        wb = load_workbook(io.BytesIO(result))
+        ws = wb.active
+        headers = [ws.cell(1, col).value for col in range(1, ws.max_column + 1)]
+        assert "GA" in headers
+        assert "GAA" not in headers
+
+    def test_workbook_has_two_sheets(self) -> None:
+        result = generate_excel(RANKINGS, SEASON)
+        wb = load_workbook(io.BytesIO(result))
+        assert len(wb.sheetnames) == 2
+
+    def test_sheet2_title_is_by_position(self) -> None:
+        result = generate_excel(RANKINGS, SEASON)
+        wb = load_workbook(io.BytesIO(result))
+        assert wb.sheetnames[1] == "By Position"
+
+    def test_sheet2_has_headers(self) -> None:
+        result = generate_excel(RANKINGS, SEASON)
+        wb = load_workbook(io.BytesIO(result))
+        ws2 = wb["By Position"]
+        assert ws2.cell(1, 1).value == "Rank"
+        assert ws2.cell(1, 2).value == "Player"
+
+    def test_sheet2_contains_position_section_headers(self) -> None:
+        result = generate_excel(RANKINGS, SEASON)
+        wb = load_workbook(io.BytesIO(result))
+        ws2 = wb["By Position"]
+        # Both players are C — expect a "C" section header row
+        all_values = [ws2.cell(r, 1).value for r in range(1, ws2.max_row + 1)]
+        assert "C" in all_values
+
+    def test_sheet2_player_count_matches_sheet1(self) -> None:
+        result = generate_excel(RANKINGS, SEASON)
+        wb = load_workbook(io.BytesIO(result))
+        ws1 = wb.active
+        ws2 = wb["By Position"]
+        # Sheet 1: 1 header + N players. Sheet 2: 1 header + M section headers + N players.
+        # Player count on sheet2 = rows - 1 header - section header rows
+        player_rows_sheet1 = ws1.max_row - 1
+        # count non-section rows after header on sheet2 (rows where col1 is numeric)
+        player_rows_sheet2 = sum(
+            1 for r in range(2, ws2.max_row + 1)
+            if isinstance(ws2.cell(r, 1).value, int)
+        )
+        assert player_rows_sheet2 == player_rows_sheet1
 
 
 # ---------------------------------------------------------------------------
