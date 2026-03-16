@@ -21,25 +21,37 @@ vi.mock("@/lib/api/rankings", () => ({
   computeRankings: vi.fn(),
 }));
 
+vi.mock("@/lib/api/scoring-configs", () => ({
+  fetchScoringConfigPresets: vi.fn(),
+}));
+
 import { useStore } from "@/store";
 import { fetchSources } from "@/lib/api/sources";
 import { computeRankings } from "@/lib/api/rankings";
+import { fetchScoringConfigPresets } from "@/lib/api/scoring-configs";
 import type { Source, RankedPlayer } from "@/types";
 import DashboardPage from "../page";
 
 const SOURCES: Source[] = [
-  { id: "s1", name: "nhl_com", display_name: "NHL.com", url: null, active: true },
+  { id: "s1", name: "nhl_com", display_name: "NHL.com", url: null, active: true, default_weight: null, is_paid: false },
 ];
 
 const RANKINGS: RankedPlayer[] = [
   {
     composite_rank: 1,
-    composite_score: 0.95,
     player_id: "p1",
     name: "Connor McDavid",
     team: "EDM",
-    position: "C",
-    source_ranks: { nhl_com: 1 },
+    default_position: "C",
+    platform_positions: [],
+    projected_fantasy_points: 30.5,
+    vorp: null,
+    schedule_score: null,
+    off_night_games: null,
+    source_count: 1,
+    projected_stats: { g: null, a: null, plus_minus: null, pim: null, ppg: null, ppa: null, ppp: null, shg: null, sha: null, shp: null, sog: null, fow: null, fol: null, hits: null, blocks: null, gp: null, gs: null, w: null, l: null, ga: null, sa: null, sv: null, sv_pct: null, so: null, otl: null },
+    breakout_score: null,
+    regression_risk: null,
   },
 ];
 
@@ -66,8 +78,11 @@ function makeStoreMock(overrides = {}) {
   };
 }
 
+const PRESET_CONFIG = { id: "sc-preset-1", name: "Standard Points", stat_weights: {}, is_preset: true };
+
 beforeEach(() => {
   vi.mocked(fetchSources).mockResolvedValue(SOURCES);
+  vi.mocked(fetchScoringConfigPresets).mockResolvedValue([PRESET_CONFIG]);
   vi.mocked(computeRankings).mockResolvedValue({
     season: "2025-26",
     computed_at: "2026-03-06T00:00:00Z",
@@ -131,7 +146,9 @@ describe("DashboardPage", () => {
       );
       const user = userEvent.setup();
       render(<DashboardPage />);
-      await user.click(screen.getByRole("button", { name: /compute/i }));
+      const button = screen.getByRole("button", { name: /compute/i });
+      await waitFor(() => expect(button).not.toBeDisabled());
+      await user.click(button);
       expect(setLoading).toHaveBeenCalledWith(true);
     });
 
@@ -146,10 +163,14 @@ describe("DashboardPage", () => {
       );
       const user = userEvent.setup();
       render(<DashboardPage />);
-      await user.click(screen.getByRole("button", { name: /compute/i }));
+      const button = screen.getByRole("button", { name: /compute/i });
+      await waitFor(() => expect(button).not.toBeDisabled());
+      await user.click(button);
       expect(computeRankings).toHaveBeenCalledWith({
         season: "2025-26",
-        weights: { nhl_com: 100 },
+        source_weights: { nhl_com: 100 },
+        scoring_config_id: "sc-preset-1",
+        platform: "espn",
       });
     });
 
@@ -165,7 +186,9 @@ describe("DashboardPage", () => {
       );
       const user = userEvent.setup();
       render(<DashboardPage />);
-      await user.click(screen.getByRole("button", { name: /compute/i }));
+      const button = screen.getByRole("button", { name: /compute/i });
+      await waitFor(() => expect(button).not.toBeDisabled());
+      await user.click(button);
       await waitFor(() => {
         expect(setRankings).toHaveBeenCalled();
       });
@@ -184,9 +207,52 @@ describe("DashboardPage", () => {
       );
       const user = userEvent.setup();
       render(<DashboardPage />);
-      await user.click(screen.getByRole("button", { name: /compute/i }));
+      const button = screen.getByRole("button", { name: /compute/i });
+      await waitFor(() => expect(button).not.toBeDisabled());
+      await user.click(button);
       await waitFor(() => {
         expect(setError).toHaveBeenCalledWith("Server error");
+      });
+    });
+
+    it("calls setLoading(false) after successful compute", async () => {
+      const setLoading = vi.fn();
+      vi.mocked(useStore).mockReturnValue(
+        makeStoreMock({
+          sources: SOURCES,
+          weights: { nhl_com: 100 },
+          setLoading,
+          activeWeights: vi.fn().mockReturnValue({ nhl_com: 100 }),
+        })
+      );
+      const user = userEvent.setup();
+      render(<DashboardPage />);
+      const button = screen.getByRole("button", { name: /compute/i });
+      await waitFor(() => expect(button).not.toBeDisabled());
+      await user.click(button);
+      await waitFor(() => {
+        expect(setLoading).toHaveBeenCalledWith(false);
+      });
+    });
+
+    it("calls setLoading(false) after compute error", async () => {
+      const setLoading = vi.fn();
+      vi.mocked(computeRankings).mockRejectedValue(new Error("fail"));
+      vi.mocked(useStore).mockReturnValue(
+        makeStoreMock({
+          sources: SOURCES,
+          weights: { nhl_com: 100 },
+          setLoading,
+          activeWeights: vi.fn().mockReturnValue({ nhl_com: 100 }),
+        })
+      );
+      const user = userEvent.setup();
+      render(<DashboardPage />);
+      const button = screen.getByRole("button", { name: /compute/i });
+      await waitFor(() => expect(button).not.toBeDisabled());
+      await user.click(button);
+      await waitFor(() => {
+        expect(setLoading).toHaveBeenCalledWith(false);
       });
     });
   });

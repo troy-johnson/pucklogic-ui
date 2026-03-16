@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { RankingsTable } from "@/components/RankingsTable";
 import { SourceWeightSelector } from "@/components/SourceWeightSelector";
 import { fetchSources } from "@/lib/api/sources";
 import { computeRankings } from "@/lib/api/rankings";
+import { fetchScoringConfigPresets } from "@/lib/api/scoring-configs";
 import { useStore } from "@/store";
 
 export default function DashboardPage() {
@@ -26,17 +27,28 @@ export default function DashboardPage() {
     setError,
   } = useStore();
 
+  const [scoringConfigId, setScoringConfigId] = useState<string | null>(null);
+
   useEffect(() => {
     fetchSources().then(setSources).catch(() => {});
+    fetchScoringConfigPresets()
+      .then((presets) => {
+        if (presets.length > 0) setScoringConfigId(presets[0].id);
+      })
+      .catch(() => {});
   }, []);
 
   async function handleCompute() {
+    if (!scoringConfigId) return;
     setLoading(true);
     try {
-      const result = await computeRankings({ season, weights: activeWeights() });
+      // TODO: replace hardcoded platform with user-selected value
+      const result = await computeRankings({ season, source_weights: activeWeights(), scoring_config_id: scoringConfigId, platform: "espn" });
       setRankings(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -63,7 +75,7 @@ export default function DashboardPage() {
         <button
           type="button"
           onClick={handleCompute}
-          disabled={loading}
+          disabled={!scoringConfigId || loading}
           className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
         >
           Compute Rankings

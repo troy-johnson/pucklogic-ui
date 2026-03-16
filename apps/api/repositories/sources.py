@@ -40,3 +40,19 @@ class SourceRepository:
             .execute()
         )
         return result.data
+
+    def get_by_names(self, names: list[str]) -> dict[str, dict[str, Any]]:
+        """Fetch multiple sources by name in a single query.
+
+        Returns a dict mapping source name → source row.
+        Names not found in the database are absent from the returned dict.
+        """
+        if not names:
+            return {}
+        result = (
+            self._db.table("sources")
+            .select("*")
+            .in_("name", names)
+            .execute()
+        )
+        return {row["name"]: row for row in result.data}

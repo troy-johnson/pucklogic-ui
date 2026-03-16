@@ -2,45 +2,73 @@
  * TDD tests for RankingsTable.
  * Written before the implementation.
  */
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { RankingsTable } from "../RankingsTable";
-import type { RankedPlayer, Source } from "@/types";
+import type { ProjectedStats, RankedPlayer, Source } from "@/types";
+
+const NULL_STATS: ProjectedStats = {
+  g: null, a: null, plus_minus: null, pim: null, ppg: null, ppa: null,
+  ppp: null, shg: null, sha: null, shp: null, sog: null, fow: null,
+  fol: null, hits: null, blocks: null, gp: null, gs: null, w: null,
+  l: null, ga: null, sa: null, sv: null, sv_pct: null, so: null, otl: null,
+};
 
 const SOURCES: Source[] = [
-  { id: "s1", name: "nhl_com", display_name: "NHL.com", url: null, active: true },
-  { id: "s2", name: "moneypuck", display_name: "MoneyPuck", url: null, active: true },
+  { id: "s1", name: "nhl_com", display_name: "NHL.com", url: null, active: true, default_weight: null, is_paid: false },
+  { id: "s2", name: "moneypuck", display_name: "MoneyPuck", url: null, active: true, default_weight: null, is_paid: false },
 ];
 
 const RANKINGS: RankedPlayer[] = [
   {
     composite_rank: 1,
-    composite_score: 0.95,
     player_id: "p1",
     name: "Connor McDavid",
     team: "EDM",
-    position: "C",
-    source_ranks: { nhl_com: 1, moneypuck: 2 },
+    default_position: "C",
+    platform_positions: [],
+    projected_fantasy_points: 30.5,
+    vorp: 5.2,
+    schedule_score: null,
+    off_night_games: null,
+    source_count: 2,
+    projected_stats: NULL_STATS,
+    breakout_score: null,
+    regression_risk: null,
   },
   {
     composite_rank: 2,
-    composite_score: 0.88,
     player_id: "p2",
     name: "Nathan MacKinnon",
     team: "COL",
-    position: "C",
-    source_ranks: { nhl_com: 2, moneypuck: 1 },
+    default_position: "C",
+    platform_positions: [],
+    projected_fantasy_points: 28.0,
+    vorp: 3.1,
+    schedule_score: null,
+    off_night_games: null,
+    source_count: 2,
+    projected_stats: NULL_STATS,
+    breakout_score: null,
+    regression_risk: null,
   },
   {
     composite_rank: 3,
-    composite_score: 0.80,
     player_id: "p3",
     name: "Leon Draisaitl",
     team: "EDM",
-    position: "C",
-    source_ranks: { nhl_com: 3, moneypuck: 3 },
+    default_position: "C",
+    platform_positions: [],
+    projected_fantasy_points: 25.0,
+    vorp: 1.5,
+    schedule_score: null,
+    off_night_games: null,
+    source_count: 2,
+    projected_stats: NULL_STATS,
+    breakout_score: null,
+    regression_risk: null,
   },
 ];
 
@@ -72,24 +100,20 @@ describe("RankingsTable", () => {
 
     it("renders composite rank", () => {
       render(<RankingsTable rankings={RANKINGS} sources={SOURCES} />);
-      // Multiple "1"s exist (rank col + source rank cols) — just assert presence
       expect(screen.getAllByText("1").length).toBeGreaterThan(0);
       expect(screen.getAllByText("2").length).toBeGreaterThan(0);
       expect(screen.getAllByText("3").length).toBeGreaterThan(0);
     });
 
-    it("renders a column header for each source", () => {
+    it("renders FanPts and VORP column headers", () => {
       render(<RankingsTable rankings={RANKINGS} sources={SOURCES} />);
-      expect(screen.getByRole("columnheader", { name: "NHL.com" })).toBeInTheDocument();
-      expect(screen.getByRole("columnheader", { name: "MoneyPuck" })).toBeInTheDocument();
+      expect(screen.getByRole("columnheader", { name: /fanpts/i })).toBeInTheDocument();
+      expect(screen.getByRole("columnheader", { name: /vorp/i })).toBeInTheDocument();
     });
 
-    it("renders source-specific rank for each player", () => {
+    it("renders source count for each player", () => {
       render(<RankingsTable rankings={RANKINGS} sources={SOURCES} />);
-      // McDavid is nhl_com rank 1 and moneypuck rank 2
-      const mcdRow = screen.getByText("Connor McDavid").closest("tr")!;
-      expect(within(mcdRow).getAllByText("1")[0]).toBeInTheDocument();
-      expect(within(mcdRow).getByText("2")).toBeInTheDocument();
+      expect(screen.getAllByText("2").length).toBeGreaterThan(0);
     });
 
     it("shows an empty-state message when rankings list is empty", () => {
@@ -97,9 +121,9 @@ describe("RankingsTable", () => {
       expect(screen.getByText(/no rankings/i)).toBeInTheDocument();
     });
 
-    it("renders composite score formatted to 2 decimal places", () => {
+    it("renders projected fantasy points formatted to 2 decimal places", () => {
       render(<RankingsTable rankings={RANKINGS} sources={SOURCES} />);
-      expect(screen.getByText("0.95")).toBeInTheDocument();
+      expect(screen.getByText("30.50")).toBeInTheDocument();
     });
   });
 

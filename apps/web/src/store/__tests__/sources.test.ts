@@ -10,8 +10,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { createSourcesSlice, type SourcesSlice } from "@/store/slices/sources";
 import type { Source } from "@/types";
 
-const NHL: Source = { id: "s1", name: "nhl_com", display_name: "NHL.com", url: null, active: true };
-const MP: Source = { id: "s2", name: "moneypuck", display_name: "MoneyPuck", url: null, active: true };
+const NHL: Source = { id: "s1", name: "nhl_com", display_name: "NHL.com", url: null, active: true, default_weight: null, is_paid: false };
+const MP: Source = { id: "s2", name: "moneypuck", display_name: "MoneyPuck", url: null, active: true, default_weight: null, is_paid: false };
 
 function makeStore() {
   return create<SourcesSlice>()((...a) => ({ ...createSourcesSlice(...a) }));

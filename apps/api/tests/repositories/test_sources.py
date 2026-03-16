@@ -110,3 +110,38 @@ class TestGetByName:
         chain.return_value.maybe_single.return_value.execute.return_value.data = None
         repo.get_by_name("nhl_com")
         chain.assert_called_once_with("name", "nhl_com")
+
+
+class TestGetByNames:
+    def _chain(self, mock_db: MagicMock) -> MagicMock:
+        chain = mock_db.table.return_value.select.return_value.in_.return_value
+        return chain.execute.return_value
+
+    def test_returns_dict_keyed_by_name(
+        self, repo: SourceRepository, mock_db: MagicMock
+    ) -> None:
+        self._chain(mock_db).data = [NHL_SOURCE, MP_SOURCE]
+        result = repo.get_by_names(["nhl_com", "moneypuck"])
+        assert result == {"nhl_com": NHL_SOURCE, "moneypuck": MP_SOURCE}
+
+    def test_missing_name_absent_from_result(
+        self, repo: SourceRepository, mock_db: MagicMock
+    ) -> None:
+        self._chain(mock_db).data = [NHL_SOURCE]
+        result = repo.get_by_names(["nhl_com", "unknown"])
+        assert "unknown" not in result
+        assert "nhl_com" in result
+
+    def test_empty_names_returns_empty_dict(
+        self, repo: SourceRepository, mock_db: MagicMock
+    ) -> None:
+        result = repo.get_by_names([])
+        assert result == {}
+        mock_db.table.assert_not_called()
+
+    def test_uses_in_filter(self, repo: SourceRepository, mock_db: MagicMock) -> None:
+        self._chain(mock_db).data = []
+        repo.get_by_names(["nhl_com"])
+        mock_db.table.return_value.select.return_value.in_.assert_called_once_with(
+            "name", ["nhl_com"]
+        )

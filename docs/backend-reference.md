@@ -9,54 +9,52 @@
 
 ```
 apps/api/
-├── main.py                 # FastAPI app, startup, CORS
-├── routers/
-│   ├── rankings.py         # /api/rankings routes
-│   ├── players.py          # /api/players routes
-│   ├── trends.py           # /api/trends routes
-│   ├── kits.py             # /api/kits routes
-│   ├── exports.py          # /api/exports routes
-│   ├── draft.py            # /api/draft routes + WebSocket
-│   ├── scoring.py          # /api/scoring routes
-│   ├── auth.py             # /api/auth routes
-│   └── stripe.py           # /api/stripe routes
-├── services/
-│   ├── projections.py      # Aggregation pipeline: aggregate_projections, compute_weighted_stats, apply_scoring_config, compute_vorp
-│   ├── exports.py          # PDF/Excel generation
-│   ├── draft.py            # Draft session management
-│   └── scoring.py          # Scoring translation layer
+├── main.py                      # FastAPI app, CORS, router registration
+├── core/
+│   ├── config.py                # pydantic-settings (reads .env)
+│   └── dependencies.py          # FastAPI Depends() helpers
 ├── models/
-│   ├── players.py          # Pydantic models + SQLAlchemy
-│   ├── rankings.py
-│   ├── kits.py
-│   └── exports.py
+│   └── schemas.py               # All Pydantic request/response schemas
+├── repositories/
+│   ├── league_profiles.py       # LeagueProfileRepository (list, get, create)
+│   ├── players.py               # PlayerRepository
+│   ├── projections.py           # ProjectionRepository (get_by_season)
+│   ├── rankings.py              # RankingsRepository (legacy — not used by pipeline)
+│   ├── scoring_configs.py       # ScoringConfigRepository (list, get, create)
+│   ├── sources.py               # SourceRepository (list, get_by_name)
+│   └── subscriptions.py         # SubscriptionRepository
+├── routers/
+│   ├── exports.py               # POST /exports/generate — PDF/Excel streaming
+│   ├── health.py                # GET /health
+│   ├── league_profiles.py       # GET/POST /league-profiles (owner-scoped, VORP input)
+│   ├── rankings.py              # POST /rankings/compute — projection aggregation pipeline
+│   ├── scoring_configs.py       # GET/POST /scoring-configs (presets + custom)
+│   ├── sources.py               # GET /sources
+│   ├── stripe.py                # POST /stripe/create-checkout-session + /webhook
+│   └── user_kits.py             # GET/POST/DELETE /user-kits (source-weight presets)
+├── services/
+│   ├── cache.py                 # CacheService — Upstash Redis, 6h TTL, SHA-256 keys, SCAN invalidation
+│   ├── exports.py               # generate_excel(), generate_pdf() — new RankedPlayer shape
+│   ├── projections.py           # aggregate_projections, compute_weighted_stats, apply_scoring_config, compute_vorp
+│   ├── rankings.py              # Legacy rank-based pipeline (not used by /rankings/compute)
+│   └── scoring_validation.py   # validate_scoring_config() — PPP/PPG/PPA + SHP/SHG/SHA mutual exclusion
 ├── scrapers/
-│   ├── base.py             # BaseScraper ABC — stat sources (NHL.com, MoneyPuck) → player_stats
-│   ├── base_projection.py  # BaseProjectionScraper ABC — projection sources → player_projections
-│   ├── nhl_api.py          # NhlComScraper (BaseScraper) → player_stats
-│   ├── moneypuck.py        # MoneyPuckScraper (BaseScraper) → player_stats
-│   ├── nst.py              # Natural Stat Trick (BeautifulSoup) → player_stats
-│   ├── projection/         # Projection source scrapers (BaseProjectionScraper)
-│   │   ├── hashtag_hockey.py
-│   │   ├── daily_faceoff.py
-│   │   ├── apples_ginos.py
-│   │   ├── lineup_experts.py
-│   │   ├── yahoo.py
-│   │   └── fantrax.py
-│   └── matching.py         # Player name/ID resolution (rapidfuzz)
-├── ml/
-│   ├── train.py            # Model training pipeline
-│   ├── predict.py          # Batch inference, Celery task
-│   ├── features.py         # Feature engineering
-│   └── pucklogic_model.joblib  # Serialized XGBoost model
-├── tasks/
-│   ├── celery_app.py       # Celery config + Redis broker
-│   ├── export_tasks.py     # Async export generation
-│   └── ml_tasks.py         # Nightly re-scoring task
+│   ├── base.py                  # BaseScraper ABC — stat sources → player_stats
+│   ├── base_projection.py       # BaseProjectionScraper ABC — projection sources → player_projections
+│   ├── nhl_com.py               # NhlComScraper → player_stats
+│   ├── moneypuck.py             # MoneyPuckScraper → player_stats
+│   └── (projection/ scrapers — Phase 2 backlog)
 └── tests/
-    ├── conftest.py
-    ├── repositories/
-    └── routers/
+    ├── conftest.py              # client fixture (TestClient)
+    ├── test_health.py
+    ├── repositories/            # test_players, test_projections, test_sources,
+    │                            #   test_league_profiles, test_scoring_configs, test_subscriptions
+    ├── routers/                 # test_rankings, test_exports, test_sources,
+    │                            #   test_league_profiles, test_scoring_configs,
+    │                            #   test_stripe, test_user_kits
+    ├── scrapers/                # test_base, test_base_projection, test_nhl_com, test_moneypuck
+    └── services/                # test_projections, test_cache, test_exports,
+                                 #   test_rankings (legacy), test_scoring_validation
 ```
 
 ---
@@ -390,41 +388,53 @@ async def get_kit(kit_id: str, current_user: User = Depends(get_current_user)):
 
 ## 4. API Routes
 
+### Implemented (Phase 2)
+
 ```
-POST   /api/auth/login              — Supabase JWT login + migrate anon session kits
-POST   /api/auth/register           — Create account, migrate session kits to user_id
+GET    /health                       — Health check
 
-GET    /api/rankings                 — Aggregated rankings (accepts source_weights query param)
-POST   /api/rankings/compute         — Compute and cache rankings for a kit
-GET    /api/rankings/sources         — Available active ranking sources
+GET    /sources                      — List active sources (system + user's custom)
 
-POST   /api/kits                     — Save kit (auth or session_token)
-GET    /api/kits                     — List user's saved kits
-GET    /api/kits/{id}                — Get specific kit
-PUT    /api/kits/{id}                — Update kit weights/config
-DELETE /api/kits/{id}                — Delete kit
+POST   /rankings/compute             — Projection aggregation pipeline (auth required)
+                                       Body: { season, source_weights, scoring_config_id,
+                                               platform, league_profile_id? }
 
-GET    /api/players                  — Player list with search/filter (position, team)
-GET    /api/players/{id}             — Player detail with current season stats
-GET    /api/players/{id}/trends      — Player trend data + SHAP explanation
+GET    /scoring-configs/presets      — List preset scoring configs (public — no auth required)
+GET    /scoring-configs              — List presets + user's custom configs (auth required)
+POST   /scoring-configs              — Create custom scoring config (auth required)
+                                       Validates: PPP+PPG/PPA and SHP+SHG/SHA mutual exclusion → HTTP 400
 
-GET    /api/trends/breakouts         — Top breakout candidates (paginated)
-GET    /api/trends/regressions       — Regression watchlist (paginated)
+GET    /league-profiles              — List user's league profiles (auth required)
+POST   /league-profiles              — Create league profile (auth required)
+                                       platform: espn | yahoo | fantrax
 
-GET    /api/scoring/presets          — Available scoring presets
-POST   /api/scoring/custom           — Save custom scoring config (auth required)
+GET    /user-kits                    — List user's source-weight presets (auth required)
+POST   /user-kits                    — Create source-weight preset (auth required)
+DELETE /user-kits/{id}               — Delete preset (auth required, owner only)
 
-POST   /api/exports/pdf              — Enqueue PDF cheat sheet (async, Celery)
-POST   /api/exports/excel            — Enqueue Excel workbook (async, Celery)
-GET    /api/exports/{id}/status      — Poll export job status
-GET    /api/exports/{id}/download    — Redirect to Supabase Storage URL
+POST   /exports/generate             — Run pipeline and stream PDF or Excel (auth required)
+                                       Body: same as /rankings/compute + export_type: pdf|excel
+                                       Returns streaming bytes (Content-Disposition: attachment)
 
-POST   /api/draft/session            — Create draft session (requires active subscription)
-GET    /api/draft/session/{id}       — Get session state
-WS     /ws/draft/{session_id}        — WebSocket for live draft updates
+POST   /stripe/create-checkout-session  — Stripe checkout (auth required)
+POST   /stripe/webhook               — Stripe webhook (signature-verified)
+```
 
-POST   /api/stripe/checkout          — Create Stripe checkout session (returns URL)
-POST   /api/stripe/webhook           — Stripe webhook → upsert subscriptions table
+### Planned (Phase 3+, not yet implemented)
+
+```
+POST   /auth/login                   — Supabase JWT login
+POST   /auth/register                — Account creation
+
+GET    /players                      — Player list with search/filter
+GET    /players/{id}                 — Player detail with stats
+GET    /players/{id}/trends          — Breakout/regression scores + SHAP
+
+GET    /trends/breakouts             — Top breakout candidates
+GET    /trends/regressions           — Regression watchlist
+
+POST   /draft/session                — Create draft session (subscription required)
+WS     /ws/draft/{session_id}        — Live draft WebSocket
 ```
 
 ### Auth Middleware Pattern
@@ -698,15 +708,14 @@ async def get_player_trends(player_id: str):
 
 | Type | Library | Trigger | Delivery |
 |------|---------|---------|---------|
-| PDF — Print & Draft | WeasyPrint | `POST /api/exports/pdf` | Supabase Storage (24hr TTL) |
-| Excel — Draft Kit | openpyxl | `POST /api/exports/excel` | Supabase Storage (24hr TTL) |
-| Bundle (PDF + Excel) | Both | `POST /api/exports/bundle` | Both links |
+| PDF — Print & Draft | WeasyPrint | `POST /exports/generate` (`export_type: pdf`) | Streaming bytes — browser download |
+| Excel — Draft Kit | openpyxl | `POST /exports/generate` (`export_type: excel`) | Streaming bytes — browser download |
 
 Exports are read-only outputs — no import slots, no VBA. Users may export as many times as they want with any weight configuration at no additional cost.
 
 **Excel — 2 sheets:**
-- **Sheet 1 — Full Rankings:** ADP (blank — v1.0 placeholder), TAKEN (user marks `X`, conditional formatting greys/strikes the row), PLAYER, TEAM, POS, FanPts, FP/GP, VORP, PRNK, GP, OFF (off-night games), then all stat columns (skater stats grouped, then goalie stats grouped; null = `—`).
-- **Sheet 2 — Best Available:** Position-grouped (CENTER, LEFT WING, RIGHT WING, DEFENSE, GOALIES, MULTI-POSITIONAL). Driven by Excel `FILTER` formulas referencing Sheet 1's TAKEN column — works in Excel and Google Sheets.
+- **Sheet 1 — "Full Rankings {season}":** Rank, Player, Team, Pos, FanPts, VORP, ScheduleScore, OffNightGames, SourceCount, then all stat columns (skater stats, then goalie stats; null = `—`).
+- **Sheet 2 — "By Position":** Players grouped by position (C, LW, RW, D, G) with a header row per group. Same columns as Sheet 1.
 
 Header block on both sheets: league settings, source weights used, PuckLogic Recommended flag, generated date and season.
 
@@ -714,21 +723,7 @@ Header block on both sheets: league settings, source weights used, PuckLogic Rec
 
 **`ExportRequest`** schema fields: `season`, `source_weights`, `scoring_config_id`, `platform`, `league_profile_id` (optional). `generate_excel()` and `generate_pdf()` in `services/exports.py` accept and render: fantasy points, VORP, off-night games, full `projected_stats` object.
 
-```python
-# tasks/export_tasks.py
-from celery import shared_task
-
-@shared_task
-def generate_pdf_export(export_id: str, kit_id: str, user_id: str):
-    """
-    1. Fetch ranked players for kit_id
-    2. Generate PDF via WeasyPrint
-    3. Upload to Supabase Storage
-    4. Update exports.status = 'complete', set storage_url
-    5. On failure: update exports.status = 'failed'
-    """
-    ...
-```
+Exports are synchronous streaming responses — no Celery job or Supabase Storage upload. `services/exports.py` exposes `generate_excel(ranked, season)` and `generate_pdf(ranked, season)` which return raw bytes; the router wraps them in `StreamingResponse` with the appropriate `Content-Disposition: attachment` header.
 
 ---
 

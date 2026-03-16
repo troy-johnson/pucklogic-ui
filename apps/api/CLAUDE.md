@@ -98,9 +98,6 @@ Do not build Layer 2 Celery jobs, Z-score computation, or the paywall gate until
 |------|--------|-------|
 | `routers/auth.py` | ⬜ TODO | POST /auth/login, /auth/register |
 | `routers/players.py` | ⬜ TODO | GET /players, GET /players/{id} |
-| `routers/scoring.py` | ⬜ TODO | Scoring config CRUD (presets + custom); must enforce PPP/PPG/PPA and SHP/SHG/SHA double-count validation at creation |
-| `routers/league_profiles.py` | ⬜ TODO | CRUD /league-profiles — owner-scoped; required for VORP computation |
-| `scrapers/base_projection.py` | ⬜ TODO | `BaseProjectionScraper` ABC for projection source scrapers |
 | `scrapers/projection/` | ⬜ TODO | HashtagHockey, DailyFaceoff, Apples & Ginos, LineupExperts, Yahoo, Fantrax scrapers |
 | `scrapers/nst.py` | ⬜ TODO | Natural Stat Trick HTML scraper — writes to `player_stats` |
 | `scrapers/matching.py` | ⬜ TODO | Player name/ID resolution via rapidfuzz (Phase 1 backlog) |

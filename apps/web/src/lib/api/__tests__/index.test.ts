@@ -67,14 +67,14 @@ describe("apiFetch", () => {
 
     it("includes the HTTP status on ApiError", async () => {
       mockFetch({ ok: false, status: 403, text: async () => "Forbidden" });
-      const err = await apiFetch("/secret").catch((e) => e);
+      const err = (await apiFetch("/secret").catch((e: unknown) => e as ApiError)) as ApiError;
       expect(err).toBeInstanceOf(ApiError);
       expect(err.status).toBe(403);
     });
 
     it("includes the response body in the error message", async () => {
       mockFetch({ ok: false, status: 422, text: async () => "Unprocessable" });
-      const err = await apiFetch("/broken").catch((e) => e);
+      const err = (await apiFetch("/broken").catch((e: unknown) => e as ApiError)) as ApiError;
       expect(err.message).toBe("Unprocessable");
     });
   });

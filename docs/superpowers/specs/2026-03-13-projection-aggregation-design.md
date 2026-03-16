@@ -1,7 +1,7 @@
 # Projection Aggregation System — Design Spec
 
 **Date:** 2026-03-13
-**Status:** Approved
+**Status:** Implemented (PR #15, 2026-03-15)
 **Scope:** v1.0 (Phase 2 redesign + Phase 3 export)
 
 ---

@@ -10,8 +10,8 @@ import { SourceWeightSelector } from "../SourceWeightSelector";
 import type { Source } from "@/types";
 
 const SOURCES: Source[] = [
-  { id: "s1", name: "nhl_com", display_name: "NHL.com", url: null, active: true },
-  { id: "s2", name: "moneypuck", display_name: "MoneyPuck", url: null, active: true },
+  { id: "s1", name: "nhl_com", display_name: "NHL.com", url: null, active: true, default_weight: null, is_paid: false },
+  { id: "s2", name: "moneypuck", display_name: "MoneyPuck", url: null, active: true, default_weight: null, is_paid: false },
 ];
 
 const WEIGHTS = { nhl_com: 60, moneypuck: 40 };
