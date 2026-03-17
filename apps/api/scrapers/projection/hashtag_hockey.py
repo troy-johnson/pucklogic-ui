@@ -12,6 +12,12 @@ Site notes:
   Scraper multiplies each rate × GP to produce projected season totals (integers).
 - Goalie rows are included (SHO, W, SV%, GAA columns); skater-only columns are
   empty for goalies and are skipped (None).
+
+**Note on column mapping**: HashtagHockey publishes per-game rates (G/gp, A/gp, etc.) rather than
+season totals. This scraper multiplies each rate by GP to produce season totals before upserting.
+Because of this rate-conversion step, it cannot use the shared `apply_column_map()` helper
+directly — instead it implements its own mapping logic that respects the same None-stripping
+contract.
 """
 
 from __future__ import annotations
