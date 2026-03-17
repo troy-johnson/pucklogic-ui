@@ -56,11 +56,24 @@ def _build_auth_response(resp: Any) -> AuthResponse:
     )
 
 
-@router.post("/register", response_model=AuthResponse)
-async def register(req: RegisterRequest) -> AuthResponse:
+@router.post("/register", response_model=AuthResponse, status_code=200)
+async def register(req: RegisterRequest) -> AuthResponse | dict[str, str]:
     """Create a new user account via Supabase Auth."""
     try:
         resp = _get_auth_client().sign_up({"email": req.email, "password": req.password})
+        if resp.session is None:
+            # Email confirmation required — session not yet available
+            from fastapi.responses import JSONResponse
+
+            return JSONResponse(
+                status_code=202,
+                content={
+                    "message": (
+                        "Confirmation email sent. "
+                        "Please verify your email to complete registration."
+                    )
+                },
+            )
         return _build_auth_response(resp)
     except Exception as exc:
         msg = str(exc).lower()
@@ -87,7 +100,7 @@ async def login(req: LoginRequest) -> AuthResponse:
 async def logout(user: dict[str, Any] = Depends(_require_auth)) -> None:
     """Sign out the current user session."""
     try:
-        _get_auth_client().sign_out()
+        _get_auth_client().admin.sign_out(user["id"])
     except Exception as exc:
         logger.warning("Logout failed: %s", exc)
         # Sign-out failure is non-fatal — token will expire naturally
