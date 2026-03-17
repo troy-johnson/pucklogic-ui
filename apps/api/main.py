@@ -6,6 +6,7 @@ from routers import (
     exports,
     health,
     league_profiles,
+    players,
     rankings,
     scoring_configs,
     sources,
@@ -31,6 +32,7 @@ app.add_middleware(
 )
 
 app.include_router(health.router)
+app.include_router(players.router)
 app.include_router(sources.router)
 app.include_router(rankings.router)
 app.include_router(exports.router)
