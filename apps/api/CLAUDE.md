@@ -96,8 +96,8 @@ Do not build Layer 2 Celery jobs, Z-score computation, or the paywall gate until
 
 | Area | Status | Notes |
 |------|--------|-------|
-| `routers/auth.py` | ⬜ TODO | POST /auth/login, /auth/register |
-| `routers/players.py` | ⬜ TODO | GET /players, GET /players/{id} |
+| `routers/auth.py` | ✅ Complete | POST /auth/register,login,logout,refresh + GET /auth/me; thin Supabase Auth wrapper; email-confirmation 202 path; admin.sign_out for token revocation |
+| `routers/players.py` | ✅ Complete | GET /players, GET /players/{id} |
 | `scrapers/projection/` | ⬜ TODO | HashtagHockey, DailyFaceoff, Apples & Ginos, LineupExperts, Yahoo, Fantrax scrapers |
 | `scrapers/nst.py` | ⬜ TODO | Natural Stat Trick HTML scraper — writes to `player_stats` |
 | `scrapers/matching.py` | ⬜ TODO | Player name/ID resolution via rapidfuzz (Phase 1 backlog) |
