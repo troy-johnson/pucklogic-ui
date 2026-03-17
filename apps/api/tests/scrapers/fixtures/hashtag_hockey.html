@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html>
+<head><title>HashtagHockey - Fantasy Hockey Projections</title></head>
+<body>
+<!-- Fixture: static HTML table scraped from https://hashtaghockey.com/fantasy-hockey-projections
+     Data is per-game rates (G/gp, A/gp, SOG/gp, HIT/gp, PPP/gp) plus GP.
+     Scraper multiplies rates x GP to get season projected totals.
+     robots.txt returns 404 (no file) — scraper will fail-open (assume allowed).
+     Page is server-rendered ASP.NET WebForms — no JS rendering required.
+     Captured: 2026-03 -->
+<table class="table table-sm table-bordered table-striped table--statistics" cellspacing="0" rules="all" border="1" id="ContentPlaceHolder1_GridView1">
+<thead>
+<tr>
+<th scope="col">R#</th><th scope="col">ADP</th><th class="mw180" scope="col"><a href="javascript:__doPostBack('ctl00$ContentPlaceHolder1$GridView1','Sort$NAME')">PLAYER</a></th><th scope="col"><a href="javascript:__doPostBack('ctl00$ContentPlaceHolder1$GridView1','Sort$posm')">POS</a></th><th scope="col"><a href="javascript:__doPostBack('ctl00$ContentPlaceHolder1$GridView1','Sort$tsum')">TEAM</a></th><th scope="col"><a href="javascript:__doPostBack('ctl00$ContentPlaceHolder1$GridView1','Sort$GP')">GP</a></th><th scope="col"><a href="javascript:__doPostBack('ctl00$ContentPlaceHolder1$GridView1','Sort$TIME_ON_ICE')">TOI</a></th><th scope="col"><a href="javascript:__doPostBack('ctl00$ContentPlaceHolder1$GridView1','Sort$GOALS')">G</a></th><th scope="col"><a href="javascript:__doPostBack('ctl00$ContentPlaceHolder1$GridView1','Sort$ASSISTS')">A</a></th><th scope="col"><a href="javascript:__doPostBack('ctl00$ContentPlaceHolder1$GridView1','Sort$PLUS_MINUS')">+/-</a></th><th scope="col"><a href="javascript:__doPostBack('ctl00$ContentPlaceHolder1$GridView1','Sort$SHOTS_ON_GOAL')">SOG</a></th><th scope="col"><a href="javascript:__doPostBack('ctl00$ContentPlaceHolder1$GridView1','Sort$HITS')">HIT</a></th><th scope="col"><a href="javascript:__doPostBack('ctl00$ContentPlaceHolder1$GridView1','Sort$PP_POINTS')">PPP</a></th><th scope="col"><a href="javascript:__doPostBack('ctl00$ContentPlaceHolder1$GridView1','Sort$SHUTOUT')">SHO</a></th><th scope="col"><a href="javascript:__doPostBack('ctl00$ContentPlaceHolder1$GridView1','Sort$WIN')">W</a></th><th class="mw120" scope="col"><a href="javascript:__doPostBack('ctl00$ContentPlaceHolder1$GridView1','Sort$SAVES_PERCENTAGE')">SV%</a></th><th scope="col"><a href="javascript:__doPostBack('ctl00$ContentPlaceHolder1$GridView1','Sort$GOALS_AGAINST')">GAA</a></th><th scope="col"><a href="javascript:__doPostBack('ctl00$ContentPlaceHolder1$GridView1','Sort$totalz')">TOTAL</a></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+                              1
+                              
+                             
+                          </td><td>
+                       2.2
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_0">Nathan MacKinnon</span>
+</td><td>C</td><td>COL</td><td>17</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFTOIzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_0">22.1</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFTOI" type="hidden" value="0.0252115228"/>
+<br/>
+</td><td class="elite">
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFGOALSzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_0">0.59</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFGOALS" type="hidden" value="2.7828495423"/>
+<br/>
+</td><td class="elite">
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFASSISTSzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_0">1.00</span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFASSISTS" type="hidden" value="3.4839666213"/>
+<br/>
+</td><td class="elite">
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFPLUS_MINUSzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_0">0.57</span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFPLUS_MINUS" type="hidden" value="5.3301793410"/>
+<br/>
+</td><td class="elite">
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFSHOTS_ON_GOALzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_0">4.35</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFSHOTS_ON_GOAL" type="hidden" value="3.1454249377"/>
+<br/>
+</td><td class="ngood">
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFHITSzz" type="hidden" value="ngood"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_0">0.77</span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFHITS" type="hidden" value="-1.0447824089"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFPP_POINTSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_0">0.41</span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFPP_POINTS" type="hidden" value="2.0278536771"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFSHUTOUTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_0"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFSHUTOUT" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFWINzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_0"></span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFWIN" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFSAVES_PERCENTAGEzz" type="hidden"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_0"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFSAVES_PERCENTAGE" type="hidden" value="0.0000000000"/>
+<span class="float-end small" style="font-size: 0.7em;">(/)</span>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFGOALS_AGAINSTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_0"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_0" name="ctl00$ContentPlaceHolder1$GridView1$ctl02$HFGOALS_AGAINST" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_0">15.73</span>
+</td>
+</tr><tr>
+<td>
+                              2
+                              
+                             
+                          </td><td>
+                       1.4
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_1">Connor McDavid</span>
+</td><td>C</td><td>EDM</td><td>13</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFTOIzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_1">22.6</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFTOI" type="hidden" value="0.0359996179"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFGOALSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_1">0.54</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFGOALS" type="hidden" value="2.3711854088"/>
+<br/>
+</td><td class="elite">
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFASSISTSzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_1">1.08</span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFASSISTS" type="hidden" value="3.9237460144"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFPLUS_MINUSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_1">0.27</span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFPLUS_MINUS" type="hidden" value="2.2252205016"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFSHOTS_ON_GOALzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_1">3.39</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFSHOTS_ON_GOAL" type="hidden" value="1.8514294682"/>
+<br/>
+</td><td class="ngood">
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFHITSzz" type="hidden" value="ngood"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_1">0.54</span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFHITS" type="hidden" value="-1.3221690836"/>
+<br/>
+</td><td class="elite">
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFPP_POINTSzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_1">0.62</span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFPP_POINTS" type="hidden" value="3.7289044888"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFSHUTOUTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_1"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFSHUTOUT" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFWINzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_1"></span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFWIN" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFSAVES_PERCENTAGEzz" type="hidden"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_1"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFSAVES_PERCENTAGE" type="hidden" value="0.0000000000"/>
+<span class="float-end small" style="font-size: 0.7em;">(/)</span>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFGOALS_AGAINSTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_1"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_1" name="ctl00$ContentPlaceHolder1$GridView1$ctl03$HFGOALS_AGAINST" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_1">12.78</span>
+</td>
+</tr><tr>
+<td>
+                              3
+                              
+                             
+                          </td><td>
+                       4.3
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_2">Nikita Kucherov</span>
+</td><td>RW</td><td>TB</td><td>16</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFTOIzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_2">20.4</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFTOI" type="hidden" value="-0.0073296166"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFGOALSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_2">0.50</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFGOALS" type="hidden" value="2.0583206674"/>
+<br/>
+</td><td class="elite">
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFASSISTSzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_2">1.06</span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFASSISTS" type="hidden" value="3.8437861248"/>
+<br/>
+</td><td class="elite">
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFPLUS_MINUSzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_2">0.35</span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFPLUS_MINUS" type="hidden" value="3.0635593883"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFSHOTS_ON_GOALzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_2">3.00</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFSHOTS_ON_GOAL" type="hidden" value="1.3367721792"/>
+<br/>
+</td><td class="ngood">
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFHITSzz" type="hidden" value="ngood"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_2">0.50</span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFHITS" type="hidden" value="-1.3686038573"/>
+<br/>
+</td><td class="elite">
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFPP_POINTSzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_2">0.56</span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFPP_POINTS" type="hidden" value="3.2931673350"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFSHUTOUTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_2"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFSHUTOUT" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFWINzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_2"></span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFWIN" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFSAVES_PERCENTAGEzz" type="hidden"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_2"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFSAVES_PERCENTAGE" type="hidden" value="0.0000000000"/>
+<span class="float-end small" style="font-size: 0.7em;">(/)</span>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFGOALS_AGAINSTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_2"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_2" name="ctl00$ContentPlaceHolder1$GridView1$ctl04$HFGOALS_AGAINST" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_2">12.23</span>
+</td>
+</tr><tr>
+<td>
+                              4
+                              
+                             
+                          </td><td>
+                       34.2
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_3">Jason Robertson</span>
+</td><td>LW,RW</td><td>DAL</td><td>16</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFTOIzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_3">19.7</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFTOI" type="hidden" value="-0.0216154911"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFGOALSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_3">0.50</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFGOALS" type="hidden" value="2.0583206674"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFASSISTSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_3">0.69</span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFASSISTS" type="hidden" value="1.7020033658"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFPLUS_MINUSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_3">0.24</span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFPLUS_MINUS" type="hidden" value="1.9871736572"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFSHOTS_ON_GOALzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_3">3.31</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFSHOTS_ON_GOAL" type="hidden" value="1.7551818713"/>
+<br/>
+</td><td class="ngood">
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFHITSzz" type="hidden" value="ngood"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_3">0.63</span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFHITS" type="hidden" value="-1.2158578911"/>
+<br/>
+</td><td class="elite">
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFPP_POINTSzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_3">0.50</span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFPP_POINTS" type="hidden" value="2.7652550142"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFSHUTOUTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_3"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFSHUTOUT" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFWINzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_3"></span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFWIN" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFSAVES_PERCENTAGEzz" type="hidden"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_3"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFSAVES_PERCENTAGE" type="hidden" value="0.0000000000"/>
+<span class="float-end small" style="font-size: 0.7em;">(/)</span>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFGOALS_AGAINSTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_3"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_3" name="ctl00$ContentPlaceHolder1$GridView1$ctl05$HFGOALS_AGAINST" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_3">9.05</span>
+</td>
+</tr><tr>
+<td>
+                              5
+                              
+                             
+                          </td><td>
+                       2.8
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_4">Leon Draisaitl</span>
+</td><td>C,LW</td><td>EDM</td><td>13</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFTOIzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_4">21.7</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFTOI" type="hidden" value="0.0174692469"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFGOALSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_4">0.46</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFGOALS" type="hidden" value="1.7454559259"/>
+<br/>
+</td><td class="elite">
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFASSISTSzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_4">0.85</span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFASSISTS" type="hidden" value="2.6044078349"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFPLUS_MINUSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_4">0.22</span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFPLUS_MINUS" type="hidden" value="1.7077273617"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFSHOTS_ON_GOALzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_4">2.85</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFSHOTS_ON_GOAL" type="hidden" value="1.1309092636"/>
+<br/>
+</td><td class="ngood">
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFHITSzz" type="hidden" value="ngood"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_4">0.54</span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFHITS" type="hidden" value="-1.3221690836"/>
+<br/>
+</td><td class="elite">
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFPP_POINTSzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_4">0.54</span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFPP_POINTS" type="hidden" value="3.0836783188"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFSHUTOUTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_4"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFSHUTOUT" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFWINzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_4"></span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFWIN" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFSAVES_PERCENTAGEzz" type="hidden"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_4"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFSAVES_PERCENTAGE" type="hidden" value="0.0000000000"/>
+<span class="float-end small" style="font-size: 0.7em;">(/)</span>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFGOALS_AGAINSTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_4"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_4" name="ctl00$ContentPlaceHolder1$GridView1$ctl06$HFGOALS_AGAINST" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_4">8.95</span>
+</td>
+</tr><tr>
+<td>
+                              6
+                              
+                             
+                          </td><td>
+                       46.2
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_5">Martin Necas</span>
+</td><td>RW</td><td>COL</td><td>16</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFTOIzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_5">20.9</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFTOI" type="hidden" value="0.0018471420"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFGOALSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_5">0.44</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFGOALS" type="hidden" value="1.5478571419"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFASSISTSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_5">0.75</span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFASSISTS" type="hidden" value="2.0561114486"/>
+<br/>
+</td><td class="elite">
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFPLUS_MINUSzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_5">0.34</span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFPLUS_MINUS" type="hidden" value="2.9807604859"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFSHOTS_ON_GOALzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_5">2.69</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFSHOTS_ON_GOAL" type="hidden" value="0.9196992593"/>
+<br/>
+</td><td class="bavg">
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFHITSzz" type="hidden" value="bavg"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_5">1.06</span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFHITS" type="hidden" value="-0.6806360255"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFPP_POINTSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_5">0.38</span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFPP_POINTS" type="hidden" value="1.7178099330"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFSHUTOUTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_5"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFSHUTOUT" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFWINzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_5"></span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFWIN" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFSAVES_PERCENTAGEzz" type="hidden"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_5"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFSAVES_PERCENTAGE" type="hidden" value="0.0000000000"/>
+<span class="float-end small" style="font-size: 0.7em;">(/)</span>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFGOALS_AGAINSTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_5"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_5" name="ctl00$ContentPlaceHolder1$GridView1$ctl07$HFGOALS_AGAINST" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_5">8.54</span>
+</td>
+</tr><tr>
+<td>
+                              7
+                              
+                             
+                          </td><td>
+                       7.5
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_6">Kirill Kaprizov</span>
+</td><td>LW</td><td>MIN</td><td>13</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFTOIzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_6">22.3</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFTOI" type="hidden" value="0.0298097273"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFGOALSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_6">0.54</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFGOALS" type="hidden" value="2.3711854088"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFASSISTSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_6">0.69</span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFASSISTS" type="hidden" value="1.7248490486"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFPLUS_MINUSzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_6">0.16</span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFPLUS_MINUS" type="hidden" value="1.1281350450"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFSHOTS_ON_GOALzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_6">3.46</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFSHOTS_ON_GOAL" type="hidden" value="1.9543609260"/>
+<br/>
+</td><td class="ngood">
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFHITSzz" type="hidden" value="ngood"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_6">0.69</span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFHITS" type="hidden" value="-1.1339860532"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFPP_POINTSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_6">0.46</span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFPP_POINTS" type="hidden" value="2.4468317095"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFSHUTOUTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_6"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFSHUTOUT" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFWINzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_6"></span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFWIN" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFSAVES_PERCENTAGEzz" type="hidden"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_6"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFSAVES_PERCENTAGE" type="hidden" value="0.0000000000"/>
+<span class="float-end small" style="font-size: 0.7em;">(/)</span>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFGOALS_AGAINSTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_6"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_6" name="ctl00$ContentPlaceHolder1$GridView1$ctl08$HFGOALS_AGAINST" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_6">8.49</span>
+</td>
+</tr><tr>
+<td>
+                              8
+                              
+                             
+                          </td><td>
+                       5.1
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_7">Cale Makar</span>
+</td><td>D</td><td>COL</td><td>16</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFTOIzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_7">25.0</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFTOI" type="hidden" value="0.0828855832"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFGOALSzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_7">0.25</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFGOALS" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFASSISTSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_7">0.81</span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFASSISTS" type="hidden" value="2.4159309521"/>
+<br/>
+</td><td class="elite">
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFPLUS_MINUSzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_7">0.36</span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFPLUS_MINUS" type="hidden" value="3.1567081534"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFSHOTS_ON_GOALzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_7">2.75</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFSHOTS_ON_GOAL" type="hidden" value="1.0025791344"/>
+<br/>
+</td><td class="ngood">
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFHITSzz" type="hidden" value="ngood"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_7">0.56</span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFHITS" type="hidden" value="-1.2916198903"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFPP_POINTSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_7">0.44</span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFPP_POINTS" type="hidden" value="2.2457222539"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFSHUTOUTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_7"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFSHUTOUT" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFWINzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_7"></span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFWIN" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFSAVES_PERCENTAGEzz" type="hidden"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_7"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFSAVES_PERCENTAGE" type="hidden" value="0.0000000000"/>
+<span class="float-end small" style="font-size: 0.7em;">(/)</span>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFGOALS_AGAINSTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_7"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_7" name="ctl00$ContentPlaceHolder1$GridView1$ctl09$HFGOALS_AGAINST" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_7">7.53</span>
+</td>
+</tr><tr>
+<td>
+                              9
+                              
+                             
+                          </td><td>
+                       15.7
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_8">Jack Eichel</span>
+</td><td>C</td><td>VEG</td><td>14</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFTOIzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_8">21.0</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFTOI" type="hidden" value="0.0035763813"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFGOALSzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_8">0.43</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFGOALS" type="hidden" value="1.4737575978"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFASSISTSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_8">0.71</span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFASSISTS" type="hidden" value="1.8505003037"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFPLUS_MINUSzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_8">0.19</span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFPLUS_MINUS" type="hidden" value="1.4179312033"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFSHOTS_ON_GOALzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_8">3.43</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFSHOTS_ON_GOAL" type="hidden" value="1.9102474441"/>
+<br/>
+</td><td class="ngood">
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFHITSzz" type="hidden" value="ngood"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_8">0.50</span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFHITS" type="hidden" value="-1.3686038573"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFPP_POINTSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_8">0.43</span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFPP_POINTS" type="hidden" value="2.1703062081"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFSHUTOUTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_8"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFSHUTOUT" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFWINzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_8"></span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFWIN" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFSAVES_PERCENTAGEzz" type="hidden"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_8"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFSAVES_PERCENTAGE" type="hidden" value="0.0000000000"/>
+<span class="float-end small" style="font-size: 0.7em;">(/)</span>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFGOALS_AGAINSTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_8"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_8" name="ctl00$ContentPlaceHolder1$GridView1$ctl10$HFGOALS_AGAINST" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_8">7.45</span>
+</td>
+</tr><tr>
+<td>
+                              10
+                              
+                             
+                          </td><td>
+                       7.7
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_9">David Pastrnak</span>
+</td><td>RW</td><td>BOS</td><td>16</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFTOIzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_9">20.3</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFTOI" type="hidden" value="-0.0091571081"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFGOALSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_9">0.44</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFGOALS" type="hidden" value="1.5478571419"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFASSISTSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_9">0.75</span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFASSISTS" type="hidden" value="2.0561114486"/>
+<br/>
+</td><td class="bavg">
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFPLUS_MINUSzz" type="hidden" value="bavg"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_9">0.02</span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFPLUS_MINUS" type="hidden" value="-0.3208457467"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFSHOTS_ON_GOALzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_9">3.69</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFSHOTS_ON_GOAL" type="hidden" value="2.2564714385"/>
+<br/>
+</td><td class="bavg">
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFHITSzz" type="hidden" value="bavg"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_9">1.06</span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFHITS" type="hidden" value="-0.6806360255"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFPP_POINTSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_9">0.44</span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFPP_POINTS" type="hidden" value="2.2457222539"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFSHUTOUTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_9"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFSHUTOUT" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFWINzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_9"></span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFWIN" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFSAVES_PERCENTAGEzz" type="hidden"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_9"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFSAVES_PERCENTAGE" type="hidden" value="0.0000000000"/>
+<span class="float-end small" style="font-size: 0.7em;">(/)</span>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFGOALS_AGAINSTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_9"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_9" name="ctl00$ContentPlaceHolder1$GridView1$ctl11$HFGOALS_AGAINST" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_9">7.10</span>
+</td>
+</tr><tr>
+<td>
+                              11
+                              
+                             
+                          </td><td>
+                       61.3
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_10">Matthew Tkachuk</span>
+</td><td>LW,RW</td><td>FLA</td><td>14</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFTOIzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_10">18.3</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFTOI" type="hidden" value="-0.0496566782"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFGOALSzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_10">0.43</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFGOALS" type="hidden" value="1.4737575978"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFASSISTSzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_10">0.64</span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFASSISTS" type="hidden" value="1.4449894347"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFPLUS_MINUSzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_10">0.08</span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFPLUS_MINUS" type="hidden" value="0.3104958839"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFSHOTS_ON_GOALzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_10">3.07</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFSHOTS_ON_GOAL" type="hidden" value="1.4316830039"/>
+<br/>
+</td><td class="bavg">
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFHITSzz" type="hidden" value="bavg"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_10">1.21</span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFHITS" type="hidden" value="-0.4961188983"/>
+<br/>
+</td><td class="elite">
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFPP_POINTSzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_10">0.50</span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFPP_POINTS" type="hidden" value="2.7652550142"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFSHUTOUTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_10"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFSHUTOUT" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFWINzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_10"></span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFWIN" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFSAVES_PERCENTAGEzz" type="hidden"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_10"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFSAVES_PERCENTAGE" type="hidden" value="0.0000000000"/>
+<span class="float-end small" style="font-size: 0.7em;">(/)</span>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFGOALS_AGAINSTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_10"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_10" name="ctl00$ContentPlaceHolder1$GridView1$ctl12$HFGOALS_AGAINST" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_10">6.93</span>
+</td>
+</tr><tr>
+<td>
+                              12
+                              
+                             
+                          </td><td>
+                       17.5
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_11">Jack Hughes</span>
+</td><td>C,LW</td><td>LA</td><td>15</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFTOIzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_11">21.3</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFTOI" type="hidden" value="0.0092750108"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFGOALSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_11">0.47</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFGOALS" type="hidden" value="1.7866223393"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFASSISTSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_11">0.73</span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFASSISTS" type="hidden" value="1.9590172969"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFPLUS_MINUSzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_11">0.15</span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFPLUS_MINUS" type="hidden" value="1.0039366914"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFSHOTS_ON_GOALzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_11">3.60</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFSHOTS_ON_GOAL" type="hidden" value="2.1388354867"/>
+<br/>
+</td><td class="ngood">
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFHITSzz" type="hidden" value="ngood"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_11">0.07</span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFHITS" type="hidden" value="-1.8977158843"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFPP_POINTSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_11">0.40</span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFPP_POINTS" type="hidden" value="1.9272989493"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFSHUTOUTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_11"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFSHUTOUT" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFWINzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_11"></span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFWIN" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFSAVES_PERCENTAGEzz" type="hidden"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_11"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFSAVES_PERCENTAGE" type="hidden" value="0.0000000000"/>
+<span class="float-end small" style="font-size: 0.7em;">(/)</span>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFGOALS_AGAINSTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_11"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_11" name="ctl00$ContentPlaceHolder1$GridView1$ctl13$HFGOALS_AGAINST" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_11">6.92</span>
+</td>
+</tr><tr>
+<td style="font-weight:bold;">R#</td><td style="font-weight:bold;">ADP</td><td style="font-weight:bold;">PLAYER</td><td style="font-weight:bold;">POS</td><td style="font-weight:bold;">TEAM</td><td style="font-weight:bold;">GP</td><td style="font-weight:bold;">TOI</td><td style="font-weight:bold;">G</td><td style="font-weight:bold;">A</td><td style="font-weight:bold;">+/-</td><td style="font-weight:bold;">SOG</td><td style="font-weight:bold;">HIT</td><td style="font-weight:bold;">PPP</td><td style="font-weight:bold;">SHO</td><td style="font-weight:bold;">W</td><td style="font-weight:bold;">SV%</td><td style="font-weight:bold;">GAA</td><td style="font-weight:bold;">TOTAL</td>
+</tr><tr>
+<td>
+                              13
+                              
+                             
+                          </td><td>
+                       9.9
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_12">Brady Tkachuk</span>
+</td><td>C,LW</td><td>OTT</td><td>15</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFTOIzz" type="hidden" value="bavg"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_12">17.4</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFTOI" type="hidden" value="-0.0670276729"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFGOALSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_12">0.47</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFGOALS" type="hidden" value="1.7866223393"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFASSISTSzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_12">0.47</span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFASSISTS" type="hidden" value="0.4397793932"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFPLUS_MINUSzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_12">0.05</span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFPLUS_MINUS" type="hidden" value="0.0413994512"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFSHOTS_ON_GOALzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_12">3.80</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFSHOTS_ON_GOAL" type="hidden" value="2.4061899226"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFHITSzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_12">2.67</span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFHITS" type="hidden" value="1.2794002130"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFPP_POINTSzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_12">0.27</span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFPP_POINTS" type="hidden" value="0.8128173830"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFSHUTOUTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_12"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFSHUTOUT" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFWINzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_12"></span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFWIN" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFSAVES_PERCENTAGEzz" type="hidden"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_12"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFSAVES_PERCENTAGE" type="hidden" value="0.0000000000"/>
+<span class="float-end small" style="font-size: 0.7em;">(/)</span>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFGOALS_AGAINSTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_12"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_12" name="ctl00$ContentPlaceHolder1$GridView1$ctl14$HFGOALS_AGAINST" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_12">6.77</span>
+</td>
+</tr><tr>
+<td>
+                              14
+                              
+                             
+                          </td><td>
+                       10.3
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_13">Mikko Rantanen</span>
+</td><td>LW,RW</td><td>DAL</td><td>8</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFTOIzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_13">20.3</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFTOI" type="hidden" value="-0.0100020773"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFGOALSzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_13">0.38</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFGOALS" type="hidden" value="1.0291603337"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFASSISTSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_13">0.75</span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFASSISTS" type="hidden" value="2.0561114486"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFPLUS_MINUSzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_13">0.11</span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFPLUS_MINUS" type="hidden" value="0.5795923167"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFSHOTS_ON_GOALzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_13">2.50</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFSHOTS_ON_GOAL" type="hidden" value="0.6683860896"/>
+<br/>
+</td><td class="ngood">
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFHITSzz" type="hidden" value="ngood"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_13">0.75</span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFHITS" type="hidden" value="-1.0631119249"/>
+<br/>
+</td><td class="elite">
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFPP_POINTSzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_13">0.50</span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFPP_POINTS" type="hidden" value="2.7652550142"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFSHUTOUTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_13"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFSHUTOUT" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFWINzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_13"></span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFWIN" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFSAVES_PERCENTAGEzz" type="hidden"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_13"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFSAVES_PERCENTAGE" type="hidden" value="0.0000000000"/>
+<span class="float-end small" style="font-size: 0.7em;">(/)</span>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFGOALS_AGAINSTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_13"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_13" name="ctl00$ContentPlaceHolder1$GridView1$ctl15$HFGOALS_AGAINST" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_13">6.04</span>
+</td>
+</tr><tr>
+<td>
+                              15
+                              
+                             
+                          </td><td>
+                       34.0
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_14">Matt Boldy</span>
+</td><td>LW,RW</td><td>MIN</td><td>14</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFTOIzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_14">20.4</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFTOI" type="hidden" value="-0.0071134617"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFGOALSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_14">0.50</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFGOALS" type="hidden" value="2.0583206674"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFASSISTSzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_14">0.57</span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFASSISTS" type="hidden" value="1.0337671450"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFPLUS_MINUSzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_14">0.11</span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFPLUS_MINUS" type="hidden" value="0.6520413563"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFSHOTS_ON_GOALzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_14">3.29</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFSHOTS_ON_GOAL" type="hidden" value="1.7190890225"/>
+<br/>
+</td><td class="ngood">
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFHITSzz" type="hidden" value="ngood"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_14">0.79</span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFHITS" type="hidden" value="-1.0191210866"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFPP_POINTSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_14">0.36</span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFPP_POINTS" type="hidden" value="1.5669778414"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFSHUTOUTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_14"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFSHUTOUT" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFWINzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_14"></span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFWIN" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFSAVES_PERCENTAGEzz" type="hidden"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_14"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFSAVES_PERCENTAGE" type="hidden" value="0.0000000000"/>
+<span class="float-end small" style="font-size: 0.7em;">(/)</span>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFGOALS_AGAINSTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_14"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_14" name="ctl00$ContentPlaceHolder1$GridView1$ctl17$HFGOALS_AGAINST" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_14">6.01</span>
+</td>
+</tr><tr>
+<td>
+                              16
+                              
+                             
+                          </td><td>
+                       169.7
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_15">Scott Wedgewood</span>
+</td><td>G</td><td>COL</td><td>9</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFTOIzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_15">60.0</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFTOI" type="hidden" value="0.7706905097"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFGOALSzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_15"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFGOALS" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFASSISTSzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_15"></span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFASSISTS" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFPLUS_MINUSzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_15"></span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFPLUS_MINUS" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFSHOTS_ON_GOALzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_15"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFSHOTS_ON_GOAL" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFHITSzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_15"></span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFHITS" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFPP_POINTSzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_15"></span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFPP_POINTS" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFSHUTOUTzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_15">0.07</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFSHUTOUT" type="hidden" value="0.7669726867"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFWINzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_15">0.67</span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFWIN" type="hidden" value="1.2657242726"/>
+<br/>
+</td><td class="elite"> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFSAVES_PERCENTAGEzz" type="hidden" value="elite"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_15">0.912</span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFSAVES_PERCENTAGE" type="hidden" value="3.1945457334"/>
+<span class="float-end small" style="font-size: 0.7em;">(23.8/26.1)</span>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFGOALS_AGAINSTzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_15">2.29</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_15" name="ctl00$ContentPlaceHolder1$GridView1$ctl18$HFGOALS_AGAINST" type="hidden" value="-0.5177417763"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_15">5.74</span>
+</td>
+</tr><tr>
+<td>
+                              17
+                              
+                             
+                          </td><td>
+                       54.1
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_16">Brandon Hagel</span>
+</td><td>LW,RW</td><td>TB</td><td>17</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFTOIzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_16">19.7</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFTOI" type="hidden" value="-0.0219298983"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFGOALSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_16">0.47</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFGOALS" type="hidden" value="1.8195554699"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFASSISTSzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_16">0.53</span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFASSISTS" type="hidden" value="0.7938874760"/>
+<br/>
+</td><td class="elite">
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFPLUS_MINUSzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_16">0.36</span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFPLUS_MINUS" type="hidden" value="3.1567081534"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFSHOTS_ON_GOALzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_16">2.65</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFSHOTS_ON_GOAL" type="hidden" value="0.8648916000"/>
+<br/>
+</td><td class="ngood">
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFHITSzz" type="hidden" value="ngood"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_16">0.71</span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFHITS" type="hidden" value="-1.1168785050"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFPP_POINTSzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_16">0.18</span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFPP_POINTS" type="hidden" value="0.0502773639"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFSHUTOUTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_16"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFSHUTOUT" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFWINzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_16"></span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFWIN" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFSAVES_PERCENTAGEzz" type="hidden"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_16"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFSAVES_PERCENTAGE" type="hidden" value="0.0000000000"/>
+<span class="float-end small" style="font-size: 0.7em;">(/)</span>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFGOALS_AGAINSTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_16"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_16" name="ctl00$ContentPlaceHolder1$GridView1$ctl19$HFGOALS_AGAINST" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_16">5.57</span>
+</td>
+</tr><tr>
+<td>
+                              18
+                              
+                             
+                          </td><td>
+                       12.2
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_17">Quinn Hughes</span>
+</td><td>D</td><td>VAN</td><td>13</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFTOIzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_17">27.4</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFTOI" type="hidden" value="0.1302431591"/>
+<br/>
+</td><td class="bavg">
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFGOALSzz" type="hidden" value="bavg"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_17">0.15</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFGOALS" type="hidden" value="-0.7903951363"/>
+<br/>
+</td><td class="elite">
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFASSISTSzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_17">1.00</span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFASSISTS" type="hidden" value="3.4839666213"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFPLUS_MINUSzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_17">0.11</span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFPLUS_MINUS" type="hidden" value="0.6520413563"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFSHOTS_ON_GOALzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_17">2.69</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFSHOTS_ON_GOAL" type="hidden" value="0.9250463480"/>
+<br/>
+</td><td class="ngood">
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFHITSzz" type="hidden" value="ngood"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_17">0.15</span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFHITS" type="hidden" value="-1.7914046918"/>
+<br/>
+</td><td class="elite">
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFPP_POINTSzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_17">0.54</span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFPP_POINTS" type="hidden" value="3.0836783188"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFSHUTOUTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_17"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFSHUTOUT" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFWINzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_17"></span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFWIN" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFSAVES_PERCENTAGEzz" type="hidden"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_17"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFSAVES_PERCENTAGE" type="hidden" value="0.0000000000"/>
+<span class="float-end small" style="font-size: 0.7em;">(/)</span>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFGOALS_AGAINSTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_17"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_17" name="ctl00$ContentPlaceHolder1$GridView1$ctl20$HFGOALS_AGAINST" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_17">5.56</span>
+</td>
+</tr><tr>
+<td>
+                              19
+                              
+                             
+                          </td><td>
+                       116.0
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_18">Zach Hyman</span>
+</td><td>LW,RW</td><td>EDM</td><td>13</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFTOIzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_18">19.9</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFTOI" type="hidden" value="-0.0172530920"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFGOALSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_18">0.54</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFGOALS" type="hidden" value="2.3711854088"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFASSISTSzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_18">0.39</span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFASSISTS" type="hidden" value="-0.0285571035"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFPLUS_MINUSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_18">0.25</span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFPLUS_MINUS" type="hidden" value="2.0492728340"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFSHOTS_ON_GOALzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_18">3.00</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFSHOTS_ON_GOAL" type="hidden" value="1.3367721792"/>
+<br/>
+</td><td class="bavg">
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFHITSzz" type="hidden" value="bavg"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_18">0.85</span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFHITS" type="hidden" value="-0.9458030228"/>
+<br/>
+</td><td class="good">
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFPP_POINTSzz" type="hidden" value="good"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_18">0.23</span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFPP_POINTS" type="hidden" value="0.5111531996"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFSHUTOUTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_18"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFSHUTOUT" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFWINzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_18"></span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFWIN" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFSAVES_PERCENTAGEzz" type="hidden"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_18"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFSAVES_PERCENTAGE" type="hidden" value="0.0000000000"/>
+<span class="float-end small" style="font-size: 0.7em;">(/)</span>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFGOALS_AGAINSTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_18"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_18" name="ctl00$ContentPlaceHolder1$GridView1$ctl21$HFGOALS_AGAINST" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_18">5.29</span>
+</td>
+</tr><tr>
+<td>
+                              171
+                              
+                             
+                          </td><td>
+                       164.9
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_170">Jack McBain</span>
+</td><td>C,LW</td><td>UTA</td><td>15</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFTOIzz" type="hidden" value="bavg"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_170">13.9</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFTOI" type="hidden" value="-0.1349396158"/>
+<br/>
+</td><td class="bavg">
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFGOALSzz" type="hidden" value="bavg"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_170">0.20</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFGOALS" type="hidden" value="-0.4116641335"/>
+<br/>
+</td><td class="bavg">
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFASSISTSzz" type="hidden" value="bavg"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_170">0.27</span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFASSISTS" type="hidden" value="-0.7025047449"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFPLUS_MINUSzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_170">0.06</span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFPLUS_MINUS" type="hidden" value="0.0931487652"/>
+<br/>
+</td><td class="bavg">
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFSHOTS_ON_GOALzz" type="hidden" value="bavg"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_170">1.33</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFSHOTS_ON_GOAL" type="hidden" value="-0.8916270435"/>
+<br/>
+</td><td class="vgood">
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFHITSzz" type="hidden" value="vgood"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_170">3.60</span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFHITS" type="hidden" value="2.4194961049"/>
+<br/>
+</td><td class="ngood">
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFPP_POINTSzz" type="hidden" value="ngood"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_170">0.00</span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFPP_POINTS" type="hidden" value="-1.4245253103"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFSHUTOUTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_170"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFSHUTOUT" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFWINzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_170"></span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFWIN" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFSAVES_PERCENTAGEzz" type="hidden"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_170"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFSAVES_PERCENTAGE" type="hidden" value="0.0000000000"/>
+<span class="float-end small" style="font-size: 0.7em;">(/)</span>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFGOALS_AGAINSTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_170"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_170" name="ctl00$ContentPlaceHolder1$GridView1$ctl185$HFGOALS_AGAINST" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_170">-0.92</span>
+</td>
+</tr><tr>
+<td>
+                              172
+                              
+                             
+                          </td><td>
+                       61.2
+                          </td><td>
+<span id="ContentPlaceHolder1_GridView1_Label2_171">Anthony Stolarz</span>
+</td><td>G</td><td>TOR</td><td>7</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFTOIzz_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFTOIzz" type="hidden" value="elite"/>
+<span id="ContentPlaceHolder1_GridView1_LTOI_171">60.0</span>
+<input id="ContentPlaceHolder1_GridView1_HFTOI_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFTOI" type="hidden" value="0.7706905097"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALSzz_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFGOALSzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_171"></span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFGOALS" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTSzz_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFASSISTSzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LASSISTS_171"></span>
+<input id="ContentPlaceHolder1_GridView1_HFASSISTS_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFASSISTS" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUSzz_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFPLUS_MINUSzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LPLUS_MINUS_171"></span>
+<input id="ContentPlaceHolder1_GridView1_HFPLUS_MINUS_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFPLUS_MINUS" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOALzz_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFSHOTS_ON_GOALzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHOTS_ON_GOAL_171"></span>
+<input id="ContentPlaceHolder1_GridView1_HFSHOTS_ON_GOAL_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFSHOTS_ON_GOAL" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFHITSzz_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFHITSzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHITS_171"></span>
+<input id="ContentPlaceHolder1_GridView1_HFHITS_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFHITS" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTSzz_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFPP_POINTSzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LPP_POINTS_171"></span>
+<input id="ContentPlaceHolder1_GridView1_HFPP_POINTS_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFPP_POINTS" type="hidden" value="0.0000000000"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUTzz_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFSHUTOUTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LSHUTOUT_171">0.05</span>
+<input id="ContentPlaceHolder1_GridView1_HFSHUTOUT_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFSHUTOUT" type="hidden" value="0.0639143906"/>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFWINzz_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFWINzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LHWIN_171">0.47</span>
+<input id="ContentPlaceHolder1_GridView1_HFWIN_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFWIN" type="hidden" value="-0.1476678318"/>
+<br/>
+</td><td class="bavg"> <input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGEzz_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFSAVES_PERCENTAGEzz" type="hidden" value="bavg"/>
+<span class="float-start" id="ContentPlaceHolder1_GridView1_LSAVES_PERCENTAGE_171">0.903</span>
+<input id="ContentPlaceHolder1_GridView1_HFSAVES_PERCENTAGE_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFSAVES_PERCENTAGE" type="hidden" value="-0.3926009718"/>
+<span class="float-end small" style="font-size: 0.7em;">(28.6/31.6)</span>
+<br/>
+</td><td>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINSTzz_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFGOALS_AGAINSTzz" type="hidden"/>
+<span id="ContentPlaceHolder1_GridView1_LGOALS_AGAINST_171">3.06</span>
+<input id="ContentPlaceHolder1_GridView1_HFGOALS_AGAINST_171" name="ctl00$ContentPlaceHolder1$GridView1$ctl186$HFGOALS_AGAINST" type="hidden" value="0.4546025353"/>
+<br/>
+</td><td>
+<span id="ContentPlaceHolder1_GridView1_Label1_171">-0.93</span>
+</td>
+</tr>
+</tbody>
+</table>
+</body>
+</html>
