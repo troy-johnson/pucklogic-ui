@@ -212,3 +212,46 @@ class UserKitOut(BaseModel):
     name: str
     source_weights: dict[str, float]
     created_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# Players
+# ---------------------------------------------------------------------------
+
+
+class PlayerOut(BaseModel):
+    id: str
+    name: str
+    team: str | None = None
+    position: str | None = None
+    nhl_id: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Auth
+# ---------------------------------------------------------------------------
+
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class AuthUserOut(BaseModel):
+    id: str
+    email: str
+
+
+class AuthResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    user: AuthUserOut
