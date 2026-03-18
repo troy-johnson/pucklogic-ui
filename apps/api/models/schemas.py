@@ -297,4 +297,4 @@ class UploadResponse(BaseModel):
     rows_upserted: int
     unmatched: list[UnmatchedPlayer]
     slots_used: int
-    slots_total: int = 2
+    slots_total: int = 2  # Must match FREE_SLOT_LIMIT in routers/sources.py

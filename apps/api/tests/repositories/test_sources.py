@@ -29,13 +29,18 @@ MP_SOURCE = {
 
 
 class TestList:
+    # With active_only=True:  table().select().eq().is_().order().execute()
+    # With active_only=False: table().select().is_().order().execute()
+
     def _chain(self, mock_db: MagicMock) -> MagicMock:
-        chain = mock_db.table.return_value.select.return_value.eq.return_value
-        return chain.order.return_value.execute.return_value
+        return (
+            mock_db.table.return_value.select.return_value.eq.return_value.is_.return_value.order.return_value.execute.return_value
+        )
 
     def _chain_no_filter(self, mock_db: MagicMock) -> MagicMock:
-        chain = mock_db.table.return_value.select.return_value
-        return chain.order.return_value.execute.return_value
+        return (
+            mock_db.table.return_value.select.return_value.is_.return_value.order.return_value.execute.return_value
+        )
 
     def test_queries_sources_table(self, repo: SourceRepository, mock_db: MagicMock) -> None:
         self._chain(mock_db).data = []
@@ -43,10 +48,16 @@ class TestList:
         mock_db.table.assert_called_once_with("sources")
 
     def test_filters_active_by_default(self, repo: SourceRepository, mock_db: MagicMock) -> None:
-        chain = mock_db.table.return_value.select.return_value.eq
-        chain.return_value.order.return_value.execute.return_value.data = []
+        self._chain(mock_db).data = []
         repo.list(active_only=True)
-        chain.assert_called_once_with("active", True)
+        eq_call = mock_db.table.return_value.select.return_value.eq
+        eq_call.assert_called_once_with("active", True)
+
+    def test_excludes_custom_sources(self, repo: SourceRepository, mock_db: MagicMock) -> None:
+        self._chain(mock_db).data = []
+        repo.list()
+        is_call = mock_db.table.return_value.select.return_value.eq.return_value.is_
+        is_call.assert_called_once_with("user_id", "null")
 
     def test_returns_all_when_active_only_false(
         self, repo: SourceRepository, mock_db: MagicMock
@@ -167,6 +178,35 @@ class TestListCustom:
         assert "player_count" in result[0]
 
 
+class TestGetSeasonsForSource:
+    def _chain(self, mock_db: MagicMock) -> MagicMock:
+        return (
+            mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value
+        )
+
+    def test_returns_distinct_seasons(self, repo: SourceRepository, mock_db: MagicMock) -> None:
+        self._chain(mock_db).data = [
+            {"season": "2025-26"},
+            {"season": "2025-26"},  # duplicate — should be deduplicated
+            {"season": "2024-25"},
+        ]
+        result = repo.get_seasons_for_source("src-1")
+        assert result == ["2025-26", "2024-25"]
+
+    def test_returns_empty_list_when_no_projections(
+        self, repo: SourceRepository, mock_db: MagicMock
+    ) -> None:
+        self._chain(mock_db).data = []
+        assert repo.get_seasons_for_source("src-1") == []
+
+    def test_queries_player_projections_table(
+        self, repo: SourceRepository, mock_db: MagicMock
+    ) -> None:
+        self._chain(mock_db).data = []
+        repo.get_seasons_for_source("src-1")
+        mock_db.table.assert_called_with("player_projections")
+
+
 class TestDeleteCustom:
     def test_returns_true_when_deleted(self, repo: SourceRepository, mock_db: MagicMock) -> None:
         chain = mock_db.table.return_value.delete.return_value.eq.return_value.eq.return_value
@@ -204,3 +244,10 @@ class TestUpsertCustom:
         repo.upsert_custom("u1", "custom_u1_my_src", "My Src")
         upsert_call = mock_db.table.return_value.upsert.call_args[0][0]
         assert upsert_call["user_id"] == "u1"
+
+    def test_conflicts_on_name_only(self, repo: SourceRepository, mock_db: MagicMock) -> None:
+        chain = mock_db.table.return_value.upsert.return_value
+        chain.execute.return_value.data = [{"id": "x"}]
+        repo.upsert_custom("u1", "custom_u1_my_src", "My Src")
+        kwargs = mock_db.table.return_value.upsert.call_args[1]
+        assert kwargs.get("on_conflict") == "name"

@@ -15,9 +15,13 @@ class SourceRepository:
         self._db = db
 
     def list(self, active_only: bool = True) -> list[dict[str, Any]]:
+        """Return system (non-custom) sources only; never leaks user-owned uploads."""
         query = self._db.table("sources").select("*")
         if active_only:
             query = query.eq("active", True)
+        # Restrict to system sources (user_id IS NULL). The backend uses the
+        # service-role key which bypasses RLS, so this filter is mandatory.
+        query = query.is_("user_id", "null")
         result = query.order("display_name").execute()
         return result.data
 
@@ -42,6 +46,8 @@ class SourceRepository:
 
     def list_custom(self, user_id: str) -> list[dict[str, Any]]:
         """Return custom sources owned by user_id, with player projection count."""
+        # TODO: N+1 queries below are acceptable at the 2-slot limit but should be
+        # replaced with a single JOIN or aggregation query if the limit is raised.
         result = (
             self._db.table("sources")
             .select("id, name, display_name, user_id, active, created_at")
@@ -71,6 +77,23 @@ class SourceRepository:
                     source["season"] = season_result.data[0]["season"]
         return sources
 
+    def get_seasons_for_source(self, source_id: str) -> list[str]:
+        """Return distinct seasons that have projections for this source."""
+        result = (
+            self._db.table("player_projections")
+            .select("season")
+            .eq("source_id", source_id)
+            .execute()
+        )
+        seen: set[str] = set()
+        seasons: list[str] = []
+        for row in result.data:
+            s = row["season"]
+            if s not in seen:
+                seen.add(s)
+                seasons.append(s)
+        return seasons
+
     def delete_custom(self, source_id: str, user_id: str) -> bool:
         """Delete a custom source (and cascade player_projections via FK).
 
@@ -93,7 +116,12 @@ class SourceRepository:
         return result.count or 0
 
     def upsert_custom(self, user_id: str, source_name: str, display_name: str) -> str:
-        """Create or update a custom source row for user_id. Returns source UUID."""
+        """Create or update a custom source row for user_id. Returns source UUID.
+
+        Conflicts on ``name`` only because the internal name already encodes the
+        user ID prefix (``custom_<uid8>_<safe_name>``), making it globally unique
+        and matching the existing UNIQUE(name) constraint on the sources table.
+        """
         result = (
             self._db.table("sources")
             .upsert(
@@ -104,7 +132,7 @@ class SourceRepository:
                     "is_paid": False,
                     "active": True,
                 },
-                on_conflict="name,user_id",
+                on_conflict="name",
             )
             .execute()
         )
