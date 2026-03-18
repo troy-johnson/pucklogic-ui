@@ -418,16 +418,21 @@ POST   /exports/generate             — Run pipeline and stream PDF or Excel (a
 
 POST   /stripe/create-checkout-session  — Stripe checkout (auth required)
 POST   /stripe/webhook               — Stripe webhook (signature-verified)
+
+POST   /auth/register                — Supabase sign_up; returns {access_token, refresh_token, user}
+                                       202 if email confirmation required; 400 on duplicate email
+POST   /auth/login                   — Supabase sign_in_with_password; returns same shape
+POST   /auth/logout                  — Revokes session via admin.sign_out(jwt); returns 204 (auth required)
+POST   /auth/refresh                 — Exchanges refresh_token for new tokens
+GET    /auth/me                      — Returns {id, email} for the authenticated user (auth required)
+
+GET    /players                      — Paginated player list (?limit=100&offset=0, max limit 500)
+GET    /players/{id}                 — Single player by UUID; 404 if not found
 ```
 
 ### Planned (Phase 3+, not yet implemented)
 
 ```
-POST   /auth/login                   — Supabase JWT login
-POST   /auth/register                — Account creation
-
-GET    /players                      — Player list with search/filter
-GET    /players/{id}                 — Player detail with stats
 GET    /players/{id}/trends          — Breakout/regression scores + SHAP
 
 GET    /trends/breakouts             — Top breakout candidates
@@ -439,26 +444,18 @@ WS     /ws/draft/{session_id}        — Live draft WebSocket
 
 ### Auth Middleware Pattern
 
+`get_current_user` lives in `core/dependencies.py` and is injected via `Depends()`:
+
 ```python
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer
-from supabase import create_client
-
-bearer_scheme = HTTPBearer(auto_error=False)
-
-async def get_current_user(token: str = Depends(bearer_scheme)):
-    if token is None:
-        return None  # anonymous — some routes allow this
-    user = supabase.auth.get_user(token.credentials)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    return user
-
-async def require_auth(user = Depends(get_current_user)):
-    if user is None:
-        raise HTTPException(status_code=401, detail="Authentication required")
-    return user
+# core/dependencies.py
+async def get_current_user(authorization: str | None = Header(None)) -> dict[str, Any]:
+    token = authorization.removeprefix("Bearer ")
+    response = get_db().auth.get_user(token)
+    return {"id": response.user.id, "email": response.user.email, "token": token}
+    # raises HTTP 401 on missing header, invalid token, or expired token
 ```
+
+The returned dict includes `"token"` (the raw JWT) so that logout can call `admin.sign_out(user["token"])` server-side.
 
 ---
 
