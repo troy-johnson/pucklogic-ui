@@ -26,8 +26,22 @@ class SourceOut(BaseModel):
 # ---------------------------------------------------------------------------
 
 SKATER_STATS = [
-    "g", "a", "plus_minus", "pim", "ppg", "ppa", "ppp",
-    "shg", "sha", "shp", "sog", "fow", "fol", "hits", "blocks", "gp",
+    "g",
+    "a",
+    "plus_minus",
+    "pim",
+    "ppg",
+    "ppa",
+    "ppp",
+    "shg",
+    "sha",
+    "shp",
+    "sog",
+    "fow",
+    "fol",
+    "hits",
+    "blocks",
+    "gp",
 ]
 GOALIE_STATS = ["gs", "w", "l", "ga", "sa", "sv", "sv_pct", "so", "otl"]
 ALL_PROJECTION_STATS = SKATER_STATS + GOALIE_STATS
@@ -255,3 +269,32 @@ class AuthResponse(BaseModel):
     access_token: str
     refresh_token: str
     user: AuthUserOut
+
+
+# ---------------------------------------------------------------------------
+# Custom source upload
+# ---------------------------------------------------------------------------
+
+
+class UnmatchedPlayer(BaseModel):
+    row_number: int
+    original_name: str
+    closest_match: str | None = None
+    match_score: float | None = None
+
+
+class CustomSourceOut(BaseModel):
+    id: str
+    name: str
+    display_name: str
+    player_count: int
+    season: str
+    created_at: datetime
+
+
+class UploadResponse(BaseModel):
+    source_id: str
+    rows_upserted: int
+    unmatched: list[UnmatchedPlayer]
+    slots_used: int
+    slots_total: int = 2
