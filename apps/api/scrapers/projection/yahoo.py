@@ -7,10 +7,11 @@ Requires YAHOO_OAUTH_REFRESH_TOKEN in .env / GitHub Actions secrets.
 
 Yahoo stat IDs → our player_projections columns.
 Verify stat IDs by calling the API and inspecting a live response.
-Last verified: <DATE>
+Last verified: 2026-03-18
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -132,7 +133,7 @@ class YahooScraper(BaseProjectionScraper):
         matcher = PlayerMatcher(players, aliases)
 
         try:
-            yahoo_players = self._fetch_yahoo_players()
+            yahoo_players = await asyncio.to_thread(self._fetch_yahoo_players)
         except Exception as exc:
             logger.error("Yahoo: API fetch failed: %s", exc)
             return 0

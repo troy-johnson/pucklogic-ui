@@ -59,15 +59,43 @@ class TestParsePlayerRow:
 class TestScrape:
     @pytest.mark.asyncio
     async def test_returns_int_count(self) -> None:
-        mock_db = MagicMock()
-        mock_db.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "src-1"}]
-        mock_db.table.return_value.select.return_value.execute.return_value.data = []
+        from core.config import settings
 
-        scraper = YahooScraper()
-        players = [YAHOO_PLAYER_1, YAHOO_PLAYER_2]
-        with patch.object(scraper, "_fetch_yahoo_players", return_value=players):
-            count = await scraper.scrape("2025-26", mock_db)
+        # Per-table mock responses
+        players_data = [{"id": "p1", "name": "Connor McDavid", "nhl_id": "8478402"}]
+        aliases_data: list[dict] = []
+
+        def make_table_mock(table_name: str) -> MagicMock:
+            tbl = MagicMock()
+            if table_name == "sources":
+                tbl.upsert.return_value.execute.return_value.data = [{"id": "src-1"}]
+                tbl.update.return_value.eq.return_value.execute.return_value.data = []
+            elif table_name == "players":
+                tbl.select.return_value.execute.return_value.data = players_data
+            elif table_name == "player_aliases":
+                tbl.select.return_value.execute.return_value.data = aliases_data
+            elif table_name == "player_projections":
+                tbl.upsert.return_value.execute.return_value.data = []
+            else:
+                tbl.insert.return_value.execute.return_value.data = []
+                tbl.upsert.return_value.execute.return_value.data = []
+            return tbl
+
+        mock_db = MagicMock()
+        mock_db.table.side_effect = make_table_mock
+
+        original = settings.yahoo_oauth_refresh_token
+        settings.yahoo_oauth_refresh_token = "fake-token"
+        try:
+            scraper = YahooScraper()
+            with patch.object(
+                scraper, "_fetch_yahoo_players", return_value=[YAHOO_PLAYER_1, YAHOO_PLAYER_2]
+            ):
+                count = await scraper.scrape("2025-26", mock_db)
+        finally:
+            settings.yahoo_oauth_refresh_token = original
         assert isinstance(count, int)
+        assert count >= 1  # at least McDavid should match
 
     @pytest.mark.asyncio
     async def test_skips_when_no_oauth_token(self) -> None:
