@@ -130,7 +130,7 @@ A reproducible pipeline that reads raw stats from Supabase and produces a normal
 ```
 apps/api/scrapers/features/
   __init__.py          # public API: build_feature_matrix(season) → pd.DataFrame
-  raw.py               # fetch player_stats + player_metadata from Supabase
+  raw.py               # fetch player_stats from Supabase (flags are columns in player_stats)
   transforms.py        # compute derived features (sh_pct_delta, toi_rank, etc.)
   labels.py            # compute breakout/regression labels from historical data
   validation.py        # assert schema, check for nulls, log coverage %
@@ -172,13 +172,19 @@ Raw GF%, SAT for counts (use rates), `ga60` for goalie proxy, raw PDO (use delta
 
 ### Label Definition
 
-**Minimum inclusion threshold:** 500 even-strength minutes per season (per `docs/feature-engineering-spec.md`). Players below this threshold are excluded from the training set — depth players with insufficient sample sizes produce unreliable labels that corrupt training.
+**Minimum inclusion threshold:** 500 even-strength minutes per season (per `docs/feature-engineering-spec.md`). Players below this threshold are excluded from the training set.
 
-- **Breakout:** season fantasy point production ≥ 20% above player's trailing 2-season rate-adjusted average (rate = fantasy points per 60 min × estimated GP), subject to ≥ 500 ES minutes in both prior seasons
-- **Regression:** season fantasy point production ≤ 20% below trailing 2-season rate-adjusted average, same minimum threshold
+**Rate definition:** Rate = events per 60 min at even strength (not per game). The 3-year weighted average from `feature-engineering-spec.md §Projection Pipeline` is used: current season × 0.5, Y-1 × 0.3, Y-2 × 0.2.
+
+**Single prior season:** If only one prior season is available (rookie, injury year), fall back to that single season's rate with a flat weight of 1.0. Players with zero prior NHL seasons are excluded from the label set (include in inference only).
+
+- **Breakout:** actual-season fantasy points per 60 ≥ 20% above weighted trailing-season average, subject to ≥ 500 ES minutes in the label season and ≥ 500 ES minutes in each prior season used
+- **Regression:** actual-season fantasy points per 60 ≤ 20% below weighted trailing-season average, same threshold
 - **Neither:** all other qualifying players (majority class)
 
-Label is binary per target: `is_breakout` (1/0) and `is_regression` (1/0). Two separate models, or multi-class with three outputs.
+Labels are mutually exclusive by construction (a player cannot be both ≥20% above and ≤20% below the same baseline). Label type: binary per target — `is_breakout` (1/0) and `is_regression` (1/0). Two separate binary classifiers.
+
+**Note on `feature-engineering-spec.md` signal rules:** That document defines rule-based breakout/regression signal detection (3+ signals = flag) used in the projection pipeline. The ML labels above are the ground-truth outcome labels for model training — they measure whether the player actually broke out/regressed, not whether they were flagged. The two definitions are complementary, not conflicting.
 
 ### Missing Data Strategy
 
@@ -207,14 +213,17 @@ Train XGBoost breakout and regression models on historical feature matrix. Seria
 ```
 apps/api/ml/
   __init__.py
-  train.py             # train() → saves model artifacts to ml/artifacts/
+  train.py             # train() → uploads artifacts to Supabase Storage (primary store)
+  loader.py            # load_model_artifacts(season) → downloads from Supabase Storage to disk cache
   evaluate.py          # cross-validation, AUC-ROC, precision@K
   shap_compute.py      # compute SHAP values for each player in current season
-  artifacts/           # gitignored — model files live here
+  artifacts/           # gitignored — local disk cache only; populated by loader.py at startup
     breakout_model.joblib
     regression_model.joblib
     feature_columns.json   # ordered list for inference consistency
 ```
+
+**Artifact flow:** `train.py` serializes and uploads to Supabase Storage bucket `ml-artifacts/<season>/`. On FastAPI startup, `loader.py` checks if the local cache is populated; if not, downloads from storage. Local cache persists for the lifetime of the Railway dyno.
 
 ### Model Spec
 
@@ -408,7 +417,7 @@ model_breakout, model_regression, feature_columns = load_model_artifacts(season=
 
 `load_model_artifacts` downloads from Supabase Storage if `ml/artifacts/` is empty, otherwise loads from disk (cached across requests within a dyno lifetime).
 
-**Failure mode:** If the artifact file is missing from storage (e.g., model hasn't been trained yet for the season), `GET /trends` returns HTTP 503 with `{"detail": "Trends model not available for this season"}`. This prevents a 500 crash and gives the frontend a clear signal to hide the Trends panel.
+**Failure modes:** Both "artifact missing from storage" and "transient download error" (network failure, credential expiry) are caught in `load_model_artifacts` and raise a `ModelNotAvailableError`. FastAPI startup catches this and sets `model_breakout = model_regression = None`. `GET /trends` checks for None and returns HTTP 503 with `{"detail": "Trends model not available for this season"}` — preventing a crash and giving the frontend a clear signal to hide the Trends panel.
 
 ---
 
