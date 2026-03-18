@@ -42,7 +42,7 @@ The existing NHL.com and MoneyPuck scrapers have never run successfully in produ
 | NHL.com | `player_stats` | Daily | Scraper exists, never run successfully |
 | MoneyPuck | `player_stats` | Daily | Scraper exists, never run successfully |
 | Natural Stat Trick | `player_stats` | Daily | Scraper exists, unverified |
-| DailyFaceoff | `player_projections` | Pre-season | PP unit data needed for `pp_unit` feature |
+| DailyFaceoff | `player_projections` | Daily (season window) | PP unit data needed for `pp_unit` feature; daily updates required for in-season trending (Layer 2). Run daily from ~3 days before Opening Night through end of regular season. GitHub Actions cron: `0 8 * * *` with season-window guard. |
 
 #### New Scrapers Required
 
@@ -50,20 +50,29 @@ The existing NHL.com and MoneyPuck scrapers have never run successfully in produ
 |--------|-------|-------------|------|
 | Hockey Reference | `player_stats_history` or `player_stats` extended | Career SH%, 10+ season history for `sh_pct_delta` and `age` features | Free |
 | Elite Prospects | `player_metadata` or flag columns | ELC flag, contract year, entry-level status for Tier 3 features | Free (rate-limited) |
-| Evolving Hockey | `player_stats` extended | GAR, xGAR (Tier 2) | $5/mo one-time data pull |
+| Evolving Hockey | `player_stats` extended | GAR, xGAR (Tier 2) | $5/mo subscription; updated periodically (see note below) |
 | NHL EDGE | `player_stats` extended | Speed bursts ≥22mph, top speed (Tier 3, optional) | Free via NHL API |
 
-#### Non-Public / Paywalled Historical Data (Manual Ingestion)
+#### Non-Public / Paywalled Sources (Manual Ingestion via Custom Upload)
 
-The following sources produce projection data that users can upload via the custom upload endpoint. For model training, we need historical season data from these sources ingested as training labels or supplementary features. These are ingested once manually; no recurring scraper needed.
+These sources are ingested manually each season using the existing `POST /sources/upload` endpoint. They serve three purposes:
 
-| Source | Data Needed | Method |
-|--------|-------------|--------|
-| Dom Luszczyszyn (Evolving Hockey) | Historical projections as training labels | Manual CSV export + custom upload endpoint |
-| Dobber Hockey | Historical projections | Manual CSV export |
-| Apples & Ginos | Historical projections | Manual CSV export |
+1. **Personal aggregation** — available as weighted sources in your own rankings immediately on upload
+2. **Future public aggregation** — if licensing is obtained, these can be promoted to system sources available to all users (no code changes needed — just flip `user_id = NULL` on the source row and `is_paid` as appropriate)
+3. **Model validation / spot-checking** — cross-referencing model breakout picks against expert projections helps surface outliers and calibration issues
 
-**Note:** These are used as supplementary training label sources, not as model inputs. The model predicts actual production outcomes, not projections.
+| Source | Ingestion cadence | Notes |
+|--------|-------------------|-------|
+| Dom Luszczyszyn (Evolving Hockey) | Pre-season, once per season | GAR-weighted projections; also useful as a training label sanity check |
+| Dobber Hockey | Pre-season, once per season | Fantasy-point projections; strong baseline for spot-checking outliers |
+| Apples & Ginos | Pre-season, once per season | Widely cited community projections |
+
+No automated scraper — these are paywalled/licensed and must be uploaded manually. The custom upload endpoint handles column mapping and player matching.
+
+**Evolving Hockey update cadence note:** GAR/xGAR are cumulative season statistics. They need to be refreshed:
+- **Pre-season:** pull prior full season's final values for Layer 1 model training (once per year, ~June)
+- **In-season (v2.0):** pull weekly or biweekly for Layer 2 Z-score features
+- For v1.0, a single annual pull at pre-season model retraining time is sufficient. Cancel the $5/mo subscription after each pull if not needed in-season.
 
 ### Schema Changes
 
