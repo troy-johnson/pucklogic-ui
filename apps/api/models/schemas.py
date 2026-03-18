@@ -224,7 +224,7 @@ class PlayerOut(BaseModel):
     name: str
     team: str | None = None
     position: str | None = None
-    nhl_id: str | None = None
+    nhl_id: int | None = None
 
 
 # ---------------------------------------------------------------------------

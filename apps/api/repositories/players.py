@@ -21,7 +21,7 @@ class PlayerRepository:
     def list(self, limit: int = 100, offset: int = 0) -> list[dict[str, Any]]:
         result = (
             self._db.table("players")
-            .select("*")
+            .select("id, name, team, position, nhl_id")
             .range(offset, offset + limit - 1)
             .execute()
         )

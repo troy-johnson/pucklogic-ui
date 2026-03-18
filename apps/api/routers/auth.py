@@ -14,6 +14,7 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 
 from core.dependencies import get_current_user, get_db
 from models.schemas import AuthResponse, AuthUserOut, LoginRequest, RefreshRequest, RegisterRequest
@@ -62,8 +63,6 @@ async def register(req: RegisterRequest) -> AuthResponse | dict[str, str]:
         resp = get_db().auth.sign_up({"email": req.email, "password": req.password})
         if resp.session is None:
             # Email confirmation required — session not yet available
-            from fastapi.responses import JSONResponse
-
             return JSONResponse(
                 status_code=202,
                 content={

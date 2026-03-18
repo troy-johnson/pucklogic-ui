@@ -15,14 +15,14 @@ PLAYER_1 = {
     "name": "Connor McDavid",
     "team": "EDM",
     "position": "C",
-    "nhl_id": "8478402",
+    "nhl_id": 8478402,
 }
 PLAYER_2 = {
     "id": "p2",
     "name": "Nathan MacKinnon",
     "team": "COL",
     "position": "C",
-    "nhl_id": "8477492",
+    "nhl_id": 8477492,
 }
 
 

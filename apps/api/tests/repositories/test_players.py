@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from repositories import PlayerRepository
+from repositories.players import PlayerRepository
 
 
 @pytest.fixture
@@ -37,6 +37,22 @@ class TestList:
     ) -> None:
         self._list_data(mock_db).data = []
         assert repo.list() == []
+
+    def test_passes_pagination_range_to_supabase(
+        self, repo: PlayerRepository, mock_db: MagicMock
+    ) -> None:
+        self._list_data(mock_db).data = []
+        repo.list(limit=25, offset=50)
+        range_call = mock_db.table.return_value.select.return_value.range
+        range_call.assert_called_once_with(50, 74)  # offset, offset + limit - 1
+
+    def test_default_pagination_uses_limit_100_offset_0(
+        self, repo: PlayerRepository, mock_db: MagicMock
+    ) -> None:
+        self._list_data(mock_db).data = []
+        repo.list()
+        range_call = mock_db.table.return_value.select.return_value.range
+        range_call.assert_called_once_with(0, 99)  # default: offset=0, limit=100
 
 
 class TestGet:
