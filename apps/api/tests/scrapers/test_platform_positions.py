@@ -51,3 +51,27 @@ class TestUpsertPlatformPositions:
         assert data["player_id"] == "p1"
         assert data["platform"] == "espn"
         assert set(data["positions"]) == {"C", "LW"}
+
+
+def test_yahoo_positions_logs_unmatched(monkeypatch, caplog) -> None:
+    import logging
+
+    from scrapers.platform_positions import ingest_yahoo_positions
+
+    mock_db = MagicMock()
+    mock_db.table.return_value.select.return_value.execute.return_value.data = []
+
+    yahoo_player = {
+        "name": {"full": "Unknown Player XYZ"},
+        "eligible_positions": [{"position": "C"}],
+    }
+    monkeypatch.setattr("core.config.settings.yahoo_oauth_refresh_token", "tok")
+    monkeypatch.setattr(
+        "scrapers.platform_positions.fetch_all_yahoo_nhl_players",
+        lambda token: [yahoo_player],
+    )
+
+    with caplog.at_level(logging.INFO, logger="scrapers.platform_positions"):
+        ingest_yahoo_positions(mock_db)
+
+    assert "unmatched" in caplog.text

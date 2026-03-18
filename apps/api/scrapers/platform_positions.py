@@ -66,12 +66,30 @@ def upsert_platform_positions(
 
 
 def _fetch_espn_players() -> list[dict[str, Any]]:
-    """Fetch all NHL players from ESPN Fantasy API (no auth needed)."""
-    resp = httpx.get(ESPN_PLAYERS_URL, timeout=30.0)
-    resp.raise_for_status()
-    data = resp.json()
-    # ESPN wraps player data under "players" key
-    return data.get("players", [])
+    """Fetch all NHL players from ESPN Fantasy API with exponential-backoff retry."""
+    import time
+    max_retries = 3
+    retry_statuses = {429, 500, 502, 503, 504}
+    last_exc: Exception | None = None
+    for attempt in range(max_retries):
+        if attempt > 0:
+            time.sleep(2 ** (attempt - 1))
+        try:
+            resp = httpx.get(ESPN_PLAYERS_URL, timeout=30.0)
+            if resp.status_code in retry_statuses:
+                last_exc = httpx.HTTPStatusError(
+                    f"HTTP {resp.status_code}", request=resp.request, response=resp
+                )
+                continue
+            resp.raise_for_status()
+            return resp.json().get("players", [])
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code not in retry_statuses:
+                raise
+            last_exc = exc
+        except httpx.RequestError as exc:
+            last_exc = exc
+    raise last_exc or RuntimeError("ESPN fetch: max retries exceeded")
 
 
 def ingest_espn_positions(db: Any) -> int:
@@ -129,10 +147,12 @@ def ingest_yahoo_positions(db: Any) -> int:
     matcher = PlayerMatcher(players, aliases)
 
     upserted = 0
+    unmatched = 0
     for yp in yahoo_players:
         name = yp.get("name", {}).get("full", "")
         player_id = matcher.resolve(name)
         if player_id is None:
+            unmatched += 1
             continue
         positions = [
             ep["position"]
@@ -143,7 +163,7 @@ def ingest_yahoo_positions(db: Any) -> int:
             upsert_platform_positions(db, player_id, "yahoo", positions)
             upserted += 1
 
-    logger.info("Yahoo positions: upserted %d", upserted)
+    logger.info("Yahoo positions: upserted=%d unmatched=%d", upserted, unmatched)
     return upserted
 
 
