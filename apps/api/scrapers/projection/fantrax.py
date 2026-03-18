@@ -16,8 +16,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-import httpx
-
+from scrapers.base import BaseScraper, RobotsDisallowedError
 from scrapers.base_projection import BaseProjectionScraper
 from scrapers.matching import PlayerMatcher
 from scrapers.projection import (
@@ -45,11 +44,11 @@ FANTRAX_STAT_MAP: dict[str, str] = {
 }
 
 
-class FantraxScraper(BaseProjectionScraper):
+class FantraxScraper(BaseScraper, BaseProjectionScraper):
     SOURCE_NAME = "fantrax"
     DISPLAY_NAME = "Fantrax"
 
-    def _fetch_fantrax_players(self) -> list[dict[str, Any]]:
+    async def _fetch_fantrax_players(self) -> list[dict[str, Any]]:
         """Fetch player projection data from Fantrax API."""
         from core.config import settings
 
@@ -57,13 +56,11 @@ class FantraxScraper(BaseProjectionScraper):
             return []
 
         # FILL IN with actual request params after devtools investigation
-        resp = httpx.get(
+        resp = await self._get_with_retry(
             FANTRAX_API_URL,
             params={"msgs": "getPlayersTable"},  # Update params
             cookies={"fantrax.session": settings.fantrax_session_token},
-            timeout=30.0,
         )
-        resp.raise_for_status()
         data = resp.json()
         # FILL IN: navigate to the player list in the response
         return data.get("responses", [{}])[0].get("data", {}).get("rows", [])
@@ -94,12 +91,16 @@ class FantraxScraper(BaseProjectionScraper):
             logger.info("Fantrax: AUTO_SCRAPE disabled — use paste/upload mode")
             return 0
 
+        allowed = await self._check_robots_txt(FANTRAX_API_URL)
+        if not allowed:
+            raise RobotsDisallowedError(f"robots.txt disallows scraping {FANTRAX_API_URL}")
+
         source_id = upsert_source(db, self.SOURCE_NAME, self.DISPLAY_NAME)
         players, aliases = fetch_players_and_aliases(db)
         matcher = PlayerMatcher(players, aliases)
 
         try:
-            fantrax_players = self._fetch_fantrax_players()
+            fantrax_players = await self._fetch_fantrax_players()
         except Exception as exc:
             logger.error("Fantrax: API fetch failed: %s", exc)
             return 0
@@ -117,6 +118,7 @@ class FantraxScraper(BaseProjectionScraper):
             upsert_projection_row(db, player_id, source_id, season, row)
             upserted += 1
 
-        update_last_successful_scrape(db, source_id)
+        if upserted > 0:
+            update_last_successful_scrape(db, source_id)
         logger.info("%s: upserted %d rows for %s", self.DISPLAY_NAME, upserted, season)
         return upserted
