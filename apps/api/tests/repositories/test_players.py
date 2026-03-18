@@ -16,24 +16,26 @@ def repo(mock_db: MagicMock) -> PlayerRepository:
 
 
 class TestList:
+    def _list_data(self, mock_db: MagicMock) -> MagicMock:
+        chain = mock_db.table.return_value.select.return_value.range.return_value
+        return chain.execute.return_value
+
     def test_queries_players_table(
         self, repo: PlayerRepository, mock_db: MagicMock
     ) -> None:
-        mock_db.table.return_value.select.return_value.execute.return_value.data = []
+        self._list_data(mock_db).data = []
         repo.list()
         mock_db.table.assert_called_once_with("players")
 
     def test_returns_data(self, repo: PlayerRepository, mock_db: MagicMock) -> None:
         player = {"id": "p1", "name": "Connor McDavid"}
-        mock_db.table.return_value.select.return_value.execute.return_value.data = [
-            player
-        ]
+        self._list_data(mock_db).data = [player]
         assert repo.list() == [player]
 
     def test_returns_empty_list_when_no_players(
         self, repo: PlayerRepository, mock_db: MagicMock
     ) -> None:
-        mock_db.table.return_value.select.return_value.execute.return_value.data = []
+        self._list_data(mock_db).data = []
         assert repo.list() == []
 
 

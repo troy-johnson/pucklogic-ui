@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from core.dependencies import get_current_user, get_db
 from models.schemas import AuthResponse, AuthUserOut, LoginRequest, RefreshRequest, RegisterRequest
@@ -21,30 +21,6 @@ from models.schemas import AuthResponse, AuthUserOut, LoginRequest, RefreshReque
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-def _get_auth_client() -> Any:
-    """Return the Supabase auth client (extracted for testability)."""
-    return get_db().auth
-
-
-async def _require_auth(
-    authorization: str | None = Header(None),
-) -> dict[str, Any]:
-    """Verify Bearer token using the patchable _get_auth_client (used by logout)."""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
-    token = authorization.removeprefix("Bearer ")
-    try:
-        response = _get_auth_client().get_user(token)
-        if not response.user:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        return {"id": response.user.id, "email": response.user.email}
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.warning("Auth failed: %s", exc)
-        raise HTTPException(status_code=401, detail="Invalid token") from exc
 
 
 def _build_auth_response(resp: Any) -> AuthResponse:
@@ -83,7 +59,7 @@ def _build_auth_response(resp: Any) -> AuthResponse:
 async def register(req: RegisterRequest) -> AuthResponse | dict[str, str]:
     """Create a new user account via Supabase Auth."""
     try:
-        resp = _get_auth_client().sign_up({"email": req.email, "password": req.password})
+        resp = get_db().auth.sign_up({"email": req.email, "password": req.password})
         if resp.session is None:
             # Email confirmation required — session not yet available
             from fastapi.responses import JSONResponse
@@ -110,7 +86,7 @@ async def register(req: RegisterRequest) -> AuthResponse | dict[str, str]:
 async def login(req: LoginRequest) -> AuthResponse:
     """Sign in with email + password."""
     try:
-        resp = _get_auth_client().sign_in_with_password(
+        resp = get_db().auth.sign_in_with_password(
             {"email": req.email, "password": req.password}
         )
         return _build_auth_response(resp)
@@ -120,10 +96,10 @@ async def login(req: LoginRequest) -> AuthResponse:
 
 
 @router.post("/logout", status_code=204)
-async def logout(user: dict[str, Any] = Depends(_require_auth)) -> None:
+async def logout(user: dict[str, Any] = Depends(get_current_user)) -> None:
     """Sign out the current user session."""
     try:
-        _get_auth_client().admin.sign_out(user["id"])
+        get_db().auth.admin.sign_out(user["token"])
     except Exception as exc:
         logger.warning("Logout failed: %s", exc)
         # Sign-out failure is non-fatal — token will expire naturally
@@ -133,7 +109,7 @@ async def logout(user: dict[str, Any] = Depends(_require_auth)) -> None:
 async def refresh(req: RefreshRequest) -> dict[str, str]:
     """Exchange a refresh token for a new access token."""
     try:
-        resp = _get_auth_client().refresh_session(req.refresh_token)
+        resp = get_db().auth.refresh_session(req.refresh_token)
         return {
             "access_token": resp.session.access_token,
             "refresh_token": resp.session.refresh_token,

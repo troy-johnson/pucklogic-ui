@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from core.dependencies import get_player_repository
 from models.schemas import PlayerOut
@@ -11,10 +11,12 @@ router = APIRouter(prefix="/players", tags=["players"])
 
 @router.get("", response_model=list[PlayerOut])
 async def list_players(
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     repo: PlayerRepository = Depends(get_player_repository),
 ) -> list[PlayerOut]:
-    """Return all NHL players in the database."""
-    rows = repo.list()
+    """Return NHL players with optional pagination."""
+    rows = repo.list(limit=limit, offset=offset)
     return [PlayerOut(**row) for row in rows]
 
 

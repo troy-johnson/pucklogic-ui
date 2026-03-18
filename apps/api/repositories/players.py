@@ -18,8 +18,13 @@ class PlayerRepository:
     def __init__(self, db: Client) -> None:
         self._db = db
 
-    def list(self) -> list[dict[str, Any]]:
-        result = self._db.table("players").select("*").execute()
+    def list(self, limit: int = 100, offset: int = 0) -> list[dict[str, Any]]:
+        result = (
+            self._db.table("players")
+            .select("*")
+            .range(offset, offset + limit - 1)
+            .execute()
+        )
         return result.data
 
     def get(self, player_id: str) -> dict[str, Any] | None:

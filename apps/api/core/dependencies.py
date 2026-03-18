@@ -119,7 +119,7 @@ async def get_current_user(
         response = get_db().auth.get_user(token)
         if not response.user:
             raise HTTPException(status_code=401, detail="Invalid token")
-        return {"id": response.user.id, "email": response.user.email}
+        return {"id": response.user.id, "email": response.user.email, "token": token}
     except HTTPException:
         raise
     except Exception as exc:
