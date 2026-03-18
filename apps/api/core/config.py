@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:3000"
     environment: str = "development"
     current_season: str = "2025-26"
+    yahoo_oauth_refresh_token: str = ""
+    fantrax_session_token: str = ""
 
     @property
     def is_production(self) -> bool:
