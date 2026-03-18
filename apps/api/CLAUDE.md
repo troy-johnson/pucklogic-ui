@@ -98,11 +98,12 @@ Do not build Layer 2 Celery jobs, Z-score computation, or the paywall gate until
 |------|--------|-------|
 | `routers/auth.py` | ✅ Complete | POST /auth/register,login,logout,refresh + GET /auth/me; thin Supabase Auth wrapper; email-confirmation 202 path; admin.sign_out for token revocation |
 | `routers/players.py` | ✅ Complete | GET /players, GET /players/{id} |
-| `scrapers/projection/` | ⬜ TODO | HashtagHockey, DailyFaceoff, Apples & Ginos, LineupExperts, Yahoo, Fantrax scrapers |
-| `scrapers/nst.py` | ⬜ TODO | Natural Stat Trick HTML scraper — writes to `player_stats` |
-| `scrapers/matching.py` | ⬜ TODO | Player name/ID resolution via rapidfuzz (Phase 1 backlog) |
-| Schedule ingestion job | ⬜ TODO | GitHub Actions: NHL schedule API → `schedule_scores` (off-night counts, min-max normalized) |
-| `player_platform_positions` ingestion | ⬜ TODO | Per-platform position eligibility for ESPN, Yahoo, Fantrax |
+| `scrapers/projection/yahoo.py` | ✅ Complete | Yahoo Fantasy API (OAuth2); paginated via `game.player_stats()` |
+| `scrapers/projection/fantrax.py` | ✅ Complete | Fantrax REST API; inherits `BaseScraper` + `BaseProjectionScraper` |
+| `scrapers/nst.py` | ✅ Complete | Natural Stat Trick HTML scraper — writes to `player_stats` |
+| `scrapers/matching.py` | ✅ Complete | Player name/ID resolution via rapidfuzz (Phase 1 backlog) |
+| `scrapers/schedule_scores.py` | ✅ Complete | GitHub Actions: NHL schedule API → `schedule_scores` (`OFF_NIGHT_THRESHOLD=16`) |
+| `scrapers/platform_positions.py` | ✅ Complete | Per-platform position eligibility for ESPN (auto-scrape), Yahoo (OAuth2), Fantrax (stub) |
 | Custom upload UI + handler | ⬜ TODO | 2 slots per user, CSV/Excel, column mapping, `sources.user_id` set, triggers cache invalidation |
 
 ### Phase 2 — Scrapers Complete (feat/phase2-projection-scrapers)

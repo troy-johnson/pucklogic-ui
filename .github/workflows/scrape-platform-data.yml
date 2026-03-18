@@ -1,0 +1,38 @@
+name: Ingest Platform Data — Pre-Season Annual (Sep 1)
+
+on:
+  schedule:
+    - cron: "0 8 1 9 *"  # Sep 1 8am UTC — runs once per year before the season
+  workflow_dispatch:
+
+jobs:
+  platform-data:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Ingest platform positions
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          YAHOO_OAUTH_REFRESH_TOKEN: ${{ secrets.YAHOO_OAUTH_REFRESH_TOKEN }}
+          FANTRAX_SESSION_TOKEN: ${{ secrets.FANTRAX_SESSION_TOKEN }}
+        run: python -m scrapers.platform_positions
+
+      - name: Ingest schedule scores
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python -m scrapers.schedule_scores
