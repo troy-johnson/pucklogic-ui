@@ -105,5 +105,6 @@ class BaseScraper(ABC):
     async def scrape(self, season: str, db: Any) -> int:
         """Fetch source data and upsert to ``db``.
 
-        Returns the number of ``player_rankings`` rows upserted.
+        Returns the number of rows upserted (to ``player_stats`` or
+        ``player_projections`` depending on the subclass).
         """
