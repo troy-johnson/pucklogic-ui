@@ -15,6 +15,7 @@ import asyncio
 import logging
 from typing import Any
 
+from scrapers.base import BaseScraper, RobotsDisallowedError
 from scrapers.base_projection import BaseProjectionScraper
 from scrapers.matching import PlayerMatcher
 from scrapers.projection import (
@@ -93,7 +94,7 @@ def _parse_stat_value(stat_id: str, raw_value: str) -> Any:
         return None
 
 
-class YahooScraper(BaseProjectionScraper):
+class YahooScraper(BaseScraper, BaseProjectionScraper):
     SOURCE_NAME = "yahoo"
     DISPLAY_NAME = "Yahoo Fantasy"
 
@@ -128,6 +129,11 @@ class YahooScraper(BaseProjectionScraper):
             logger.warning("Yahoo: no OAuth refresh token configured — skipping")
             return 0
 
+        YAHOO_API_URL = "https://fantasysports.yahooapis.com/"
+        allowed = await self._check_robots_txt(YAHOO_API_URL)
+        if not allowed:
+            raise RobotsDisallowedError(f"robots.txt disallows scraping {YAHOO_API_URL}")
+
         source_id = upsert_source(db, self.SOURCE_NAME, self.DISPLAY_NAME)
         players, aliases = fetch_players_and_aliases(db)
         matcher = PlayerMatcher(players, aliases)
@@ -151,7 +157,8 @@ class YahooScraper(BaseProjectionScraper):
             upsert_projection_row(db, player_id, source_id, season, row)
             upserted += 1
 
-        update_last_successful_scrape(db, source_id)
+        if upserted > 0:
+            update_last_successful_scrape(db, source_id)
         logger.info("%s: upserted %d projection rows for %s", self.DISPLAY_NAME, upserted, season)
         return upserted
 

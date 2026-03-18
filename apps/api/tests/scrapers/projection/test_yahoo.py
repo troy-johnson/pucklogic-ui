@@ -97,6 +97,25 @@ class TestScrape:
         assert isinstance(count, int)
         assert count >= 1  # at least McDavid should match
 
+    async def test_scrape_checks_robots_txt(self, monkeypatch) -> None:
+        mock_db = MagicMock()
+        mock_db.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "src-1"}]
+        mock_db.table.return_value.select.return_value.execute.return_value.data = []
+
+        scraper = YahooScraper()
+        robots_calls: list[str] = []
+
+        async def fake_check_robots(url: str) -> bool:
+            robots_calls.append(url)
+            return True
+
+        monkeypatch.setattr("core.config.settings.yahoo_oauth_refresh_token", "tok")
+        monkeypatch.setattr(scraper, "_check_robots_txt", fake_check_robots)
+        with patch.object(scraper, "_fetch_yahoo_players", return_value=[]):
+            await scraper.scrape("2025-26", mock_db)
+
+        assert len(robots_calls) == 1, "Expected _check_robots_txt to be called once"
+
     @pytest.mark.asyncio
     async def test_skips_when_no_oauth_token(self) -> None:
         from core.config import settings
