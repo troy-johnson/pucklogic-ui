@@ -24,33 +24,14 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]"
 
+      # DailyFaceoff, Dobber, Apples & Ginos, and LineupExperts are paste/upload
+      # only — they have no HTTP scrape() implementation and must not run here.
       - name: Scrape HashtagHockey
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           REDIS_URL: ${{ secrets.REDIS_URL }}
         run: python -m scrapers.projection.hashtag_hockey
-
-      - name: Scrape DailyFaceoff
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          REDIS_URL: ${{ secrets.REDIS_URL }}
-        run: python -m scrapers.projection.daily_faceoff
-
-      - name: Scrape Apples & Ginos
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          REDIS_URL: ${{ secrets.REDIS_URL }}
-        run: python -m scrapers.projection.apples_ginos
-
-      - name: Scrape LineupExperts
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          REDIS_URL: ${{ secrets.REDIS_URL }}
-        run: python -m scrapers.projection.lineup_experts
 
       - name: Scrape NST
         env:

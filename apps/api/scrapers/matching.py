@@ -28,10 +28,18 @@ class PlayerMatcher:
         self._exact: dict[str, str] = {
             p["name"].strip().lower(): p["id"] for p in players
         }
-        # Alias index: normalised alias → player_id
-        self._alias: dict[str, str] = {
-            a["alias_name"].strip().lower(): a["player_id"] for a in aliases
-        }
+        # Alias index: normalised alias → list of player_ids.
+        # The player_aliases table allows the same alias_name for different
+        # sources (unique on alias_name+source), so we must collect all
+        # candidates and only resolve when there is exactly one (unambiguous).
+        self._alias: dict[str, list[str]] = {}
+        for a in aliases:
+            key = a["alias_name"].strip().lower()
+            pid = a["player_id"]
+            if key not in self._alias:
+                self._alias[key] = [pid]
+            elif pid not in self._alias[key]:
+                self._alias[key].append(pid)
         # Fuzzy match corpus: list of canonical names in same order as _players
         self._players = players
         self._names: list[str] = [p["name"] for p in players]
@@ -50,9 +58,11 @@ class PlayerMatcher:
         if normalised in self._exact:
             return self._exact[normalised]
 
-        # 2. Alias
-        if normalised in self._alias:
-            return self._alias[normalised]
+        # 2. Alias — only resolve when unambiguous (single candidate)
+        alias_matches = self._alias.get(normalised, [])
+        if len(alias_matches) == 1:
+            return alias_matches[0]
+        # Multiple candidates for same alias across sources → fall through to fuzzy
 
         # 3. Fuzzy
         if not self._names:

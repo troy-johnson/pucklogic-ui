@@ -8,6 +8,7 @@ DB interaction logic.
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -64,9 +65,10 @@ def log_unmatched(db: Any, source_name: str, raw_name: str, season: str) -> None
 
 
 def update_last_successful_scrape(db: Any, source_id: str) -> None:
-    """Stamp sources.last_successful_scrape = now() for this source."""
+    """Stamp sources.last_successful_scrape with the current UTC time."""
+    now = datetime.now(UTC).isoformat()
     db.table("sources").update(
-        {"last_successful_scrape": "now()"}
+        {"last_successful_scrape": now}
     ).eq("id", source_id).execute()
 
 
