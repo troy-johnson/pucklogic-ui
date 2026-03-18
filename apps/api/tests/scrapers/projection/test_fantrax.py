@@ -43,14 +43,8 @@ class TestScrape:
 
         assert len(robots_calls) == 1
 
-    @pytest.mark.asyncio
-    async def test_skips_when_no_session_token(self) -> None:
-        from core.config import settings
-        original = settings.fantrax_session_token
-        settings.fantrax_session_token = ""
-        try:
-            mock_db = MagicMock()
-            count = await FantraxScraper().scrape("2025-26", mock_db)
-            assert count == 0
-        finally:
-            settings.fantrax_session_token = original
+    async def test_skips_when_no_session_token(self, monkeypatch) -> None:
+        monkeypatch.setattr("core.config.settings.fantrax_session_token", "")
+        mock_db = MagicMock()
+        count = await FantraxScraper().scrape("2025-26", mock_db)
+        assert count == 0

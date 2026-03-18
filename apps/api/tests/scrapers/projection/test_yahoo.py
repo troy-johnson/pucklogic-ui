@@ -116,17 +116,11 @@ class TestScrape:
 
         assert len(robots_calls) == 1, "Expected _check_robots_txt to be called once"
 
-    @pytest.mark.asyncio
-    async def test_skips_when_no_oauth_token(self) -> None:
-        from core.config import settings
-        original = settings.yahoo_oauth_refresh_token
-        settings.yahoo_oauth_refresh_token = ""
-        try:
-            mock_db = MagicMock()
-            count = await YahooScraper().scrape("2025-26", mock_db)
-            assert count == 0
-        finally:
-            settings.yahoo_oauth_refresh_token = original
+    async def test_skips_when_no_oauth_token(self, monkeypatch) -> None:
+        monkeypatch.setattr("core.config.settings.yahoo_oauth_refresh_token", "")
+        mock_db = MagicMock()
+        count = await YahooScraper().scrape("2025-26", mock_db)
+        assert count == 0
 
 
 def test_fetch_yahoo_players_uses_pagination(monkeypatch) -> None:
