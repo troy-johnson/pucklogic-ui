@@ -112,8 +112,10 @@ CREATE TABLE sources (
   is_paid BOOLEAN DEFAULT false,   -- true for paywalled/premium sources
   user_id UUID REFERENCES auth.users(id)  -- NULL for system sources; set for user-uploaded custom sources
 );
--- Custom source privacy: API always filters sources to: user_id IS NULL OR user_id = current_user.id
--- 2-custom-source limit enforced at upload: count sources WHERE user_id = current_user.id; reject with HTTP 409 if >= 2
+-- Custom source privacy: GET /sources always filters to user_id IS NULL (system sources only).
+--   Service-role key bypasses RLS so this filter is mandatory in the query.
+-- 2-custom-source limit: count WHERE user_id = current_user.id AND active = TRUE; HTTP 400 if >= FREE_SLOT_LIMIT (2).
+--   Post-upsert TOCTOU guard: re-count after insert and roll back + 400 if limit exceeded.
 
 -- player_rankings: retained for potential future rank-only sources.
 -- NOT read by POST /rankings/compute — the aggregation pipeline uses player_projections.
@@ -410,7 +412,19 @@ async def get_kit(kit_id: str, current_user: User = Depends(get_current_user)):
 ```
 GET    /health                       — Health check
 
-GET    /sources                      — List active sources (system + user's custom)
+GET    /sources                      — List active system sources (user_id IS NULL; no auth required)
+GET    /sources/custom               — List the authenticated user's custom sources (auth required)
+                                       Returns: [{id, name, display_name, player_count, season, created_at}]
+POST   /sources/upload               — Upload a CSV or Excel projection file as a custom source (auth required)
+                                       Form: file (CSV/.xlsx, max 5 MB), source_name, season,
+                                             column_map (JSON: {their_col: our_stat}),
+                                             player_name_column? (defaults to first col not in column_map)
+                                       Limits: 2 custom slots per user; TOCTOU guard post-upsert
+                                       Paywalled gate: 403 if source_name matches a registered is_paid source
+                                             and user has no active subscription
+                                       Returns: {source_id, rows_upserted, unmatched[], slots_used, slots_total}
+DELETE /sources/{id}                 — Delete a custom source (auth required, owner only)
+                                       Cascades player_projections; invalidates cache per season
 
 POST   /rankings/compute             — Projection aggregation pipeline (auth required)
                                        Body: { season, source_weights, scoring_config_id,

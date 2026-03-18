@@ -28,33 +28,56 @@ apps/api/
   models/
     schemas.py       # All Pydantic request/response schemas (Phase 2 complete)
   repositories/
-    players.py       # PlayerRepository — Supabase CRUD for `players`
+    players.py       # PlayerRepository — list(limit, offset), get(id)
     projections.py   # ProjectionsRepository — get_by_season(season, platform, user_id)
-    sources.py       # SourceRepository — list()
+    sources.py       # SourceRepository — list, get, get_by_name, get_by_names, list_custom,
+                     #   upsert_custom, delete_custom, count_custom, get_seasons_for_source
+    scoring_configs.py  # ScoringConfigRepository — list, get, create, list_presets
+    league_profiles.py  # LeagueProfileRepository — list, get, create
+    subscriptions.py    # SubscriptionRepository — is_active(user_id)
   routers/
-    health.py        # GET /health (Phase 1, registered)
-    sources.py       # GET /sources (Phase 2, registered)
-    rankings.py      # POST /rankings/compute (Phase 2, TODO: register in main.py)
-    exports.py       # POST /exports/generate (Phase 2, TODO: register)
-    stripe.py        # POST /stripe/create-checkout-session (Phase 2, TODO: register)
-    user_kits.py     # CRUD /user-kits (Phase 2, TODO: register)
+    health.py        # GET /health
+    sources.py       # GET /sources · GET /sources/custom · POST /sources/upload · DELETE /sources/{id}
+    rankings.py      # POST /rankings/compute — projection aggregation pipeline (auth required)
+    scoring_configs.py  # GET /scoring-configs/presets · GET /scoring-configs · POST /scoring-configs
+    league_profiles.py  # GET/POST /league-profiles
+    exports.py       # POST /exports/generate — PDF/Excel streaming
+    stripe.py        # POST /stripe/create-checkout-session · POST /stripe/webhook
+    user_kits.py     # GET/POST/DELETE /user-kits
+    auth.py          # POST /auth/register,login,logout,refresh · GET /auth/me
+    players.py       # GET /players · GET /players/{id}
   services/
     projections.py   # aggregate_projections(), compute_weighted_stats(), apply_scoring_config(), compute_vorp()
-    cache.py         # CacheService — Upstash-compatible Redis, 6h TTL
+    cache.py         # CacheService — Upstash Redis, 6h TTL, SHA-256 cache keys, SCAN invalidation
     exports.py       # generate_excel(), generate_pdf()
+    scoring_validation.py  # validate_scoring_config() — PPP/PPG/PPA + SHP/SHG/SHA mutual exclusion
   scrapers/
-    base.py                  # BaseScraper ABC (stat sources: NHL.com, MoneyPuck)
-    base_projection.py       # BaseProjectionScraper ABC (projection sources)
+    base.py                  # BaseScraper ABC — async _check_robots_txt, _get_with_retry
+    base_projection.py       # BaseProjectionScraper ABC → player_projections
     nhl_com.py               # NhlComScraper → player_stats
     moneypuck.py             # MoneyPuckScraper → player_stats
-    matching.py              # Player name/ID resolution (rapidfuzz)
+    nst.py                   # NstScraper (BeautifulSoup) → player_stats
+    matching.py              # PlayerMatcher — exact → alias → rapidfuzz (threshold 85)
+    platform_positions.py    # ESPN (auto), Yahoo (OAuth2), Fantrax (stub) → player_platform_positions
+    schedule_scores.py       # NHL schedule API → schedule_scores
+    projection/
+      __init__.py            # Shared helpers: upsert_source, upsert_projection_row, apply_column_map
+      hashtag_hockey.py      # HTML scraper; per-game rate × GP conversion
+      daily_faceoff.py / dobber.py / apples_ginos.py / lineup_experts.py  # CSV paste/upload
+      yahoo.py               # Yahoo Fantasy API (OAuth2)
+      fantrax.py             # Fantrax REST API
   tests/
     conftest.py      # `client` fixture (TestClient wrapping app)
     test_health.py
-    repositories/    # test_players.py, test_projections.py, test_sources.py, test_subscriptions.py
-    services/        # test_projections.py, test_cache.py, test_exports.py
-    routers/         # test_sources.py, test_rankings.py, test_exports.py, test_stripe.py, test_user_kits.py
-    scrapers/        # test_base.py, test_base_projection.py, test_nhl_com.py, test_moneypuck.py
+    repositories/    # test_players, test_projections, test_sources, test_scoring_configs,
+                     #   test_league_profiles, test_subscriptions
+    services/        # test_projections, test_cache, test_exports, test_scoring_validation
+    routers/         # test_sources, test_rankings, test_exports, test_stripe, test_user_kits,
+                     #   test_scoring_configs, test_league_profiles, test_auth, test_players
+    scrapers/        # test_base, test_base_projection, test_nhl_com, test_moneypuck,
+                     #   test_platform_positions, test_schedule_scores
+                     #   projection/: test_hashtag_hockey, test_daily_faceoff, test_dobber,
+                     #                test_apples_ginos, test_lineup_experts, test_yahoo, test_fantrax
   main.py            # FastAPI app, CORS, registered routers
   pyproject.toml     # deps + tool config (ruff, pytest, coverage)
 ```
@@ -104,7 +127,8 @@ Do not build Layer 2 Celery jobs, Z-score computation, or the paywall gate until
 | `scrapers/matching.py` | ✅ Complete | Player name/ID resolution via rapidfuzz (Phase 1 backlog) |
 | `scrapers/schedule_scores.py` | ✅ Complete | GitHub Actions: NHL schedule API → `schedule_scores` (`OFF_NIGHT_THRESHOLD=16`) |
 | `scrapers/platform_positions.py` | ✅ Complete | Per-platform position eligibility for ESPN (auto-scrape), Yahoo (OAuth2), Fantrax (stub) |
-| Custom upload UI + handler | ⬜ TODO | 2 slots per user, CSV/Excel, column mapping, `sources.user_id` set, triggers cache invalidation |
+| Custom upload backend | ✅ Complete | `POST /sources/upload`, `GET /sources/custom`, `DELETE /sources/{id}`; 2-slot limit, TOCTOU guard, paywalled-source gate, stale-projection cleanup, cache invalidation; 53 tests green (PR #21) |
+| Custom upload frontend UI | ⬜ Deferred | File drop zone, column mapping step, unmatched player review — deferred until frontend dashboard work begins |
 
 ### Phase 2 — Scrapers Complete (feat/phase2-projection-scrapers)
 

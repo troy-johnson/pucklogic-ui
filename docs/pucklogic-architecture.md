@@ -339,7 +339,7 @@ Generated async via Celery. Multi-tab Excel: master rankings, by-position, Trend
 | Phase | Window | Cards | Hours | Key Milestones |
 |-------|--------|-------|-------|----------------|
 | Phase 1: Foundation | Mar–May 2026 | 11 | ~32 | Data pipeline live, player matching, RLS, scraper fallbacks |
-| Phase 2: Dashboard | Jun–Jul 2026 | 14 | ~43 | Free dashboard, anonymous kits, scoring config, exports |
+| Phase 2: Dashboard | Jun–Jul 2026 | 14 | ~43 | Free dashboard, anonymous kits, scoring config, exports (**backend complete Mar 2026** — frontend UI deferred) |
 | Phase 3: ML Engine | Aug 2026 | 8 | ~32 | Model trained, Trends tab live, nightly re-scoring |
 | Phase 4: Extension | Sep–Oct 2026 | 13 | ~49 | ESPN + Yahoo adapters, beta, privacy policy, launch |
 | **TOTAL** | | **46** | **~156** | **Launch: late October 2026** |

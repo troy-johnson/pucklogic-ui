@@ -235,7 +235,7 @@ Applies to the in-season Layer 2 engine when it ships:
 | Phase | Period | Key Deliverables |
 |---|---|---|
 | 1 — Foundation | Mar–May 2026 | Turborepo scaffold, NHL.com + MoneyPuck scrapers, core DB schema, player name/ID matching, Supabase Auth, GitHub Actions cron |
-| 2 — Aggregation Dashboard | Jun–Jul 2026 | Source weight UI, composite rankings table, anonymous kits, scoring config, Redis cache, Stripe, PDF/Excel exports |
+| 2 — Aggregation Dashboard | Jun–Jul 2026 | Source weight UI, composite rankings table, anonymous kits, scoring config, Redis cache, Stripe, PDF/Excel exports | **Backend complete (Mar 2026).** All API routes, scrapers (Yahoo, Fantrax, NST, schedule scores, platform positions, custom upload), repositories, and tests are implemented. Frontend dashboard UI deferred. |
 | 3 — ML Trends Engine (v1.0) | Aug 2026 | **Layer 1 only**: XGBoost breakout/regression model, SHAP explainability, yearly retraining, pre-season scores surfaced on rankings dashboard |
 | 4 — Browser Extension | Sep–Oct 2026 | Chrome MV3 extension, ESPN + Yahoo adapters, WebSocket draft sessions, public launch (late October 2026) |
 | v2.0 — In-season Trends | Post-launch | **Layer 2**: 14-day rolling Z-score engine (TOI, xGF, Corsi, PP unit, shots, line combos), nightly Celery re-scoring, combined PuckLogic Trends Score, free/paid gate (top-10 paywalled) |
