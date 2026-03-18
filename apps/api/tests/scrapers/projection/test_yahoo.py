@@ -80,3 +80,37 @@ class TestScrape:
             assert count == 0
         finally:
             settings.yahoo_oauth_refresh_token = original
+
+
+def test_fetch_yahoo_players_uses_pagination(monkeypatch) -> None:
+    """fetch_all_yahoo_nhl_players must paginate via player_stats(), not player_details('all')."""
+    import sys
+    import types
+
+    player_stats_calls: list[dict] = []
+    player_details_calls: list = []
+
+    class FakeLeague:
+        def player_details(self, arg):
+            player_details_calls.append(arg)
+            return []
+
+    class FakeGame:
+        def league_ids(self):
+            return ["12345"]
+        def to_league(self, lid):
+            return FakeLeague()
+        def player_stats(self, ids, req_type="season", start=0, count=25):
+            player_stats_calls.append({"start": start, "count": count})
+            return []  # empty → pagination loop exits immediately
+
+    fake_yfa = types.ModuleType("yahoo_fantasy_api")
+    fake_yfa.OAuth2 = lambda *a, **kw: MagicMock()  # type: ignore[attr-defined]
+    fake_yfa.Game = lambda *a, **kw: FakeGame()  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "yahoo_fantasy_api", fake_yfa)
+
+    from scrapers.projection.yahoo import fetch_all_yahoo_nhl_players
+    fetch_all_yahoo_nhl_players("tok")
+
+    assert len(player_stats_calls) >= 1, "Expected player_stats() to be called for pagination"
+    assert "all" not in player_details_calls, "Must not use player_details('all') name-search"

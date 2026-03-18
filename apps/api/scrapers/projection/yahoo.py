@@ -26,6 +26,40 @@ from scrapers.projection import (
 
 logger = logging.getLogger(__name__)
 
+
+def fetch_all_yahoo_nhl_players(oauth_token: str) -> list[dict[str, Any]]:
+    """Fetch all NHL players with stats from Yahoo Fantasy API using pagination.
+
+    Paginates via game.player_stats() with start/count instead of calling
+    player_details("all") which is a name-search that returns only a handful
+    of players.
+
+    Args:
+        oauth_token: YAHOO_OAUTH_REFRESH_TOKEN value from settings.
+
+    Returns:
+        List of raw Yahoo player dicts (name, eligible_positions, player_stats).
+    """
+    import yahoo_fantasy_api as yfa  # type: ignore[import-untyped]
+
+    oauth = yfa.OAuth2(None, None, from_file=None)
+    oauth.refresh_access_token(oauth_token)
+    game = yfa.Game(oauth, "nhl")
+
+    all_players: list[dict[str, Any]] = []
+    start = 0
+    count = 25
+    while True:
+        batch = game.player_stats([], req_type="season", start=start, count=count)
+        if not batch:
+            break
+        all_players.extend(batch)
+        if len(batch) < count:
+            break
+        start += count
+    return all_players
+
+
 # Yahoo stat_id → our stat column
 # Verify these by inspecting live Yahoo API responses; they can change each season.
 YAHOO_STAT_MAP: dict[str, str] = {
@@ -82,16 +116,9 @@ class YahooScraper(BaseProjectionScraper):
 
     def _fetch_yahoo_players(self) -> list[dict[str, Any]]:
         """Fetch all NHL players with projected stats from Yahoo Fantasy API."""
-        import yahoo_fantasy_api as yfa  # type: ignore[import-untyped]
-
         from core.config import settings
 
-        oauth = yfa.OAuth2(None, None, from_file=None)
-        oauth.refresh_access_token(settings.yahoo_oauth_refresh_token)
-
-        game = yfa.Game(oauth, "nhl")
-        players = game.to_league(game.league_ids()[0]).player_details("all")
-        return players
+        return fetch_all_yahoo_nhl_players(settings.yahoo_oauth_refresh_token)
 
     async def scrape(self, season: str, db: Any) -> int:
         from core.config import settings

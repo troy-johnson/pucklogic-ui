@@ -18,6 +18,7 @@ from typing import Any
 import httpx
 
 from scrapers.matching import PlayerMatcher
+from scrapers.projection.yahoo import fetch_all_yahoo_nhl_players
 
 logger = logging.getLogger(__name__)
 
@@ -118,11 +119,7 @@ def ingest_yahoo_positions(db: Any) -> int:
         return 0
 
     try:
-        import yahoo_fantasy_api as yfa  # type: ignore[import-untyped]
-        oauth = yfa.OAuth2(None, None, from_file=None)
-        oauth.refresh_access_token(settings.yahoo_oauth_refresh_token)
-        game = yfa.Game(oauth, "nhl")
-        yahoo_players = game.to_league(game.league_ids()[0]).player_details("all")
+        yahoo_players = fetch_all_yahoo_nhl_players(settings.yahoo_oauth_refresh_token)
     except Exception as exc:
         logger.error("Yahoo positions fetch failed: %s", exc)
         return 0
