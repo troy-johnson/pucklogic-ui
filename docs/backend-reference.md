@@ -39,11 +39,25 @@ apps/api/
 │   ├── rankings.py              # Legacy rank-based pipeline (not used by /rankings/compute)
 │   └── scoring_validation.py   # validate_scoring_config() — PPP/PPG/PPA + SHP/SHG/SHA mutual exclusion
 ├── scrapers/
-│   ├── base.py                  # BaseScraper ABC — stat sources → player_stats
+│   ├── base.py                  # BaseScraper ABC — async _check_robots_txt, _get_with_retry
 │   ├── base_projection.py       # BaseProjectionScraper ABC — projection sources → player_projections
+│   ├── matching.py              # PlayerMatcher — exact → alias → rapidfuzz (threshold 85)
 │   ├── nhl_com.py               # NhlComScraper → player_stats
 │   ├── moneypuck.py             # MoneyPuckScraper → player_stats
-│   └── (projection/ scrapers — Phase 2 backlog)
+│   ├── nst.py                   # NstScraper (BeautifulSoup) → player_stats
+│   ├── platform_positions.py    # ESPN (auto), Yahoo (OAuth2), Fantrax (stub) → player_platform_positions
+│   ├── schedule_scores.py       # NHL schedule API → schedule_scores (OFF_NIGHT_THRESHOLD=16)
+│   └── projection/
+│       ├── __init__.py          # Shared helpers: upsert_source, upsert_projection_row,
+│       │                        #   fetch_players_and_aliases, log_unmatched,
+│       │                        #   update_last_successful_scrape, apply_column_map
+│       ├── hashtag_hockey.py    # HTML scraper; per-game rate × GP conversion
+│       ├── daily_faceoff.py     # CSV paste/upload
+│       ├── dobber.py            # CSV paste/upload (paywalled)
+│       ├── apples_ginos.py      # CSV paste/upload
+│       ├── lineup_experts.py    # CSV paste/upload
+│       ├── yahoo.py             # Yahoo Fantasy API (OAuth2); paginated via game.player_stats()
+│       └── fantrax.py           # Fantrax REST API; inherits BaseScraper
 └── tests/
     ├── conftest.py              # client fixture (TestClient)
     ├── test_health.py
@@ -52,7 +66,10 @@ apps/api/
     ├── routers/                 # test_rankings, test_exports, test_sources,
     │                            #   test_league_profiles, test_scoring_configs,
     │                            #   test_stripe, test_user_kits
-    ├── scrapers/                # test_base, test_base_projection, test_nhl_com, test_moneypuck
+    ├── scrapers/                # test_base, test_base_projection, test_nhl_com, test_moneypuck,
+    │                            #   test_platform_positions, test_schedule_scores
+    │   └── projection/          # test_hashtag_hockey, test_daily_faceoff, test_dobber,
+    │                            #   test_apples_ginos, test_lineup_experts, test_yahoo, test_fantrax
     └── services/                # test_projections, test_cache, test_exports,
                                  #   test_rankings (legacy), test_scoring_validation
 ```
@@ -526,35 +543,22 @@ def compute_vorp(
 
 ### Two scraper ABCs
 
-**`BaseScraper`** — for stat sources (NHL.com, MoneyPuck, Natural Stat Trick). Writes to `player_stats`.
+**`BaseScraper`** — for stat sources (NHL.com, MoneyPuck, Natural Stat Trick). Writes to `player_stats`. Also mixed into projection scrapers that need HTTP (Yahoo, Fantrax) to get `_check_robots_txt` and `_get_with_retry`.
 
 ```python
-from abc import ABC, abstractmethod
+from abc import ABC
 
 class BaseScraper(ABC):
-    @abstractmethod
-    def fetch_raw(self) -> list[dict]:
-        """Fetch raw data from source. Returns list of player dicts."""
+    async def _check_robots_txt(self, base_url: str) -> bool:
+        """Fetch and parse robots.txt; return True if scraping is allowed."""
+        ...
 
-    @abstractmethod
-    def normalize(self, raw: list[dict]) -> list[dict]:
-        """Normalize to common schema for player_stats."""
-
-    def run(self):
-        raw = self.fetch_raw()
-        normalized = self.normalize(raw)
-        matched = self.match_players(normalized)  # uses player_aliases + rapidfuzz
-        self.write_to_player_stats(matched)
-
-    def match_players(self, data: list[dict]) -> list[dict]:
-        """
-        Resolve player names to canonical IDs via:
-        1. Exact match on player_aliases
-        2. Fuzzy match (rapidfuzz, threshold >90%)
-        3. Flag unmatched for admin review; log to scraper_logs
-        """
+    async def _get_with_retry(self, url: str, **kwargs) -> httpx.Response:
+        """GET with exponential backoff; raises on persistent failure."""
         ...
 ```
+
+Projection scrapers that make HTTP requests (Yahoo, Fantrax) inherit `(BaseScraper, BaseProjectionScraper)` to get both the robots.txt check and the retry-capable HTTP client. CSV-only projection scrapers (DailyFaceoff, Dobber, etc.) inherit `BaseProjectionScraper` only.
 
 **`BaseProjectionScraper`** — for projection sources (HashtagHockey, DailyFaceoff, etc. and user-uploaded custom sources). Writes to `player_projections`.
 
@@ -602,10 +606,15 @@ jobs:
 ```
 
 **Pre-season projection scrape** (HashtagHockey, DailyFaceoff, etc. → `player_projections`):
-Each projection scraper runs pre-season; triggers `invalidate_rankings(season)` on completion.
+Each projection scraper runs pre-season (Monday 6am UTC weekly); triggers `invalidate_rankings(season)` on completion.
+Workflow: `.github/workflows/scrape-projections.yml`
 
-**Schedule ingestion** (one job per season, re-run if schedule changes):
-NHL schedule API → `schedule_scores` (off-night counts, min-max normalized across all players).
+**Pre-season platform data** (positions + schedule → `player_platform_positions`, `schedule_scores`):
+Runs once annually on Sep 1 8am UTC (before the season starts). Safe to re-run — all writes use UPSERT.
+Workflow: `.github/workflows/scrape-platform-data.yml`
+- ESPN position eligibility (auto-scrape, exponential-backoff retry)
+- Yahoo position eligibility (OAuth2 — requires `YAHOO_OAUTH_REFRESH_TOKEN`)
+- Schedule scores: NHL schedule API → off-night game counts, normalized to 0–1 (`OFF_NIGHT_THRESHOLD=16` teams = ≤8 games)
 
 ### Scraper Failure Handling
 
