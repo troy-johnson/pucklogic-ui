@@ -105,7 +105,7 @@ class DobberScraper(BaseProjectionScraper):
         Returns:
             Number of player_projections rows successfully upserted.
         """
-        source_id = upsert_source(db, self.SOURCE_NAME, self.DISPLAY_NAME)
+        source_id = upsert_source(db, self.SOURCE_NAME, self.DISPLAY_NAME, is_paid=True)
         players, aliases = fetch_players_and_aliases(db)
         matcher = PlayerMatcher(players=players, aliases=aliases)
 

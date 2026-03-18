@@ -42,6 +42,21 @@ class TestAliasMatch:
     def test_alias_case_insensitive(self, matcher: PlayerMatcher) -> None:
         assert matcher.resolve("j. kotkaniemi") == "p3"
 
+    def test_ambiguous_alias_same_name_different_players_returns_none(self) -> None:
+        # Two players mapped to the same alias (from different sources) — the
+        # alias lookup is ambiguous so it falls through to fuzzy. The canonical
+        # names are dissimilar enough that fuzzy also fails → None.
+        players = [
+            {"id": "x1", "name": "Firstname Zzzquux", "nhl_id": "1"},
+            {"id": "x2", "name": "Otherguy Zyxwvut", "nhl_id": "2"},
+        ]
+        aliases = [
+            {"alias_name": "Ambiguous Shared", "player_id": "x1", "source": "src_a"},
+            {"alias_name": "Ambiguous Shared", "player_id": "x2", "source": "src_b"},
+        ]
+        m = PlayerMatcher(players=players, aliases=aliases)
+        assert m.resolve("Ambiguous Shared") is None
+
 
 class TestFuzzyMatch:
     def test_fuzzy_matches_close_name(self, matcher: PlayerMatcher) -> None:

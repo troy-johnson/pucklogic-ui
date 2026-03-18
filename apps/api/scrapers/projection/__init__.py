@@ -14,12 +14,22 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
-def upsert_source(db: Any, source_name: str, display_name: str) -> str:
+def upsert_source(
+    db: Any,
+    source_name: str,
+    display_name: str,
+    is_paid: bool = False,
+) -> str:
     """Get or create a source row; return the source UUID."""
     result = (
         db.table("sources")
         .upsert(
-            {"name": source_name, "display_name": display_name, "active": True},
+            {
+                "name": source_name,
+                "display_name": display_name,
+                "active": True,
+                "is_paid": is_paid,
+            },
             on_conflict="name",
         )
         .execute()

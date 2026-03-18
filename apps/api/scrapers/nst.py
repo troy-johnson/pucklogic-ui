@@ -203,7 +203,7 @@ class NstScraper(BaseScraper):
         return result.data or []
 
     def _fetch_aliases(self, db: Any) -> list[dict[str, Any]]:
-        result = db.table("player_aliases").select("alias_name,player_id").execute()
+        result = db.table("player_aliases").select("alias_name,player_id,source").execute()
         return result.data or []
 
     def _upsert_player_stats(

@@ -71,6 +71,8 @@ _FLOAT_COL_MAP: dict[str, str] = {
     "SV%": "sv_pct",
 }
 
+_MISSING: frozenset[str] = frozenset({"", "-", "n/a", "na", "—"})
+
 
 class HashtagHockeyScraper(BaseScraper, BaseProjectionScraper):
     """Scrapes projected skater and goalie stats from hashtaghockey.com."""
@@ -158,7 +160,6 @@ class HashtagHockeyScraper(BaseScraper, BaseProjectionScraper):
                 if col_idx >= len(cells):
                     continue
                 raw = cells[col_idx].get_text(strip=True)
-                _MISSING = {"", "-", "n/a", "na", "—"}
                 if not raw or raw.lower() in _MISSING:
                     continue
                 try:
@@ -172,7 +173,7 @@ class HashtagHockeyScraper(BaseScraper, BaseProjectionScraper):
                 if col_idx >= len(cells):
                     continue
                 raw = cells[col_idx].get_text(strip=True)
-                if not raw or raw.strip() in {"", "-", "n/a"}:
+                if not raw or raw.lower() in _MISSING:
                     continue
                 try:
                     rate = float(raw)
