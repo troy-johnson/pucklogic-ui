@@ -230,3 +230,9 @@ class TestMeUnauthenticated:
     def test_missing_auth_header_returns_401(self, client: TestClient) -> None:
         resp = client.get("/auth/me")
         assert resp.status_code == 401
+
+    def test_expired_token_returns_401(self, client: TestClient) -> None:
+        with patch("core.dependencies.get_db") as mock_db:
+            mock_db.return_value.auth.get_user.side_effect = Exception("JWT expired")
+            resp = client.get("/auth/me", headers={"Authorization": "Bearer expired.jwt.token"})
+        assert resp.status_code == 401
