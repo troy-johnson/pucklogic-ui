@@ -1,8 +1,8 @@
-name: Ingest Platform Data (Positions + Schedule Scores)
+name: Ingest Platform Data — Pre-Season Annual (Sep 1)
 
 on:
   schedule:
-    - cron: "0 8 1 9 *"  # September 1st 8am UTC (pre-season)
+    - cron: "0 8 1 9 *"  # Sep 1 8am UTC — runs once per year before the season
   workflow_dispatch:
 
 jobs:
