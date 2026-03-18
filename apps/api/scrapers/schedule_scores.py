@@ -106,6 +106,12 @@ async def _fetch_season_schedule(season: str) -> list[dict[str, Any]]:
 async def ingest(season: str, db: Any) -> None:
     """Fetch schedule, compute per-player scores, upsert to schedule_scores."""
     schedule = await _fetch_season_schedule(season)
+    if not schedule:
+        logger.warning(
+            "Schedule scores: no game days fetched for %s — aborting to preserve existing data",
+            season,
+        )
+        return
     logger.info("Fetched %d game days for %s", len(schedule), season)
 
     # Build date → teams index
@@ -148,5 +154,6 @@ async def ingest(season: str, db: Any) -> None:
 
 
 if __name__ == "__main__":
+    from core.config import settings
     from core.dependencies import get_db
-    asyncio.run(ingest("2025-26", get_db()))
+    asyncio.run(ingest(settings.current_season, get_db()))

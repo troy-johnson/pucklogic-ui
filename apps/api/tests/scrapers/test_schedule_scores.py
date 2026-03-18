@@ -1,6 +1,8 @@
 # apps/api/tests/scrapers/test_schedule_scores.py
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 from scrapers.schedule_scores import (
     compute_schedule_score,
     count_off_night_games,
@@ -48,3 +50,21 @@ class TestComputeScheduleScore:
 
     def test_zero_total_games_returns_zero(self) -> None:
         assert compute_schedule_score(0, 0) == 0.0
+
+
+async def test_ingest_aborts_on_empty_schedule() -> None:
+    """ingest() must not upsert any rows when _fetch_season_schedule returns []."""
+    from scrapers.schedule_scores import ingest
+
+    mock_db = MagicMock()
+    mock_db.table.return_value.select.return_value.execute.return_value.data = [
+        {"id": "p1", "team": "EDM"},
+    ]
+
+    with patch(
+        "scrapers.schedule_scores._fetch_season_schedule",
+        new=AsyncMock(return_value=[]),
+    ):
+        await ingest("2025-26", mock_db)
+
+    mock_db.table.return_value.upsert.assert_not_called()
