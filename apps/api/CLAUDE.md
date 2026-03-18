@@ -98,12 +98,24 @@ Do not build Layer 2 Celery jobs, Z-score computation, or the paywall gate until
 |------|--------|-------|
 | `routers/auth.py` | ⬜ TODO | POST /auth/login, /auth/register |
 | `routers/players.py` | ⬜ TODO | GET /players, GET /players/{id} |
-| `scrapers/projection/` | ⬜ TODO | HashtagHockey, DailyFaceoff, Apples & Ginos, LineupExperts, Yahoo, Fantrax scrapers |
-| `scrapers/nst.py` | ⬜ TODO | Natural Stat Trick HTML scraper — writes to `player_stats` |
-| `scrapers/matching.py` | ⬜ TODO | Player name/ID resolution via rapidfuzz (Phase 1 backlog) |
+| `scrapers/projection/` — Yahoo, Fantrax | ⬜ TODO | Auto-scrape sources; not yet implemented |
 | Schedule ingestion job | ⬜ TODO | GitHub Actions: NHL schedule API → `schedule_scores` (off-night counts, min-max normalized) |
 | `player_platform_positions` ingestion | ⬜ TODO | Per-platform position eligibility for ESPN, Yahoo, Fantrax |
 | Custom upload UI + handler | ⬜ TODO | 2 slots per user, CSV/Excel, column mapping, `sources.user_id` set, triggers cache invalidation |
+
+### Phase 2 — Scrapers Complete (feat/phase2-projection-scrapers)
+
+| Area | Status | Notes |
+|------|--------|-------|
+| `scrapers/matching.py` | ✅ Complete | `PlayerMatcher` — exact → alias → rapidfuzz (token_sort_ratio, threshold 85) |
+| `scrapers/projection/__init__.py` | ✅ Complete | Shared helpers: `upsert_source`, `upsert_projection_row`, `fetch_players_and_aliases`, `log_unmatched`, `update_last_successful_scrape`, `apply_column_map` |
+| `scrapers/projection/hashtag_hockey.py` | ✅ Complete | HTML scraper; per-game rate × GP conversion (can't use `apply_column_map` — documented in file) |
+| `scrapers/projection/daily_faceoff.py` | ✅ Complete | CSV paste/upload mode |
+| `scrapers/projection/dobber.py` | ✅ Complete | CSV paste/upload mode (paywalled — no HTTP) |
+| `scrapers/projection/apples_ginos.py` | ✅ Complete | CSV paste/upload mode |
+| `scrapers/projection/lineup_experts.py` | ✅ Complete | CSV paste/upload mode |
+| `scrapers/nst.py` | ✅ Complete | HTML scraper (BeautifulSoup); writes to `player_stats` |
+| GitHub Actions cron | ✅ Complete | `.github/workflows/scrape-projections.yml` — weekly Monday 6am UTC, all 5 scrapers + NST |
 
 ---
 
