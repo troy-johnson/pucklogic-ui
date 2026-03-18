@@ -60,7 +60,10 @@ _RATE_COL_MAP: dict[str, str] = {
 _GOALIE_RATE_COL_MAP: dict[str, str] = {
     "SHO": "so",
     "W": "w",
-    "GAA": "ga",  # store as per-game average — caller may override
+    # GAA intentionally excluded: multiplying GAA × GP gives an approximation
+    # of total goals-against, but player_projections.ga is a counting stat used
+    # by apply_scoring_config() and the rate conversion is semantically
+    # ambiguous (GP ≠ starts).  Leave ga NULL for goalies from this source.
 }
 
 # SV% is stored as a float directly (not multiplied by GP)
@@ -257,3 +260,23 @@ class HashtagHockeyScraper(BaseScraper, BaseProjectionScraper):
             season,
         )
         return upserted
+
+
+# ------------------------------------------------------------------
+# CLI entry-point
+# ------------------------------------------------------------------
+
+
+async def _main() -> None:
+    from supabase import create_client
+
+    from core.config import settings
+
+    db = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    count = await HashtagHockeyScraper().scrape(settings.current_season, db)
+    print(f"Upserted {count} rows.")
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    asyncio.run(_main())
