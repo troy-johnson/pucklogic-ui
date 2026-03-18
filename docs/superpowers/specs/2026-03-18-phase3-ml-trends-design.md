@@ -90,19 +90,17 @@ speed_bursts_22    float,
 top_speed          float
 ```
 
-**`player_metadata` — new table for flags:**
+**Flag columns — add to `player_stats` (not a separate table):**
+
+`docs/feature-engineering-spec.md` specifies these as `ALTER TABLE player_stats ADD COLUMN IF NOT EXISTS ...` statements. This spec supersedes the earlier idea of a separate `player_metadata` table. Keeping flags in `player_stats` avoids an extra JOIN in the feature matrix query and is consistent with the existing schema pattern (one row per player per season).
+
 ```sql
-CREATE TABLE player_metadata (
-    player_id    uuid REFERENCES players(id),
-    season       text NOT NULL,
-    elc_flag     boolean DEFAULT false,
-    contract_year_flag   boolean DEFAULT false,
-    post_extension_flag  boolean DEFAULT false,
-    coaching_change_flag boolean DEFAULT false,
-    trade_flag   boolean DEFAULT false,
-    nhl_experience int,        -- years in NHL
-    PRIMARY KEY (player_id, season)
-);
+ALTER TABLE player_stats ADD COLUMN IF NOT EXISTS elc_flag boolean DEFAULT false;
+ALTER TABLE player_stats ADD COLUMN IF NOT EXISTS contract_year_flag boolean DEFAULT false;
+ALTER TABLE player_stats ADD COLUMN IF NOT EXISTS post_extension_flag boolean DEFAULT false;
+ALTER TABLE player_stats ADD COLUMN IF NOT EXISTS coaching_change_flag boolean DEFAULT false;
+ALTER TABLE player_stats ADD COLUMN IF NOT EXISTS trade_flag boolean DEFAULT false;
+ALTER TABLE player_stats ADD COLUMN IF NOT EXISTS nhl_experience int;
 ```
 
 ### Scraper Verification Criteria
@@ -174,9 +172,11 @@ Raw GF%, SAT for counts (use rates), `ga60` for goalie proxy, raw PDO (use delta
 
 ### Label Definition
 
-- **Breakout:** season fantasy point production ≥ 20% above player's trailing 2-season rate-adjusted average (rate = fantasy points per 60 min × estimated GP)
-- **Regression:** season fantasy point production ≤ 20% below trailing 2-season rate-adjusted average
-- **Neither:** all other players (majority class)
+**Minimum inclusion threshold:** 500 even-strength minutes per season (per `docs/feature-engineering-spec.md`). Players below this threshold are excluded from the training set — depth players with insufficient sample sizes produce unreliable labels that corrupt training.
+
+- **Breakout:** season fantasy point production ≥ 20% above player's trailing 2-season rate-adjusted average (rate = fantasy points per 60 min × estimated GP), subject to ≥ 500 ES minutes in both prior seasons
+- **Regression:** season fantasy point production ≤ 20% below trailing 2-season rate-adjusted average, same minimum threshold
+- **Neither:** all other qualifying players (majority class)
 
 Label is binary per target: `is_breakout` (1/0) and `is_regression` (1/0). Two separate models, or multi-class with three outputs.
 
@@ -395,10 +395,25 @@ on:
 
 ---
 
+## Model Artifact Storage (Decision)
+
+Artifacts are stored in **Supabase Storage** (bucket: `ml-artifacts`, path: `trends/<season>/`). Rationale: Railway dynos are ephemeral; git LFS adds unnecessary repo weight; Supabase Storage is already provisioned and free at this data size (<10MB per model pair).
+
+**Startup loading** (`apps/api/main.py` or a dedicated `ml/loader.py`):
+```python
+# at FastAPI startup
+from ml.loader import load_model_artifacts
+model_breakout, model_regression, feature_columns = load_model_artifacts(season=settings.current_season)
+```
+
+`load_model_artifacts` downloads from Supabase Storage if `ml/artifacts/` is empty, otherwise loads from disk (cached across requests within a dyno lifetime).
+
+**Failure mode:** If the artifact file is missing from storage (e.g., model hasn't been trained yet for the season), `GET /trends` returns HTTP 503 with `{"detail": "Trends model not available for this season"}`. This prevents a 500 crash and gives the frontend a clear signal to hide the Trends panel.
+
+---
+
 ## Open Questions
 
 1. **Hockey Reference scraper**: robots.txt allows scraping but requires rate limiting. Confirm scrape cadence (weekly historical pull vs. one-time backfill).
 2. **Evolving Hockey $5 pull**: Manual CSV download once per season vs. automated. Start manual for v1.0.
 3. **Multi-season historical depth**: How many seasons for training? Recommend 8–10 seasons (2014-15 through 2023-24). Confirm availability for all Tier 1 features back to 2014-15.
-4. **`player_metadata` table**: Create new table or add flag columns directly to `player_stats`? Recommendation: separate table (flags change independently of stats).
-5. **Model storage**: Store model artifacts in Supabase Storage or checked into git LFS? Recommendation: Supabase Storage (gitignore `ml/artifacts/`, download at deploy time).
