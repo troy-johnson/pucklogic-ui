@@ -56,7 +56,27 @@ def _build_auth_response(resp: Any) -> AuthResponse:
     )
 
 
-@router.post("/register", response_model=AuthResponse, status_code=200)
+@router.post(
+    "/register",
+    response_model=AuthResponse,
+    status_code=200,
+    responses={
+        202: {
+            "description": "Email confirmation required — session not yet available",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {"message": {"type": "string"}},
+                        "example": {
+                            "message": "Confirmation email sent. Please verify your email to complete registration."
+                        },
+                    }
+                }
+            },
+        }
+    },
+)
 async def register(req: RegisterRequest) -> AuthResponse | dict[str, str]:
     """Create a new user account via Supabase Auth."""
     try:
