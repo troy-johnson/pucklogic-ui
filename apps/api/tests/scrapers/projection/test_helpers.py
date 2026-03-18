@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from scrapers.projection import apply_column_map, upsert_source, fetch_players_and_aliases
+from scrapers.projection import apply_column_map, fetch_players_and_aliases, upsert_source
 
 
 class TestApplyColumnMap:
