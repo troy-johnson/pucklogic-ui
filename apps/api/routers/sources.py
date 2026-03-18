@@ -69,7 +69,7 @@ async def upload_custom_source(
     column_map: str = Form(..., description="JSON: {their_col: our_stat}"),
     player_name_column: str | None = Form(
         None,
-        description="Column containing player names. Defaults to the first column not in column_map.",
+        description="Column containing player names. Defaults to first column not in column_map.",
     ),
     user: dict[str, Any] = Depends(get_current_user),
     repo: SourceRepository = Depends(get_source_repository),
