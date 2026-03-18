@@ -69,7 +69,10 @@ def _build_auth_response(resp: Any) -> AuthResponse:
                         "type": "object",
                         "properties": {"message": {"type": "string"}},
                         "example": {
-                            "message": "Confirmation email sent. Please verify your email to complete registration."
+                            "message": (
+                                "Confirmation email sent. "
+                                "Please verify your email to complete registration."
+                            )
                         },
                     }
                 }
