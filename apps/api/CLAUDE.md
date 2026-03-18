@@ -77,7 +77,7 @@ Do not build Layer 2 Celery jobs, Z-score computation, or the paywall gate until
 | Area | Status | Notes |
 |------|--------|-------|
 | `models/schemas.py` | ✅ Complete | All Phase 2 schemas defined; `RankingsComputeRequest` uses `source_weights`, `scoring_config_id`, `platform`, `league_profile_id`; `UserKitCreate`/`UserKitOut` are source-weight presets only |
-| `repositories/` | ✅ Complete | players (`list()` takes no args), projections (`get_by_season(season, platform, user_id)`), sources, subscriptions |
+| `repositories/` | ✅ Complete | players (`list(limit, offset)` — paginated via `.range()`), projections (`get_by_season(season, platform, user_id)`), sources, subscriptions |
 | `services/projections.py` | ✅ Complete | `aggregate_projections`, `compute_weighted_stats`, `apply_scoring_config`, `compute_vorp` |
 | `services/cache.py` | ✅ Complete | `CacheService` with Upstash Redis, graceful no-op when unconfigured; cache key = `rankings:{season}:{sha256(source_weights+scoring_config_id+platform+league_profile_id)}` |
 | `services/exports.py` | ✅ Complete | `generate_excel` (2 sheets: Full Rankings + Best Available), `generate_pdf` (Print & Draft) |
@@ -96,8 +96,8 @@ Do not build Layer 2 Celery jobs, Z-score computation, or the paywall gate until
 
 | Area | Status | Notes |
 |------|--------|-------|
-| `routers/auth.py` | ⬜ TODO | POST /auth/login, /auth/register |
-| `routers/players.py` | ⬜ TODO | GET /players, GET /players/{id} |
+| `routers/auth.py` | ✅ Complete | POST /auth/register,login,logout,refresh + GET /auth/me; thin Supabase Auth wrapper; email-confirmation 202 path; admin.sign_out for token revocation |
+| `routers/players.py` | ✅ Complete | GET /players, GET /players/{id} |
 | `scrapers/projection/` | ⬜ TODO | HashtagHockey, DailyFaceoff, Apples & Ginos, LineupExperts, Yahoo, Fantrax scrapers |
 | `scrapers/nst.py` | ⬜ TODO | Natural Stat Trick HTML scraper — writes to `player_stats` |
 | `scrapers/matching.py` | ⬜ TODO | Player name/ID resolution via rapidfuzz (Phase 1 backlog) |

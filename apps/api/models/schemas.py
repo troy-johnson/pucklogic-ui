@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 # ---------------------------------------------------------------------------
 # Sources
@@ -212,3 +212,46 @@ class UserKitOut(BaseModel):
     name: str
     source_weights: dict[str, float]
     created_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# Players
+# ---------------------------------------------------------------------------
+
+
+class PlayerOut(BaseModel):
+    id: str
+    name: str
+    team: str | None = None
+    position: str | None = None
+    nhl_id: int | None = None
+
+
+# ---------------------------------------------------------------------------
+# Auth
+# ---------------------------------------------------------------------------
+
+
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=8)
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=1)
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class AuthUserOut(BaseModel):
+    id: str
+    email: str
+
+
+class AuthResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    user: AuthUserOut
