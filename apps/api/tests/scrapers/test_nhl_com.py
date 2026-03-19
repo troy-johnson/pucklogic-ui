@@ -29,9 +29,7 @@ def _make_response(data: dict, status: int = 200) -> httpx.Response:
 def _mock_db(source_id: str = "src-1", player_id: str = "p-1") -> MagicMock:
     db = MagicMock()
     # sources.upsert(...).execute() → {"data": [{"id": source_id}]}
-    db.table.return_value.upsert.return_value.execute.return_value.data = [
-        {"id": source_id}
-    ]
+    db.table.return_value.upsert.return_value.execute.return_value.data = [{"id": source_id}]
     # players.upsert(...).execute() → {"data": [{"id": player_id}]}
     return db
 
@@ -119,9 +117,7 @@ class TestScrape:
             _make_response({"data": [NHL_PLAYER_1, NHL_PLAYER_2], "total": 2}),
         ]
         db = _mock_db()
-        db.table.return_value.upsert.return_value.execute.return_value.data = [
-            {"id": "p-1"}
-        ]
+        db.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "p-1"}]
         scraper = NhlComScraper(http=mock_http)
         count = await scraper.scrape(SEASON, db)
         assert count == 2
@@ -174,9 +170,7 @@ class TestScrape:
         scraper = NhlComScraper(http=mock_http)
         await scraper.scrape(SEASON, db)
         # Find the player_rankings upsert call — rank should be 1
-        upsert_calls = [
-            c for c in db.table.return_value.upsert.call_args_list if "rank" in str(c)
-        ]
+        upsert_calls = [c for c in db.table.return_value.upsert.call_args_list if "rank" in str(c)]
         assert any("'rank': 1" in str(c) for c in upsert_calls)
 
     @pytest.mark.asyncio
@@ -195,9 +189,7 @@ class TestScrape:
             _make_response({"data": [NHL_PLAYER_2], "total": PAGE + 1}),
         ]
         db = _mock_db()
-        db.table.return_value.upsert.return_value.execute.return_value.data = [
-            {"id": "p-1"}
-        ]
+        db.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "p-1"}]
         scraper = NhlComScraper(http=mock_http)
         with patch("scrapers.base.asyncio.sleep", new_callable=AsyncMock):
             count = await scraper.scrape(SEASON, db)
@@ -217,9 +209,7 @@ class TestScrape:
             _make_response({"data": []}),
         ]
         db = _mock_db()
-        db.table.return_value.upsert.return_value.execute.return_value.data = [
-            {"id": "p-1"}
-        ]
+        db.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "p-1"}]
         scraper = NhlComScraper(http=mock_http)
         sleep_mock = AsyncMock()
         with patch("scrapers.nhl_com.asyncio.sleep", sleep_mock):

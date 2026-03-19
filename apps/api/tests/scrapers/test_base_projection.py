@@ -26,20 +26,24 @@ class TestBaseProjectionScraperContract:
 
     def test_missing_source_name_raises(self) -> None:
         with pytest.raises(TypeError):
+
             class BadScraper(BaseProjectionScraper):
                 DISPLAY_NAME = "Bad"
                 # SOURCE_NAME missing — abstract attr
 
                 async def scrape(self, season: str, db: object) -> int:
                     return 0
+
             BadScraper()
 
     def test_missing_scrape_raises(self) -> None:
         with pytest.raises(TypeError):
+
             class BadScraper(BaseProjectionScraper):
                 SOURCE_NAME = "x"
                 DISPLAY_NAME = "X"
                 # scrape() not implemented
+
             BadScraper()
 
     @pytest.mark.asyncio

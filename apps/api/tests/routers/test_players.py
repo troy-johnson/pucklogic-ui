@@ -102,9 +102,7 @@ class TestGetPlayer:
         mock_player_repo.get.return_value = None
         assert client.get("/players/unknown-id").status_code == 404
 
-    def test_404_detail_message(
-        self, client: TestClient, mock_player_repo: MagicMock
-    ) -> None:
+    def test_404_detail_message(self, client: TestClient, mock_player_repo: MagicMock) -> None:
         mock_player_repo.get.return_value = None
         resp = client.get("/players/unknown-id")
         assert resp.json()["detail"] == "Player not found"

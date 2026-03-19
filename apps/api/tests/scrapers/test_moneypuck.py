@@ -40,9 +40,7 @@ def _make_response(text: str, status: int = 200) -> httpx.Response:
 
 def _mock_db() -> MagicMock:
     db = MagicMock()
-    db.table.return_value.upsert.return_value.execute.return_value.data = [
-        {"id": "x-1"}
-    ]
+    db.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "x-1"}]
     return db
 
 
@@ -146,9 +144,7 @@ class TestScrape:
         db = _mock_db()
         scraper = MoneyPuckScraper(http=mock_http)
         await scraper.scrape(SEASON, db)
-        upsert_calls = [
-            c for c in db.table.return_value.upsert.call_args_list if "rank" in str(c)
-        ]
+        upsert_calls = [c for c in db.table.return_value.upsert.call_args_list if "rank" in str(c)]
         assert any("'rank': 1" in str(c) for c in upsert_calls)
 
     @pytest.mark.asyncio

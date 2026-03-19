@@ -159,51 +159,35 @@ def two_source_rankings() -> dict:
 
 class TestComputeWeightedRankings:
     def test_returns_all_players(self, two_source_rankings: dict) -> None:
-        result = compute_weighted_rankings(
-            two_source_rankings, {"nhl_com": 50, "moneypuck": 50}
-        )
+        result = compute_weighted_rankings(two_source_rankings, {"nhl_com": 50, "moneypuck": 50})
         assert len(result) == 3
 
     def test_assigns_composite_rank(self, two_source_rankings: dict) -> None:
-        result = compute_weighted_rankings(
-            two_source_rankings, {"nhl_com": 50, "moneypuck": 50}
-        )
+        result = compute_weighted_rankings(two_source_rankings, {"nhl_com": 50, "moneypuck": 50})
         ranks = [r["composite_rank"] for r in result]
         assert sorted(ranks) == [1, 2, 3]
 
     def test_rank_1_is_first(self, two_source_rankings: dict) -> None:
-        result = compute_weighted_rankings(
-            two_source_rankings, {"nhl_com": 50, "moneypuck": 50}
-        )
+        result = compute_weighted_rankings(two_source_rankings, {"nhl_com": 50, "moneypuck": 50})
         assert result[0]["composite_rank"] == 1
 
     def test_source_ranks_preserved(self, two_source_rankings: dict) -> None:
-        result = compute_weighted_rankings(
-            two_source_rankings, {"nhl_com": 50, "moneypuck": 50}
-        )
+        result = compute_weighted_rankings(two_source_rankings, {"nhl_com": 50, "moneypuck": 50})
         mcd = next(r for r in result if r["player_id"] == "p1")
         assert mcd["source_ranks"]["nhl_com"] == 1
         assert mcd["source_ranks"]["moneypuck"] == 2
 
-    def test_composite_score_between_zero_and_one(
-        self, two_source_rankings: dict
-    ) -> None:
-        result = compute_weighted_rankings(
-            two_source_rankings, {"nhl_com": 50, "moneypuck": 50}
-        )
+    def test_composite_score_between_zero_and_one(self, two_source_rankings: dict) -> None:
+        result = compute_weighted_rankings(two_source_rankings, {"nhl_com": 50, "moneypuck": 50})
         for row in result:
             assert 0.0 <= row["composite_score"] <= 1.0
 
     def test_source_with_zero_weight_excluded(self, two_source_rankings: dict) -> None:
-        result = compute_weighted_rankings(
-            two_source_rankings, {"nhl_com": 100, "moneypuck": 0}
-        )
+        result = compute_weighted_rankings(two_source_rankings, {"nhl_com": 100, "moneypuck": 0})
         # Only nhl_com contributes; McDavid (rank 1) should be first
         assert result[0]["player_id"] == "p1"
 
-    def test_source_absent_from_weights_excluded(
-        self, two_source_rankings: dict
-    ) -> None:
+    def test_source_absent_from_weights_excluded(self, two_source_rankings: dict) -> None:
         result = compute_weighted_rankings(two_source_rankings, {"nhl_com": 100})
         # moneypuck not in weights → not counted
         mcd = next(r for r in result if r["player_id"] == "p1")
@@ -221,9 +205,7 @@ class TestComputeWeightedRankings:
                 {"player_id": "p1", "name": "McDavid", "rank": 1},
             ],
         }
-        result = compute_weighted_rankings(
-            source_rankings, {"nhl_com": 50, "moneypuck": 50}
-        )
+        result = compute_weighted_rankings(source_rankings, {"nhl_com": 50, "moneypuck": 50})
         assert len(result) == 2
         p2 = next(r for r in result if r["player_id"] == "p2")
         assert p2["composite_score"] > 0
@@ -232,9 +214,7 @@ class TestComputeWeightedRankings:
         assert compute_weighted_rankings({}, {"nhl_com": 50}) == []
 
     def test_sorted_descending_by_score(self, two_source_rankings: dict) -> None:
-        result = compute_weighted_rankings(
-            two_source_rankings, {"nhl_com": 50, "moneypuck": 50}
-        )
+        result = compute_weighted_rankings(two_source_rankings, {"nhl_com": 50, "moneypuck": 50})
         scores = [r["composite_score"] for r in result]
         assert scores == sorted(scores, reverse=True)
 
@@ -251,9 +231,7 @@ class TestComputeWeightedRankings:
                 {"player_id": "p1", "name": "McDavid", "rank": 2},
             ],
         }
-        result = compute_weighted_rankings(
-            source_rankings, {"nhl_com": 1, "moneypuck": 1}
-        )
+        result = compute_weighted_rankings(source_rankings, {"nhl_com": 1, "moneypuck": 1})
         # Both players have symmetric ranks → composite scores should be equal
         scores = {r["player_id"]: r["composite_score"] for r in result}
         assert abs(scores["p1"] - scores["p2"]) < 1e-9

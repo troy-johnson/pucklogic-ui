@@ -57,9 +57,7 @@ class TestRegister:
 
     def test_duplicate_email_returns_400(self, client: TestClient) -> None:
         with patch("routers.auth.get_db") as mock_db:
-            mock_db.return_value.auth.sign_up.side_effect = Exception(
-                "User already registered"
-            )
+            mock_db.return_value.auth.sign_up.side_effect = Exception("User already registered")
             resp = client.post(
                 "/auth/register",
                 json={"email": "existing@example.com", "password": "securepass1"},
@@ -144,28 +142,16 @@ class TestLogout:
         yield
         app.dependency_overrides.clear()
 
-    def test_success_returns_204_and_calls_sign_out_with_jwt(
-        self, client: TestClient
-    ) -> None:
+    def test_success_returns_204_and_calls_sign_out_with_jwt(self, client: TestClient) -> None:
         with patch("routers.auth.get_db") as mock_db:
-            resp = client.post(
-                "/auth/logout", headers={"Authorization": "Bearer jwt-token"}
-            )
+            resp = client.post("/auth/logout", headers={"Authorization": "Bearer jwt-token"})
         assert resp.status_code == 204
-        mock_db.return_value.auth.admin.sign_out.assert_called_once_with(
-            MOCK_USER["token"]
-        )
+        mock_db.return_value.auth.admin.sign_out.assert_called_once_with(MOCK_USER["token"])
 
-    def test_sign_out_failure_is_non_fatal_returns_204(
-        self, client: TestClient
-    ) -> None:
+    def test_sign_out_failure_is_non_fatal_returns_204(self, client: TestClient) -> None:
         with patch("routers.auth.get_db") as mock_db:
-            mock_db.return_value.auth.admin.sign_out.side_effect = Exception(
-                "upstream error"
-            )
-            resp = client.post(
-                "/auth/logout", headers={"Authorization": "Bearer jwt-token"}
-            )
+            mock_db.return_value.auth.admin.sign_out.side_effect = Exception("upstream error")
+            resp = client.post("/auth/logout", headers={"Authorization": "Bearer jwt-token"})
         assert resp.status_code == 204
 
 
@@ -183,12 +169,10 @@ class TestLogoutUnauthenticated:
 class TestRefresh:
     def test_success_returns_new_tokens(self, client: TestClient) -> None:
         with patch("routers.auth.get_db") as mock_db:
-            mock_db.return_value.auth.refresh_session.return_value = (
-                _mock_supabase_auth_resp("new_access", "new_refresh")
+            mock_db.return_value.auth.refresh_session.return_value = _mock_supabase_auth_resp(
+                "new_access", "new_refresh"
             )
-            resp = client.post(
-                "/auth/refresh", json={"refresh_token": "old_refresh_token"}
-            )
+            resp = client.post("/auth/refresh", json={"refresh_token": "old_refresh_token"})
         assert resp.status_code == 200
         data = resp.json()
         assert data["access_token"] == "new_access"
@@ -196,12 +180,8 @@ class TestRefresh:
 
     def test_invalid_token_returns_401(self, client: TestClient) -> None:
         with patch("routers.auth.get_db") as mock_db:
-            mock_db.return_value.auth.refresh_session.side_effect = Exception(
-                "token expired"
-            )
-            resp = client.post(
-                "/auth/refresh", json={"refresh_token": "expired_token"}
-            )
+            mock_db.return_value.auth.refresh_session.side_effect = Exception("token expired")
+            resp = client.post("/auth/refresh", json={"refresh_token": "expired_token"})
         assert resp.status_code == 401
         assert "Invalid or expired refresh token" in resp.json()["detail"]
 

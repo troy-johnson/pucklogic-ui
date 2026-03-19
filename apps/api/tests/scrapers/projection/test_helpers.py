@@ -43,9 +43,7 @@ class TestApplyColumnMap:
 class TestUpsertSource:
     def test_calls_upsert_on_sources_table(self) -> None:
         mock_db = MagicMock()
-        mock_db.table.return_value.upsert.return_value.execute.return_value.data = [
-            {"id": "src-1"}
-        ]
+        mock_db.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "src-1"}]
         result = upsert_source(mock_db, "hashtag_hockey", "Hashtag Hockey")
         mock_db.table.assert_called_once_with("sources")
         assert result == "src-1"

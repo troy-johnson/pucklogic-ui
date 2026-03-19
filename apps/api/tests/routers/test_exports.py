@@ -44,12 +44,31 @@ PROJECTION_ROWS = [
         "sources": {"name": "hashtag", "user_id": None},
         "player_platform_positions": [{"positions": ["C"]}],
         "schedule_scores": [{"season": "2025-26", "schedule_score": 0.8, "off_night_games": 10}],
-        "g": 60, "a": 90, "plus_minus": None, "pim": None,
-        "ppg": None, "ppa": None, "ppp": 50, "shg": None, "sha": None,
-        "shp": None, "sog": 250, "fow": None, "fol": None,
-        "hits": None, "blocks": None, "gp": 82,
-        "gs": None, "w": None, "l": None, "ga": None,
-        "sa": None, "sv": None, "sv_pct": None, "so": None, "otl": None,
+        "g": 60,
+        "a": 90,
+        "plus_minus": None,
+        "pim": None,
+        "ppg": None,
+        "ppa": None,
+        "ppp": 50,
+        "shg": None,
+        "sha": None,
+        "shp": None,
+        "sog": 250,
+        "fow": None,
+        "fol": None,
+        "hits": None,
+        "blocks": None,
+        "gp": 82,
+        "gs": None,
+        "w": None,
+        "l": None,
+        "ga": None,
+        "sa": None,
+        "sv": None,
+        "sv_pct": None,
+        "so": None,
+        "otl": None,
     }
 ]
 
@@ -110,9 +129,7 @@ def override_deps(
 
 
 def _raise_401() -> None:
-    raise HTTPException(
-        status_code=401, detail="Missing or invalid Authorization header"
-    )
+    raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
 
 
 class TestGenerateExcelExport:

@@ -102,7 +102,9 @@ class TestCreateScoringConfig:
         client.post("/scoring-configs", json=body)
         mock_repo.create.assert_called_once()
 
-    def test_sets_user_id_and_is_preset_false(self, client: TestClient, mock_repo: MagicMock) -> None:  # noqa: E501
+    def test_sets_user_id_and_is_preset_false(
+        self, client: TestClient, mock_repo: MagicMock
+    ) -> None:  # noqa: E501
         body = {"name": "My Custom", "stat_weights": {"g": 5}}
         client.post("/scoring-configs", json=body)
         call_data = mock_repo.create.call_args.args[0]

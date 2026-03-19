@@ -30,9 +30,7 @@ class _DummyScraper(BaseScraper):
 
 
 def _make_response(status_code: int = 200, text: str = "") -> httpx.Response:
-    return httpx.Response(
-        status_code, text=text, request=httpx.Request("GET", "http://x")
-    )
+    return httpx.Response(status_code, text=text, request=httpx.Request("GET", "http://x"))
 
 
 # ---------------------------------------------------------------------------

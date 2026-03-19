@@ -48,9 +48,7 @@ class TestListUserKits:
         assert isinstance(data, list)
         assert len(data) == 1
 
-    def test_kit_has_required_fields(
-        self, client: TestClient, mock_db: MagicMock
-    ) -> None:
+    def test_kit_has_required_fields(self, client: TestClient, mock_db: MagicMock) -> None:
         (
             mock_db.table.return_value.select.return_value.eq.return_value.order.return_value.execute.return_value.data
         ) = [KIT_ROW]
@@ -66,9 +64,7 @@ class TestListUserKits:
         client.get("/user-kits")
         eq_chain.assert_called_once_with("user_id", MOCK_USER["id"])
 
-    def test_returns_empty_list_when_no_kits(
-        self, client: TestClient, mock_db: MagicMock
-    ) -> None:
+    def test_returns_empty_list_when_no_kits(self, client: TestClient, mock_db: MagicMock) -> None:
         (
             mock_db.table.return_value.select.return_value.eq.return_value.order.return_value.execute.return_value.data
         ) = []
@@ -82,41 +78,29 @@ class TestCreateUserKit:
     }
 
     def test_returns_201(self, client: TestClient, mock_db: MagicMock) -> None:
-        mock_db.table.return_value.insert.return_value.execute.return_value.data = [
-            KIT_ROW
-        ]
+        mock_db.table.return_value.insert.return_value.execute.return_value.data = [KIT_ROW]
         assert client.post("/user-kits", json=self.CREATE_BODY).status_code == 201
 
     def test_returns_created_kit(self, client: TestClient, mock_db: MagicMock) -> None:
-        mock_db.table.return_value.insert.return_value.execute.return_value.data = [
-            KIT_ROW
-        ]
+        mock_db.table.return_value.insert.return_value.execute.return_value.data = [KIT_ROW]
         data = client.post("/user-kits", json=self.CREATE_BODY).json()
         assert data["id"] == KIT_ROW["id"]
         assert data["name"] == KIT_ROW["name"]
 
     def test_inserts_with_user_id(self, client: TestClient, mock_db: MagicMock) -> None:
-        mock_db.table.return_value.insert.return_value.execute.return_value.data = [
-            KIT_ROW
-        ]
+        mock_db.table.return_value.insert.return_value.execute.return_value.data = [KIT_ROW]
         client.post("/user-kits", json=self.CREATE_BODY)
         insert_call = mock_db.table.return_value.insert.call_args.args[0]
         assert insert_call["user_id"] == MOCK_USER["id"]
 
-    def test_inserts_source_weights(
-        self, client: TestClient, mock_db: MagicMock
-    ) -> None:
-        mock_db.table.return_value.insert.return_value.execute.return_value.data = [
-            KIT_ROW
-        ]
+    def test_inserts_source_weights(self, client: TestClient, mock_db: MagicMock) -> None:
+        mock_db.table.return_value.insert.return_value.execute.return_value.data = [KIT_ROW]
         client.post("/user-kits", json=self.CREATE_BODY)
         insert_call = mock_db.table.return_value.insert.call_args.args[0]
         assert insert_call["source_weights"] == self.CREATE_BODY["source_weights"]
         assert "season" not in insert_call
 
-    def test_returns_500_when_insert_fails(
-        self, client: TestClient, mock_db: MagicMock
-    ) -> None:
+    def test_returns_500_when_insert_fails(self, client: TestClient, mock_db: MagicMock) -> None:
         mock_db.table.return_value.insert.return_value.execute.return_value.data = []
         assert client.post("/user-kits", json=self.CREATE_BODY).status_code == 500
 
@@ -126,25 +110,19 @@ class TestCreateUserKit:
 
 
 class TestDeleteUserKit:
-    def test_returns_204_when_deleted(
-        self, client: TestClient, mock_db: MagicMock
-    ) -> None:
+    def test_returns_204_when_deleted(self, client: TestClient, mock_db: MagicMock) -> None:
         (
             mock_db.table.return_value.delete.return_value.eq.return_value.eq.return_value.execute.return_value.data
         ) = [KIT_ROW]
         assert client.delete("/user-kits/kit-1").status_code == 204
 
-    def test_returns_404_when_not_found(
-        self, client: TestClient, mock_db: MagicMock
-    ) -> None:
+    def test_returns_404_when_not_found(self, client: TestClient, mock_db: MagicMock) -> None:
         (
             mock_db.table.return_value.delete.return_value.eq.return_value.eq.return_value.execute.return_value.data
         ) = []
         assert client.delete("/user-kits/nonexistent").status_code == 404
 
-    def test_filters_by_user_id_on_delete(
-        self, client: TestClient, mock_db: MagicMock
-    ) -> None:
+    def test_filters_by_user_id_on_delete(self, client: TestClient, mock_db: MagicMock) -> None:
         """Ensures a user can only delete their own kits."""
         delete_chain = mock_db.table.return_value.delete.return_value
         eq1 = delete_chain.eq
@@ -162,9 +140,7 @@ class TestUnauthenticated:
         from fastapi import HTTPException as _HTTPException
 
         def _raise_401() -> None:
-            raise _HTTPException(
-                status_code=401, detail="Missing or invalid Authorization header"
-            )
+            raise _HTTPException(status_code=401, detail="Missing or invalid Authorization header")
 
         app.dependency_overrides[get_current_user] = _raise_401
         try:

@@ -74,6 +74,7 @@ class TestCreateLeagueProfile:
         assert client.post("/league-profiles", json=body).status_code == 422
 
     def test_invalid_platform_returns_422(self, client: TestClient) -> None:
-        assert client.post(
-            "/league-profiles", json={**CREATE_BODY, "platform": "sleeper"}
-        ).status_code == 422
+        assert (
+            client.post("/league-profiles", json={**CREATE_BODY, "platform": "sleeper"}).status_code
+            == 422
+        )

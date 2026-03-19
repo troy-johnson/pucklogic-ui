@@ -74,8 +74,8 @@ class TestComputeWeightedStats:
 
     def test_source_count_counts_sources_with_any_non_null_stat(self) -> None:
         rows = [
-            _make_row("dobber", 10, g=30),   # projects g
-            _make_row("hashtag", 10, g=None), # projects nothing → not counted
+            _make_row("dobber", 10, g=30),  # projects g
+            _make_row("hashtag", 10, g=None),  # projects nothing → not counted
         ]
         result = compute_weighted_stats(rows)
         assert result["_source_count"] == 1
@@ -87,7 +87,7 @@ class TestComputeWeightedStats:
         ]
         result = compute_weighted_stats(rows)
         assert result["_source_count"] == 2
-        assert result["g"] == pytest.approx(30.0)   # only dobber
+        assert result["g"] == pytest.approx(30.0)  # only dobber
         assert result["hits"] == pytest.approx(100.0)  # only hashtag
 
 
@@ -128,9 +128,7 @@ class TestComputeVorp:
             for i, fp in enumerate(fps)
         ]
 
-    def _make_profile(
-        self, num_teams: int = 10, c_slots: int = 2
-    ) -> dict:
+    def _make_profile(self, num_teams: int = 10, c_slots: int = 2) -> dict:
         return {
             "num_teams": num_teams,
             "roster_slots": {"C": c_slots, "LW": 2, "RW": 2, "D": 4, "G": 2},
@@ -199,13 +197,30 @@ class TestAggregateProjections:
     def _make_db_rows(self) -> list[dict]:
         base = {
             "season": "2025-26",
-            "a": None, "plus_minus": None, "pim": None,
-            "ppg": None, "ppa": None, "ppp": None,
-            "shg": None, "sha": None, "shp": None,
-            "sog": None, "fow": None, "fol": None,
-            "hits": None, "blocks": None, "gp": 82,
-            "gs": None, "w": None, "l": None, "ga": None,
-            "sa": None, "sv": None, "sv_pct": None, "so": None, "otl": None,
+            "a": None,
+            "plus_minus": None,
+            "pim": None,
+            "ppg": None,
+            "ppa": None,
+            "ppp": None,
+            "shg": None,
+            "sha": None,
+            "shp": None,
+            "sog": None,
+            "fow": None,
+            "fol": None,
+            "hits": None,
+            "blocks": None,
+            "gp": 82,
+            "gs": None,
+            "w": None,
+            "l": None,
+            "ga": None,
+            "sa": None,
+            "sv": None,
+            "sv_pct": None,
+            "so": None,
+            "otl": None,
         }
         return [
             {
@@ -215,7 +230,9 @@ class TestAggregateProjections:
                 "sources": {"name": "dobber", "is_paid": False, "user_id": None},
                 "players": {"name": "McDavid", "team": "EDM", "position": "C"},
                 "player_platform_positions": [{"positions": ["C"]}],
-                "schedule_scores": [{"season": "2025-26", "schedule_score": 0.8, "off_night_games": 24}],  # noqa: E501
+                "schedule_scores": [
+                    {"season": "2025-26", "schedule_score": 0.8, "off_night_games": 24}
+                ],  # noqa: E501
             },
             {
                 **base,
@@ -238,7 +255,11 @@ class TestAggregateProjections:
     def test_sorted_by_fantasy_points_descending(self) -> None:
         rows = self._make_db_rows()
         result = aggregate_projections(rows, {"dobber": 10}, {"g": 3.0})
-        fps = [r["projected_fantasy_points"] for r in result if r["projected_fantasy_points"] is not None]  # noqa: E501
+        fps = [
+            r["projected_fantasy_points"]
+            for r in result
+            if r["projected_fantasy_points"] is not None
+        ]  # noqa: E501
         assert fps == sorted(fps, reverse=True)
 
     def test_composite_rank_assigned(self) -> None:

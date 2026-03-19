@@ -130,6 +130,43 @@ Do not build Layer 2 Celery jobs, Z-score computation, or the paywall gate until
 | Custom upload backend | ✅ Complete | `POST /sources/upload`, `GET /sources/custom`, `DELETE /sources/{id}`; 2-slot limit, TOCTOU guard, paywalled-source gate, stale-projection cleanup, cache invalidation; 53 tests green (PR #21) |
 | Custom upload frontend UI | ⬜ Deferred | File drop zone, column mapping step, unmatched player review — deferred until frontend dashboard work begins |
 
+---
+
+## Phase 3 Status
+
+### Phase 3a — Schema Migration + Trends API Schemas (feat/3a-migrations, PR #23)
+
+| Area | Status | Notes |
+|------|--------|-------|
+| `supabase/migrations/003_phase3_ml_features.sql` | ✅ Complete | 27 new columns on `player_stats` (Tier 1–3 features + flag columns + `sh_pct_career_avg`); 5 new columns on `player_trends` (`breakout_signals`, `regression_signals`, `shap_top3`, `projection_pts`, `projection_tier`); composite season-first indexes; named CHECK constraints via idempotent DO blocks |
+| `models/schemas.py` Phase 3 section | ✅ Complete | `ShapValues`, `TrendedPlayer`, `TrendsResponse`; `ProjectionTier`/`SkaterPosition` Literals; `StrictBool` signals; `Field(ge=0, le=1)` probability scores; `@computed_field` for `player_count`; `has_trends` + `updated_at` consistency enforced by model_validator |
+| `tests/models/test_schemas.py` | ✅ Complete | 26 tests covering all new schemas; boundary values, Literal enforcement, StrictBool rejection, round-trip serialization |
+
+### Phase 3b — Feature Engineering Pipeline
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Scraper verification (NHL.com, MoneyPuck, NST, DailyFaceoff) | ⬜ Not started | Verify scrapers write all Tier 1 columns added in 003 migration |
+| New scrapers (Hockey Reference, Elite Prospects, NHL EDGE) | ⬜ Not started | Career SH%, ELC/contract flags, speed data |
+| `services/feature_engineering.py` | ⬜ Not started | Feature matrix assembly, aliasing (toi_ev → toi_ev_per_game, etc.), sh_pct_delta derivation |
+
+### Phase 3c — Model Training
+
+| Area | Status | Notes |
+|------|--------|-------|
+| XGBoost/LightGBM training pipeline | ⬜ Not started | |
+| SHAP value computation | ⬜ Not started | |
+| Yearly retraining GitHub Action | ⬜ Not started | |
+
+### Phase 3d — Inference API
+
+| Area | Status | Notes |
+|------|--------|-------|
+| `routers/trends.py` — GET /trends | ⬜ Not started | Returns `TrendsResponse`; reads from `player_trends` |
+| `repositories/trends.py` | ⬜ Not started | |
+
+---
+
 ### Phase 2 — Scrapers Complete (feat/phase2-projection-scrapers)
 
 | Area | Status | Notes |
@@ -193,6 +230,9 @@ contributes to the goals average only. A stat is null in output only if no sourc
 | `CheckoutSessionRequest` / `CheckoutSessionResponse` | POST /stripe/create-checkout-session |
 | `UserKitCreate` / `UserKitOut` | POST/GET /user-kits — source-weight presets only (no league config) |
 | `LeagueProfileCreate` / `LeagueProfileOut` | POST/GET /league-profiles — platform, num_teams, roster_slots, scoring_config_id |
+| `ShapValues` | nested in `TrendedPlayer.shap_values` — per-feature SHAP contributions; model_validator rejects both-empty dicts |
+| `TrendedPlayer` | nested in `TrendsResponse.players` — ML scores, signals, SHAP top-3; `SkaterPosition` Literal, `ProjectionTier` Literal, `StrictBool` signals, `Field(ge=0, le=1)` scores |
+| `TrendsResponse` | GET /trends — `season`, `has_trends`, `updated_at` (None if no trends yet), `players`, `player_count` (computed); model_validator enforces `updated_at` required when `has_trends=True` |
 
 ---
 

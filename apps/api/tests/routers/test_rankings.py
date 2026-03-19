@@ -88,12 +88,31 @@ CACHED_RANKINGS = [
         "off_night_games": 12,
         "source_count": 1,
         "projected_stats": {
-            "g": 60, "a": 90, "plus_minus": None, "pim": None,
-            "ppg": None, "ppa": None, "ppp": 50, "shg": None, "sha": None,
-            "shp": None, "sog": 250, "fow": None, "fol": None,
-            "hits": None, "blocks": None, "gp": 82,
-            "gs": None, "w": None, "l": None, "ga": None,
-            "sa": None, "sv": None, "sv_pct": None, "so": None, "otl": None,
+            "g": 60,
+            "a": 90,
+            "plus_minus": None,
+            "pim": None,
+            "ppg": None,
+            "ppa": None,
+            "ppp": 50,
+            "shg": None,
+            "sha": None,
+            "shp": None,
+            "sog": 250,
+            "fow": None,
+            "fol": None,
+            "hits": None,
+            "blocks": None,
+            "gp": 82,
+            "gs": None,
+            "w": None,
+            "l": None,
+            "ga": None,
+            "sa": None,
+            "sv": None,
+            "sv_pct": None,
+            "so": None,
+            "otl": None,
         },
         "breakout_score": None,
         "regression_risk": None,
@@ -194,9 +213,7 @@ class TestComputeRankings:
         data = client.post("/rankings/compute", json=VALID_BODY).json()
         assert isinstance(data["rankings"], list)
 
-    def test_ranked_player_has_projected_fantasy_points(
-        self, client: TestClient
-    ) -> None:
+    def test_ranked_player_has_projected_fantasy_points(self, client: TestClient) -> None:
         data = client.post("/rankings/compute", json=VALID_BODY).json()
         assert len(data["rankings"]) > 0
         player = data["rankings"][0]
@@ -212,15 +229,11 @@ class TestComputeRankings:
         player = data["rankings"][0]
         assert player["vorp"] is None
 
-    def test_cache_is_populated_on_miss(
-        self, client: TestClient, mock_cache: MagicMock
-    ) -> None:
+    def test_cache_is_populated_on_miss(self, client: TestClient, mock_cache: MagicMock) -> None:
         client.post("/rankings/compute", json=VALID_BODY)
         mock_cache.set_rankings.assert_called_once()
 
-    def test_cache_hit_returns_cached_true(
-        self, client: TestClient, mock_cache: MagicMock
-    ) -> None:
+    def test_cache_hit_returns_cached_true(self, client: TestClient, mock_cache: MagicMock) -> None:
         mock_cache.get_rankings.return_value = CACHED_RANKINGS
         data = client.post("/rankings/compute", json=VALID_BODY).json()
         assert data["cached"] is True
