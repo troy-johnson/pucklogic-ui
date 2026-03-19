@@ -168,8 +168,11 @@ alter table player_trends add column if not exists projection_tier text
 -- player_trends — indexes
 -- ===========================================================================
 
-create index if not exists player_trends_season_idx on player_trends (season);
-create index if not exists player_trends_breakout_idx on player_trends (breakout_score desc nulls last)
+-- Composite indexes keyed by season first so WHERE season = ? ORDER BY score
+-- can be satisfied with a single index scan (no cross-season filter + sort).
+create index if not exists player_trends_season_breakout_idx
+  on player_trends (season, breakout_score desc nulls last)
   where breakout_score is not null;
-create index if not exists player_trends_regression_idx on player_trends (regression_risk desc nulls last)
+create index if not exists player_trends_season_regression_idx
+  on player_trends (season, regression_risk desc nulls last)
   where regression_risk is not null;
