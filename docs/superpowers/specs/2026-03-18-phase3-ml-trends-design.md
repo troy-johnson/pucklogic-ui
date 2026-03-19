@@ -27,7 +27,7 @@ Each milestone ships independently and has its own test coverage before the next
 
 ### Goal
 
-All data sources that feed the Layer 1 model are actively ingesting into Supabase. Every scraper has been run end-to-end and verified against real data. Historical data (10+ seasons where needed) is loaded.
+All data sources that feed the Layer 1 model are actively ingesting into Supabase. Every scraper has been run end-to-end and verified against real data. Historical data (2005-06 through 2024-25, ~20 seasons) is loaded.
 
 ### Problem
 
@@ -277,7 +277,7 @@ PRIMARY KEY / UNIQUE (player_id, season)
 
 ```bash
 # from apps/api/
-python -m ml.train --season 2024-25 --output ml/artifacts/
+python -m ml.train --season 2026-27 --output ml/artifacts/
 ```
 
 ### Testing
@@ -365,7 +365,7 @@ on:
 
 1. Run all stat scrapers (NHL.com, MoneyPuck, NST) for completed season
 2. Run Hockey Reference historical pull for career SH% update
-3. `python -m ml.train --season <completed_season>`
+3. `python -m ml.train --season <next_season>`
 4. `python -m ml.shap_compute --season <next_season>`
 5. Upsert `player_trends` rows for upcoming season
 6. Slack notification on success/failure
@@ -430,8 +430,8 @@ model_breakout, model_regression, feature_columns = load_model_artifacts(season=
 
 ---
 
-## Open Questions
+## Decisions
 
-1. **Hockey Reference scraper**: robots.txt allows scraping but requires rate limiting. Confirm scrape cadence (weekly historical pull vs. one-time backfill).
-2. **Evolving Hockey $5 pull**: Manual CSV download once per season vs. automated. Start manual for v1.0.
-3. **Multi-season historical depth**: How many seasons for training? Recommend 8–10 seasons (2014-15 through 2023-24). Confirm availability for all Tier 1 features back to 2014-15.
+1. **Hockey Reference scraper**: Adhere to their rate limit. One-time historical backfill with rate limiting (respect `Crawl-delay` in robots.txt; add per-request delay and exponential backoff). Annual refresh at retraining time for career SH% updates.
+2. **Evolving Hockey $5 pull**: Manual CSV download once per season for v1.0. No automation. Cancel subscription after each pull.
+3. **Multi-season historical depth**: **2005-06 through 2024-25** (20 seasons). 2005-06 is chosen as the start year because the 2004-05 lockout introduced major rule changes (obstruction crackdown, shootout) that make pre-lockout data structurally different and likely to introduce distributional shift. 2024-25 is the most recently completed season and must be included — there is no reason to hold it out of training. Feature availability for Tier 1 features back to 2005-06 should be confirmed during the backfill, with a fallback of 2007-08 if NST/MoneyPuck advanced stats are sparse before that point.

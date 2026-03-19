@@ -171,7 +171,7 @@ Answers: *"Who should I draft?"*
 
 - **Model**: XGBoost / LightGBM (gradient boosted trees — no GPU needed, fast on tabular data)
 - **Label**: "breakout" = 20%+ more fantasy points than trailing 2-season avg; "regression risk" = inverse
-- **Training data**: 10+ NHL seasons (Hockey Reference, MoneyPuck CSVs, NST, NHL Edge API)
+- **Training data**: ~20 seasons (2005-06 through 2024-25; 2005-06 chosen as start year due to post-lockout rule changes making pre-lockout data structurally different) — sources: Hockey Reference, MoneyPuck CSVs, NST, NHL Edge API
 - **Serving**: `joblib`-serialized model loaded at FastAPI startup; inference <10ms per player
 - **Retraining**: yearly (pre-season), triggered via GitHub Action or manually
 - **Explainability**: SHAP values surfaced in UI to show users *why* a player is flagged
