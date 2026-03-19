@@ -155,6 +155,7 @@ class TestScrape:
             "limit": 1,
             "offset": 1,
         }
+        db = _mock_db()
         with (
             patch.object(scraper, "_check_robots_txt", new=AsyncMock(return_value=True)),
             patch.object(
@@ -169,4 +170,49 @@ class TestScrape:
             ),
             patch.object(scraper, "_fetch_aliases", return_value=[]),
         ):
-            assert await scraper.scrape(SEASON, _mock_db()) == 2
+            assert await scraper.scrape(SEASON, db) == 2
+        assert db.table.return_value.upsert.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_paginates_with_nameless_item_does_not_drift(self) -> None:
+        """Offset must advance by raw page size, not filtered row count.
+
+        If a page contains a nameless item that _parse_response skips, the old
+        ``offset += len(rows)`` would under-advance and re-fetch overlapping data.
+        """
+        scraper = EliteProspectsScraper(api_key="key")
+        # Page 1: 2 raw items, 1 nameless → only 1 match, but offset must advance by 2
+        p1 = {
+            "data": [
+                {"player": {"firstName": "A", "lastName": "B"}},
+                {"player": {"firstName": "", "lastName": ""}},  # nameless — skipped
+            ],
+            "total": 3,
+            "limit": 2,
+            "offset": 0,
+        }
+        # Page 2: 1 item — only reachable if offset advanced correctly to 2
+        p2 = {
+            "data": [{"player": {"firstName": "C", "lastName": "D"}}],
+            "total": 3,
+            "limit": 2,
+            "offset": 2,
+        }
+        db = _mock_db()
+        with (
+            patch.object(scraper, "_check_robots_txt", new=AsyncMock(return_value=True)),
+            patch.object(
+                scraper,
+                "_get_with_retry",
+                new=AsyncMock(side_effect=[_make_response(p1), _make_response(p2)]),
+            ),
+            patch.object(
+                scraper,
+                "_fetch_players",
+                return_value=[{"id": "p1", "name": "A B"}, {"id": "p2", "name": "C D"}],
+            ),
+            patch.object(scraper, "_fetch_aliases", return_value=[]),
+        ):
+            count = await scraper.scrape(SEASON, db)
+        assert count == 2
+        assert db.table.return_value.upsert.call_count == 2

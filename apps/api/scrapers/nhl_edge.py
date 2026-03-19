@@ -12,6 +12,7 @@ the live API before finalising _parse_response. Update the fixture too.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -119,6 +120,4 @@ async def _main() -> None:
 
 
 if __name__ == "__main__":
-    import asyncio
-
     asyncio.run(_main())

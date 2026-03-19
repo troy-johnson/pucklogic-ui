@@ -104,12 +104,8 @@ class EliteProspectsScraper(BaseScraper):
 
         slug = self._season_slug(season)
         end_year = self._season_end_year(season)
-        sample_url = (
-            f"{_BASE_URL}/player-stats"
-            f"?league.slug=nhl&season.slug={slug}&limit=1&offset=0&apiKey={self._api_key}"
-        )
-
-        if not await self._check_robots_txt(sample_url):
+        # Pass the base API URL (no key) to avoid leaking the API key into logs.
+        if not await self._check_robots_txt(_BASE_URL):
             raise RobotsDisallowedError("robots.txt disallows Elite Prospects scraping")
 
         players = self._fetch_players(db)
@@ -135,7 +131,8 @@ class EliteProspectsScraper(BaseScraper):
             if total is None:
                 total = payload.get("total", 0)
 
-            rows = self._parse_response(payload.get("data", []), end_year)
+            raw_data = payload.get("data", [])
+            rows = self._parse_response(raw_data, end_year)
             for row in rows:
                 player_id = matcher.resolve(row["player_name"])
                 if player_id is None:
@@ -146,8 +143,10 @@ class EliteProspectsScraper(BaseScraper):
                 )
                 count += 1
 
-            offset += len(rows)
-            if not rows or (total is not None and offset >= total):
+            # Advance by raw page size, not filtered row count, to avoid offset drift
+            # when nameless items are skipped by _parse_response.
+            offset += len(raw_data)
+            if not raw_data or (total is not None and offset >= total):
                 break
             await asyncio.sleep(self.MIN_DELAY_SECONDS)
 
