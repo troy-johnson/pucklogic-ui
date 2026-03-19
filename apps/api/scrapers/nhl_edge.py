@@ -72,6 +72,11 @@ class NhlEdgeScraper(BaseScraper):
         ).execute()
 
     async def scrape(self, season: str, db: Any) -> int:
+        """Fetch skating stats from the NHL Stats API and upsert speed columns.
+
+        Paginates in batches of 100. Stops when a page returns fewer than
+        _PAGE_SIZE rows. Returns the number of player_stats rows upserted.
+        """
         season_id = self._season_id(season)
         url0 = _BASE_URL.format(start=0, season_id=season_id)
 

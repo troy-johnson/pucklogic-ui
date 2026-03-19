@@ -38,6 +38,9 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python -m scrapers.nst
 
+      # ELITE_PROSPECTS_API_KEY must be added to GitHub Secrets before this step
+      # will write any data. Without it the scraper exits early with a warning.
+      # Free-tier key: see apps/api/.env.example for instructions.
       - name: Scrape Elite Prospects (ELC + contract year flags)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

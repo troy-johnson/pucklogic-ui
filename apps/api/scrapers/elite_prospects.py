@@ -99,6 +99,12 @@ class EliteProspectsScraper(BaseScraper):
     # ------------------------------------------------------------------
 
     async def scrape(self, season: str, db: Any) -> int:
+        """Fetch contract data from the Elite Prospects API and upsert flag columns.
+
+        Paginates using offset/limit until all players for the season are consumed.
+        Returns the number of player_stats rows upserted. Raises ValueError if
+        ELITE_PROSPECTS_API_KEY is not configured.
+        """
         if not self._api_key:
             raise ValueError("ELITE_PROSPECTS_API_KEY is not set")
 

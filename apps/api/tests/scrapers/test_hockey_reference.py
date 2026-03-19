@@ -274,3 +274,111 @@ class TestScrape:
             count = await scraper.scrape(SEASON, db)
         db.table.return_value.upsert.assert_not_called()
         assert count == 0
+
+
+# ---------------------------------------------------------------------------
+# scrape_history() — multi-season backfill
+# ---------------------------------------------------------------------------
+
+
+class TestScrapeHistory:
+    @pytest.mark.asyncio
+    async def test_robots_disallowed_raises(self) -> None:
+        from scrapers.base import RobotsDisallowedError
+
+        scraper = HockeyReferenceScraper()
+        with patch.object(scraper, "_check_robots_txt", new=AsyncMock(return_value=False)):
+            with pytest.raises(RobotsDisallowedError):
+                await scraper.scrape_history("2023-24", "2024-25", _mock_db())
+
+    @pytest.mark.asyncio
+    async def test_returns_upsert_count(self) -> None:
+        """Two seasons × 3 players in fixture = 6 upserted rows."""
+        scraper = HockeyReferenceScraper()
+        fixture_html = FIXTURE.read_text()
+        with (
+            patch.object(scraper, "_check_robots_txt", new=AsyncMock(return_value=True)),
+            patch.object(
+                scraper,
+                "_get_with_retry",
+                new=AsyncMock(
+                    side_effect=[
+                        _make_response(fixture_html),
+                        _make_response(fixture_html),
+                    ]
+                ),
+            ),
+            patch.object(scraper, "_fetch_players", return_value=_PLAYERS),
+            patch.object(scraper, "_fetch_aliases", return_value=_ALIASES),
+        ):
+            count = await scraper.scrape_history("2023-24", "2024-25", _mock_db())
+        assert count == 6  # 2 seasons × 3 players
+
+    @pytest.mark.asyncio
+    async def test_sleeps_between_pages(self) -> None:
+        """asyncio.sleep must be called between season fetches to honour crawl-delay."""
+        scraper = HockeyReferenceScraper()
+        fixture_html = FIXTURE.read_text()
+        with (
+            patch.object(scraper, "_check_robots_txt", new=AsyncMock(return_value=True)),
+            patch.object(
+                scraper,
+                "_get_with_retry",
+                new=AsyncMock(
+                    side_effect=[
+                        _make_response(fixture_html),
+                        _make_response(fixture_html),
+                    ]
+                ),
+            ),
+            patch.object(scraper, "_fetch_players", return_value=_PLAYERS),
+            patch.object(scraper, "_fetch_aliases", return_value=_ALIASES),
+            patch("scrapers.hockey_reference.asyncio.sleep", new=AsyncMock()) as mock_sleep,
+        ):
+            await scraper.scrape_history("2023-24", "2024-25", _mock_db())
+        # 2 seasons → sleep once between them (not after the last)
+        mock_sleep.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_computes_career_totals_across_seasons(self) -> None:
+        """scrape_history accumulates career stats without reading the DB."""
+        scraper = HockeyReferenceScraper()
+        fixture_html = FIXTURE.read_text()
+        upserted: list[dict] = []
+
+        def capture(payload, on_conflict=None):
+            upserted.append(payload)
+            m = MagicMock()
+            m.execute.return_value.data = [{"id": "p-1"}]
+            return m
+
+        db = _mock_db()
+        db.table.return_value.upsert.side_effect = capture
+
+        with (
+            patch.object(scraper, "_check_robots_txt", new=AsyncMock(return_value=True)),
+            patch.object(
+                scraper,
+                "_get_with_retry",
+                # Same fixture for both seasons → each player appears twice
+                new=AsyncMock(
+                    side_effect=[
+                        _make_response(fixture_html),
+                        _make_response(fixture_html),
+                    ]
+                ),
+            ),
+            patch.object(scraper, "_fetch_players", return_value=_PLAYERS),
+            patch.object(scraper, "_fetch_aliases", return_value=_ALIASES),
+            patch("scrapers.hockey_reference.asyncio.sleep", new=AsyncMock()),
+        ):
+            await scraper.scrape_history("2023-24", "2024-25", db)
+
+        # Fixture has McDavid at 32G/200S. Two identical seasons → 64G/400S cumulative
+        # by the second season row.  Find the 2024-25 row for McDavid.
+        mcdavid_rows = [p for p in upserted if p.get("player_id") == "p-mcdavid"]
+        assert len(mcdavid_rows) == 2
+        last = max(mcdavid_rows, key=lambda r: r["season"])
+        assert last["career_goals"] == 64
+        assert last["career_shots"] == 400
+        assert last["nhl_experience"] == 2

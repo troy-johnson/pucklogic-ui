@@ -227,6 +227,9 @@ class HockeyReferenceScraper(BaseScraper):
         Fetches each season page sequentially respecting the 3s crawl delay.
         Returns total rows upserted.
         """
+        # Check robots.txt once using the start-season URL. All season pages share
+        # the same domain and /en/leagues/NHL_*.html path pattern, so a single
+        # check is sufficient for the entire backfill run.
         if not await self._check_robots_txt(self._build_url(start_season)):
             raise RobotsDisallowedError("robots.txt disallows Hockey Reference scraping")
 
