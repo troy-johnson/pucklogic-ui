@@ -37,3 +37,16 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python -m scrapers.nst
+
+      - name: Scrape Elite Prospects (ELC + contract year flags)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ELITE_PROSPECTS_API_KEY: ${{ secrets.ELITE_PROSPECTS_API_KEY }}
+        run: python -m scrapers.elite_prospects
+
+      - name: Scrape NHL EDGE (speed stats — Tier 3)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python -m scrapers.nhl_edge
