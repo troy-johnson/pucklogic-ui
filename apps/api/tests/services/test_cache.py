@@ -208,6 +208,4 @@ class TestCacheServiceWithRedis:
         ]
         cache_with_redis.invalidate_rankings(SEASON)
         assert mock_redis.scan.call_count == 2
-        mock_redis.delete.assert_called_once_with(
-            "rankings:2025-26:key1", "rankings:2025-26:key2"
-        )
+        mock_redis.delete.assert_called_once_with("rankings:2025-26:key1", "rankings:2025-26:key2")

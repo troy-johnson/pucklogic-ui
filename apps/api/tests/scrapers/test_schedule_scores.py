@@ -10,12 +10,29 @@ from scrapers.schedule_scores import (
 
 # Sample games — player in games on dates with varying team counts
 GAMES = [
-    {"date": "2025-10-07", "teams": ["EDM", "TOR", "VAN", "MTL"]},   # 4 teams playing
-    {"date": "2025-10-08", "teams": ["EDM", "TOR"]},                  # 2 teams — off-night
-    {"date": "2025-10-09", "teams": ["EDM", "TOR", "VAN", "MTL",
-                                      "CGY", "WPG", "MIN", "DAL",
-                                      "NYR", "BOS", "PHI", "PIT",
-                                      "DET", "CAR", "FLA", "TBL"]},   # 16 teams — not off-night
+    {"date": "2025-10-07", "teams": ["EDM", "TOR", "VAN", "MTL"]},  # 4 teams playing
+    {"date": "2025-10-08", "teams": ["EDM", "TOR"]},  # 2 teams — off-night
+    {
+        "date": "2025-10-09",
+        "teams": [
+            "EDM",
+            "TOR",
+            "VAN",
+            "MTL",
+            "CGY",
+            "WPG",
+            "MIN",
+            "DAL",
+            "NYR",
+            "BOS",
+            "PHI",
+            "PIT",
+            "DET",
+            "CAR",
+            "FLA",
+            "TBL",
+        ],
+    },  # 16 teams — not off-night
 ]
 
 # Player plays for EDM — appears in all 3 dates above

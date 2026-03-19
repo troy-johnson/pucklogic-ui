@@ -46,7 +46,8 @@ class TestList:
         self, repo: ScoringConfigRepository, mock_db: MagicMock
     ) -> None:
         mock_db.table.return_value.select.return_value.or_.return_value.execute.return_value.data = [  # noqa: E501
-            PRESET_ROW, CUSTOM_ROW
+            PRESET_ROW,
+            CUSTOM_ROW,
         ]
         result = repo.list(user_id="u-1")
         assert len(result) == 2
@@ -103,7 +104,9 @@ class TestListPresets:
     def test_returns_only_preset_rows(
         self, repo: ScoringConfigRepository, mock_db: MagicMock
     ) -> None:
-        mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [PRESET_ROW]  # noqa: E501
+        mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
+            PRESET_ROW
+        ]  # noqa: E501
         result = repo.list_presets()
         assert len(result) == 1
         assert result[0]["is_preset"] is True
@@ -116,14 +119,14 @@ class TestListPresets:
 
 
 class TestCreate:
-    def test_inserts_config(
-        self, repo: ScoringConfigRepository, mock_db: MagicMock
-    ) -> None:
+    def test_inserts_config(self, repo: ScoringConfigRepository, mock_db: MagicMock) -> None:
         mock_db.table.return_value.insert.return_value.execute.return_value.data = [CUSTOM_ROW]
-        result = repo.create({
-            "name": "My Custom",
-            "stat_weights": {"g": 5},
-            "is_preset": False,
-            "user_id": "u-1",
-        })
+        result = repo.create(
+            {
+                "name": "My Custom",
+                "stat_weights": {"g": 5},
+                "is_preset": False,
+                "user_id": "u-1",
+            }
+        )
         assert result == CUSTOM_ROW

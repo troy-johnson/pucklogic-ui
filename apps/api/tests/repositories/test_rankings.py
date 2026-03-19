@@ -40,9 +40,7 @@ class TestGetBySeason:
         repo.get_by_season(SEASON)
         mock_db.table.assert_called_once_with("player_rankings")
 
-    def test_filters_by_season(
-        self, repo: RankingsRepository, mock_db: MagicMock
-    ) -> None:
+    def test_filters_by_season(self, repo: RankingsRepository, mock_db: MagicMock) -> None:
         chain = mock_db.table.return_value.select.return_value.eq
         chain.return_value.execute.return_value.data = []
         repo.get_by_season(SEASON)
@@ -85,9 +83,7 @@ class TestGetSourcesForSeason:
         result = repo.get_sources_for_season(SEASON)
         assert result == ["nhl_com", "moneypuck"]
 
-    def test_returns_empty_when_no_data(
-        self, repo: RankingsRepository, mock_db: MagicMock
-    ) -> None:
+    def test_returns_empty_when_no_data(self, repo: RankingsRepository, mock_db: MagicMock) -> None:
         (
             mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value.data
         ) = []

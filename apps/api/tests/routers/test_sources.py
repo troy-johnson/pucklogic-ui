@@ -298,13 +298,9 @@ class TestUploadSource:
     def test_stale_projections_cleared_on_reimport(self, client: TestClient) -> None:
         # The player_projections delete should be called for (source_id, season)
         proj_mock = MagicMock()
-        original_side_effect = (
-            app.dependency_overrides[
-                __import__("core.dependencies", fromlist=["get_db"]).get_db
-            ]()
-            .table
-            .side_effect
-        )
+        original_side_effect = app.dependency_overrides[
+            __import__("core.dependencies", fromlist=["get_db"]).get_db
+        ]().table.side_effect
 
         def _side_effect_with_proj(table_name: str) -> MagicMock:
             if table_name == "player_projections":

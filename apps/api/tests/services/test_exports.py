@@ -26,12 +26,31 @@ from services.exports import generate_excel, generate_pdf
 SEASON = "2025-26"
 
 _EMPTY_STATS: dict[str, Any] = {
-    "g": None, "a": None, "plus_minus": None, "pim": None,
-    "ppg": None, "ppa": None, "ppp": None, "shg": None, "sha": None,
-    "shp": None, "sog": None, "fow": None, "fol": None,
-    "hits": None, "blocks": None, "gp": None,
-    "gs": None, "w": None, "l": None, "ga": None,
-    "sa": None, "sv": None, "sv_pct": None, "so": None, "otl": None,
+    "g": None,
+    "a": None,
+    "plus_minus": None,
+    "pim": None,
+    "ppg": None,
+    "ppa": None,
+    "ppp": None,
+    "shg": None,
+    "sha": None,
+    "shp": None,
+    "sog": None,
+    "fow": None,
+    "fol": None,
+    "hits": None,
+    "blocks": None,
+    "gp": None,
+    "gs": None,
+    "w": None,
+    "l": None,
+    "ga": None,
+    "sa": None,
+    "sv": None,
+    "sv_pct": None,
+    "so": None,
+    "otl": None,
 }
 
 PLAYER_A: dict[str, Any] = {
@@ -248,8 +267,7 @@ class TestGenerateExcel:
         player_rows_sheet1 = ws1.max_row - 1
         # count non-section rows after header on sheet2 (rows where col1 is numeric)
         player_rows_sheet2 = sum(
-            1 for r in range(2, ws2.max_row + 1)
-            if isinstance(ws2.cell(r, 1).value, int)
+            1 for r in range(2, ws2.max_row + 1) if isinstance(ws2.cell(r, 1).value, int)
         )
         assert player_rows_sheet2 == player_rows_sheet1
 

@@ -183,9 +183,7 @@ class TestTrendsResponse:
 
     def test_updated_at_none_allowed(self) -> None:
         """updated_at=None signals no trends computed yet; has_trends=False."""
-        resp = TrendsResponse(
-            season="2025-26", has_trends=False, updated_at=None, players=[]
-        )
+        resp = TrendsResponse(season="2025-26", has_trends=False, updated_at=None, players=[])
         assert resp.updated_at is None
         assert not resp.has_trends
 
@@ -200,8 +198,10 @@ class TestTrendsResponse:
         assert resp.updated_at == now
 
     def test_has_trends_true_without_updated_at_raises(self) -> None:
-        """has_trends=True requires updated_at — ML pipeline must record when scores were written.
-        """  # noqa: D205
+        """has_trends=True requires updated_at.
+
+        The ML pipeline must record when scores were written.
+        """
         with pytest.raises(ValidationError, match="updated_at must be set"):
             TrendsResponse(
                 season="2025-26",

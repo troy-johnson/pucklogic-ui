@@ -69,9 +69,7 @@ class TestCreateCheckoutSession:
             mock_settings.stripe_secret_key = "sk_test_123"
             mock_settings.stripe_price_id = "price_123"
             mock_stripe.checkout.Session.create.return_value = mock_session
-            data = client.post(
-                "/stripe/create-checkout-session", json=CHECKOUT_BODY
-            ).json()
+            data = client.post("/stripe/create-checkout-session", json=CHECKOUT_BODY).json()
 
         assert data["checkout_url"] == "https://checkout.stripe.com/pay/cs_test_abc"
         assert data["session_id"] == "cs_test_abc"
@@ -134,9 +132,7 @@ class TestCreateCheckoutSession:
 
 
 class TestStripeWebhook:
-    def test_returns_503_when_webhook_secret_not_configured(
-        self, client: TestClient
-    ) -> None:
+    def test_returns_503_when_webhook_secret_not_configured(self, client: TestClient) -> None:
         with patch("routers.stripe.settings") as mock_settings:
             mock_settings.stripe_webhook_secret = ""
             resp = client.post(
@@ -212,9 +208,7 @@ class TestStripeWebhook:
             )
 
         assert resp.status_code == 200
-        mock_sub_repo.upsert.assert_called_once_with(
-            user_id="user-abc-123", plan="draft_kit"
-        )
+        mock_sub_repo.upsert.assert_called_once_with(user_id="user-abc-123", plan="draft_kit")
 
     def test_webhook_skips_upsert_when_no_client_reference_id(
         self, client: TestClient, mock_sub_repo: MagicMock

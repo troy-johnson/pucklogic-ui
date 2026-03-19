@@ -26,9 +26,7 @@ class TestSubscriptionRepositoryUpsert:
         repo.upsert(user_id="user-1", plan="draft_kit")
         mock_db.table.assert_called_with("subscriptions")
 
-    def test_upsert_calls_execute(
-        self, repo: SubscriptionRepository, mock_db: MagicMock
-    ) -> None:
+    def test_upsert_calls_execute(self, repo: SubscriptionRepository, mock_db: MagicMock) -> None:
         repo.upsert(user_id="user-1", plan="draft_kit")
         mock_db.table.return_value.upsert.return_value.execute.assert_called_once()
 
@@ -37,11 +35,7 @@ class TestSubscriptionRepositoryUpsert:
     ) -> None:
         repo.upsert(user_id="user-abc", plan="draft_kit")
         upsert_call = mock_db.table.return_value.upsert.call_args
-        data = (
-            upsert_call.args[0]
-            if upsert_call.args
-            else upsert_call.kwargs.get("json", {})
-        )
+        data = upsert_call.args[0] if upsert_call.args else upsert_call.kwargs.get("json", {})
         assert data["user_id"] == "user-abc"
         assert data["plan"] == "draft_kit"
 
@@ -53,26 +47,16 @@ class TestSubscriptionRepositoryUpsert:
         # on_conflict kwarg should target user_id column
         assert upsert_call.kwargs.get("on_conflict") == "user_id"
 
-    def test_upsert_different_plan(
-        self, repo: SubscriptionRepository, mock_db: MagicMock
-    ) -> None:
+    def test_upsert_different_plan(self, repo: SubscriptionRepository, mock_db: MagicMock) -> None:
         repo.upsert(user_id="user-2", plan="premium")
         upsert_call = mock_db.table.return_value.upsert.call_args
-        data = (
-            upsert_call.args[0]
-            if upsert_call.args
-            else upsert_call.kwargs.get("json", {})
-        )
+        data = upsert_call.args[0] if upsert_call.args else upsert_call.kwargs.get("json", {})
         assert data["plan"] == "premium"
 
 
 class TestIsActive:
     def _chain(self, mock_db: MagicMock) -> MagicMock:
-        chain = (
-            mock_db.table.return_value.select.return_value
-            .eq.return_value.eq.return_value
-            .maybe_single.return_value.execute.return_value
-        )
+        chain = mock_db.table.return_value.select.return_value.eq.return_value.eq.return_value.maybe_single.return_value.execute.return_value  # noqa: E501
         return chain
 
     def test_returns_true_when_active_no_expiry(

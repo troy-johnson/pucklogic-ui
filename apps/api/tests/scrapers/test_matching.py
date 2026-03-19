@@ -1,5 +1,6 @@
 # apps/api/tests/scrapers/test_matching.py
 """Unit tests for scrapers/matching.py — no DB, no HTTP."""
+
 from __future__ import annotations
 
 import pytest

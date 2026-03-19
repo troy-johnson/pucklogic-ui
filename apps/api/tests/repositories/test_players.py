@@ -20,9 +20,7 @@ class TestList:
         chain = mock_db.table.return_value.select.return_value.range.return_value
         return chain.execute.return_value
 
-    def test_queries_players_table(
-        self, repo: PlayerRepository, mock_db: MagicMock
-    ) -> None:
+    def test_queries_players_table(self, repo: PlayerRepository, mock_db: MagicMock) -> None:
         self._list_data(mock_db).data = []
         repo.list()
         mock_db.table.assert_called_once_with("players")
@@ -56,18 +54,14 @@ class TestList:
 
 
 class TestGet:
-    def test_returns_player_when_found(
-        self, repo: PlayerRepository, mock_db: MagicMock
-    ) -> None:
+    def test_returns_player_when_found(self, repo: PlayerRepository, mock_db: MagicMock) -> None:
         player = {"id": "p1", "name": "Connor McDavid"}
         (
             mock_db.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data
         ) = player
         assert repo.get("p1") == player
 
-    def test_returns_none_when_not_found(
-        self, repo: PlayerRepository, mock_db: MagicMock
-    ) -> None:
+    def test_returns_none_when_not_found(self, repo: PlayerRepository, mock_db: MagicMock) -> None:
         (
             mock_db.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data
         ) = None

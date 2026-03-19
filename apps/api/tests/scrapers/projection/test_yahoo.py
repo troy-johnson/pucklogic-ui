@@ -15,9 +15,9 @@ YAHOO_PLAYER_1 = {
     "eligible_positions": [{"position": "C"}],
     "player_stats": {
         "stats": [
-            {"stat_id": "1", "value": "52"},   # GP
-            {"stat_id": "5", "value": "45"},   # G
-            {"stat_id": "6", "value": "72"},   # A
+            {"stat_id": "1", "value": "52"},  # GP
+            {"stat_id": "5", "value": "45"},  # G
+            {"stat_id": "6", "value": "72"},  # A
         ]
     },
 }
@@ -139,8 +139,10 @@ def test_fetch_yahoo_players_uses_pagination(monkeypatch) -> None:
     class FakeGame:
         def league_ids(self):
             return ["12345"]
+
         def to_league(self, lid):
             return FakeLeague()
+
         def player_stats(self, ids, req_type="season", start=0, count=25):
             player_stats_calls.append({"start": start, "count": count})
             return []  # empty → pagination loop exits immediately
@@ -151,6 +153,7 @@ def test_fetch_yahoo_players_uses_pagination(monkeypatch) -> None:
     monkeypatch.setitem(sys.modules, "yahoo_fantasy_api", fake_yfa)
 
     from scrapers.projection.yahoo import fetch_all_yahoo_nhl_players
+
     fetch_all_yahoo_nhl_players("tok")
 
     assert len(player_stats_calls) >= 1, "Expected player_stats() to be called for pagination"

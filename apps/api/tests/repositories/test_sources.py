@@ -33,14 +33,10 @@ class TestList:
     # With active_only=False: table().select().is_().order().execute()
 
     def _chain(self, mock_db: MagicMock) -> MagicMock:
-        return (
-            mock_db.table.return_value.select.return_value.eq.return_value.is_.return_value.order.return_value.execute.return_value
-        )
+        return mock_db.table.return_value.select.return_value.eq.return_value.is_.return_value.order.return_value.execute.return_value  # noqa: E501
 
     def _chain_no_filter(self, mock_db: MagicMock) -> MagicMock:
-        return (
-            mock_db.table.return_value.select.return_value.is_.return_value.order.return_value.execute.return_value
-        )
+        return mock_db.table.return_value.select.return_value.is_.return_value.order.return_value.execute.return_value  # noqa: E501
 
     def test_queries_sources_table(self, repo: SourceRepository, mock_db: MagicMock) -> None:
         self._chain(mock_db).data = []
@@ -180,9 +176,7 @@ class TestListCustom:
 
 class TestGetSeasonsForSource:
     def _chain(self, mock_db: MagicMock) -> MagicMock:
-        return (
-            mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value
-        )
+        return mock_db.table.return_value.select.return_value.eq.return_value.execute.return_value
 
     def test_returns_distinct_seasons(self, repo: SourceRepository, mock_db: MagicMock) -> None:
         self._chain(mock_db).data = [
