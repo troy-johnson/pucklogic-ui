@@ -94,9 +94,9 @@ class NhlComScraper(BaseScraper):
         if (gp := player.get("gamesPlayed")) is not None:
             stats["gp"] = int(gp)
         if (goals := player.get("goals")) is not None:
-            stats["goals"] = int(goals)
+            stats["g"] = int(goals)
         if (assists := player.get("assists")) is not None:
-            stats["assists"] = int(assists)
+            stats["a"] = int(assists)
         if not stats:
             return
         db.table("player_stats").upsert(

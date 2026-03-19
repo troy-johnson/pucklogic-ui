@@ -130,13 +130,17 @@ class DailyFaceoffScraper(BaseProjectionScraper):
                 log_unmatched(db, self.SOURCE_NAME, player_name, season)
                 logger.debug("DailyFaceoff: unmatched player %r — skipping", player_name)
                 continue
-            upsert_projection_row(db, player_id, source_id, season, row)
+            if row:
+                # Only write a projection row when at least one stat was projected.
+                # A PP-only upload (no G/A/PPP/etc.) would otherwise create an all-null
+                # player_projections row that pollutes aggregate rankings.
+                upsert_projection_row(db, player_id, source_id, season, row)
+                upserted += 1
             if stats_payload:
                 db.table("player_stats").upsert(
                     {"player_id": player_id, "season": season, **stats_payload},
                     on_conflict="player_id,season",
                 ).execute()
-            upserted += 1
 
         if upserted > 0:
             update_last_successful_scrape(db, source_id)

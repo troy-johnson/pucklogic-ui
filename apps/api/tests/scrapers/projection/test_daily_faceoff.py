@@ -202,6 +202,42 @@ class TestIngestPpUnit:
         tables_written = [str(c) for c in mock_db.table.call_args_list]
         assert not any("player_stats" in t for t in tables_written)
 
+    def test_pp_only_row_does_not_create_projection_row(self, mock_db: MagicMock) -> None:
+        """A CSV with only PP_Unit and no projection stats must not write to
+        player_projections — doing so would create an all-null row that pollutes
+        aggregate rankings with null fantasy-point players."""
+        from unittest.mock import patch
+
+        csv_pp_only = "Player,PP_Unit\nConnor McDavid,1\n"
+        players = [{"id": "p1", "name": "Connor McDavid", "nhl_id": "8478402"}]
+        scraper = DailyFaceoffScraper()
+        with patch(
+            "scrapers.projection.daily_faceoff.fetch_players_and_aliases",
+            return_value=(players, []),
+        ):
+            count = scraper.ingest(csv_pp_only, "2025-26", mock_db)
+
+        proj_calls = [c for c in mock_db.table.call_args_list if "player_projections" in str(c)]
+        assert proj_calls == [], "player_projections must not be written for a PP-only row"
+        assert count == 0, "upserted count must be 0 when no projection stats are present"
+
+    def test_pp_only_row_still_writes_player_stats(self, mock_db: MagicMock) -> None:
+        """A PP-only row must still write pp_unit to player_stats even though
+        no player_projections row is created."""
+        from unittest.mock import patch
+
+        csv_pp_only = "Player,PP_Unit\nConnor McDavid,1\n"
+        players = [{"id": "p1", "name": "Connor McDavid", "nhl_id": "8478402"}]
+        scraper = DailyFaceoffScraper()
+        with patch(
+            "scrapers.projection.daily_faceoff.fetch_players_and_aliases",
+            return_value=(players, []),
+        ):
+            scraper.ingest(csv_pp_only, "2025-26", mock_db)
+
+        tables_written = [str(c) for c in mock_db.table.call_args_list]
+        assert any("player_stats" in t for t in tables_written)
+
 
 # ---------------------------------------------------------------------------
 # scrape() raises NotImplementedError

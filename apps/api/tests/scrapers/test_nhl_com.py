@@ -250,7 +250,8 @@ class TestScrape:
         scraper = NhlComScraper(http=mock_http)
         await scraper.scrape(SEASON, db)
         upsert_calls = str(db.table.return_value.upsert.call_args_list)
-        assert "'goals': 52" in upsert_calls
+        assert "'g': 52" in upsert_calls
+        assert "'a': 89" in upsert_calls
 
     @pytest.mark.asyncio
     async def test_player_stats_skips_when_gp_missing(self) -> None:
