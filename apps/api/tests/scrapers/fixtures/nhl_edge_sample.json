@@ -1,0 +1,21 @@
+{
+  "data": [
+    {
+      "playerId": 8478402,
+      "playerName": "Connor McDavid",
+      "teamAbbrevs": "EDM",
+      "gamesPlayed": 82,
+      "sprintBurstsPerGame": 3.2,
+      "topSpeed": 25.4
+    },
+    {
+      "playerId": 8477492,
+      "playerName": "Nathan MacKinnon",
+      "teamAbbrevs": "COL",
+      "gamesPlayed": 80,
+      "sprintBurstsPerGame": 2.8,
+      "topSpeed": 24.1
+    }
+  ],
+  "total": 2
+}
