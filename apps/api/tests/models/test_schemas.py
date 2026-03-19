@@ -12,7 +12,6 @@ from pydantic import ValidationError
 
 from models.schemas import ShapValues, TrendedPlayer, TrendsResponse
 
-
 # ---------------------------------------------------------------------------
 # ShapValues
 # ---------------------------------------------------------------------------
@@ -201,7 +200,8 @@ class TestTrendsResponse:
         assert resp.updated_at == now
 
     def test_has_trends_true_without_updated_at_raises(self) -> None:
-        """has_trends=True requires updated_at — ML pipeline must record when scores were written."""
+        """has_trends=True requires updated_at — ML pipeline must record when scores were written.
+        """  # noqa: D205
         with pytest.raises(ValidationError, match="updated_at must be set"):
             TrendsResponse(
                 season="2025-26",

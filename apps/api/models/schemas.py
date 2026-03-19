@@ -5,7 +5,6 @@ Pydantic request/response schemas for Phase 2 and Phase 3 endpoints.
 from __future__ import annotations
 
 from datetime import datetime
-
 from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, StrictBool, computed_field, model_validator
