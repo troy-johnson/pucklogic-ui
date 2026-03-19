@@ -1,5 +1,5 @@
 """
-Pydantic request/response schemas for Phase 2 endpoints.
+Pydantic request/response schemas for Phase 2 and Phase 3 endpoints.
 """
 
 from __future__ import annotations
@@ -298,3 +298,40 @@ class UploadResponse(BaseModel):
     unmatched: list[UnmatchedPlayer]
     slots_used: int
     slots_total: int = 2  # Must match FREE_SLOT_LIMIT in routers/sources.py
+
+
+# ---------------------------------------------------------------------------
+# Trends — Phase 3 Layer 1 ML scores (GET /trends)
+# No paywall gate in v1.0; all scores visible to free users.
+# Layer 2 columns (trending_up_score etc.) added in v2.0.
+# ---------------------------------------------------------------------------
+
+
+class ShapValues(BaseModel):
+    """Per-feature SHAP contributions for breakout and regression models."""
+
+    breakout: dict[str, float] = Field(default_factory=dict)
+    regression: dict[str, float] = Field(default_factory=dict)
+
+
+class TrendedPlayer(BaseModel):
+    player_id: str
+    name: str
+    position: str | None = None
+    team: str | None = None
+    breakout_score: float | None = None
+    regression_risk: float | None = None
+    confidence: float | None = None
+    projection_tier: str | None = None       # 'HIGH' / 'MEDIUM' / 'LOW'
+    projection_pts: float | None = None
+    breakout_signals: dict[str, bool] | None = None
+    regression_signals: dict[str, bool] | None = None
+    shap_top3: dict[str, list] | None = None  # {"breakout": [[feat, val], ...], "regression": [...]}
+    shap_values: ShapValues | None = None     # full per-feature SHAP (may be large)
+
+
+class TrendsResponse(BaseModel):
+    season: str
+    updated_at: datetime | None = None
+    player_count: int
+    players: list[TrendedPlayer]
