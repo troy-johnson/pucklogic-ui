@@ -360,6 +360,15 @@ class TrendsResponse(BaseModel):
     has_trends: bool
     players: list[TrendedPlayer]
 
+    @model_validator(mode="after")
+    def updated_at_required_when_has_trends(self) -> TrendsResponse:
+        if self.has_trends and self.updated_at is None:
+            raise ValueError(
+                "updated_at must be set when has_trends=True; "
+                "the ML pipeline must record when scores were written."
+            )
+        return self
+
     @computed_field  # type: ignore[misc]
     @property
     def player_count(self) -> int:

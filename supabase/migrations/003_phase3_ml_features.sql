@@ -16,6 +16,20 @@
 -- ===========================================================================
 -- player_stats — Tier 1 core ML features
 -- ===========================================================================
+--
+-- NOTE: Several Tier 1 features are already present from 001_initial_schema.sql:
+--   sh_pct         (shooting % — used to compute sh_pct_delta = sh_pct - sh_pct_career_avg)
+--   pdo            (SH% + SV% luck indicator)
+--   toi_per_game   (total TOI per game — distinct from toi_ev, toi_pp, toi_sh added below)
+--   pp_toi_pg      (PP TOI per game — distinct from toi_pp added below, may differ in source)
+--   cf_pct         (raw Corsi For % — distinct from cf_pct_adj added below)
+--   xgf_pct        (expected goals % — distinct from xgf_pct_5v5 added below)
+--   iscf_per_60    (legacy scoring chances — NOT read by Phase 3 pipeline; see scf_per60 below)
+--   war            (wins above replacement — distinct from gar/xgar added below)
+--
+-- Computed at query time (not stored):
+--   age            (from players.date_of_birth)
+--   sh_pct_delta   (sh_pct − sh_pct_career_avg; derived in feature pipeline)
 
 -- Individual Corsi For per 60 min (shot volume).
 -- Multicollinearity: do NOT include alongside ixg_per60 (one volume metric is sufficient)

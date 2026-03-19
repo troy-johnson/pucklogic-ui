@@ -5,7 +5,7 @@ Covers: ShapValues, TrendedPlayer, TrendsResponse
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -170,7 +170,12 @@ class TestTrendsResponse:
 
     def test_player_count_computed_from_list(self) -> None:
         players = [self._make_player("a"), self._make_player("b"), self._make_player("c")]
-        resp = TrendsResponse(season="2025-26", has_trends=True, players=players)
+        resp = TrendsResponse(
+            season="2025-26",
+            has_trends=True,
+            updated_at=datetime.now(UTC),
+            players=players,
+        )
         assert resp.player_count == 3
 
     def test_empty_players_count_zero(self) -> None:
@@ -186,7 +191,7 @@ class TestTrendsResponse:
         assert not resp.has_trends
 
     def test_updated_at_populated(self) -> None:
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         resp = TrendsResponse(
             season="2025-26",
             has_trends=True,
@@ -194,6 +199,16 @@ class TestTrendsResponse:
             players=[self._make_player()],
         )
         assert resp.updated_at == now
+
+    def test_has_trends_true_without_updated_at_raises(self) -> None:
+        """has_trends=True requires updated_at — ML pipeline must record when scores were written."""
+        with pytest.raises(ValidationError, match="updated_at must be set"):
+            TrendsResponse(
+                season="2025-26",
+                has_trends=True,
+                updated_at=None,
+                players=[self._make_player()],
+            )
 
     def test_season_preserved(self) -> None:
         resp = TrendsResponse(season="2024-25", has_trends=False, players=[])
