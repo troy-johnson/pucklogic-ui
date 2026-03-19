@@ -764,6 +764,30 @@ WHERE scraper_name = 'nst'
 
 ---
 
+#### Hockey Reference (`scrapers/hockey_reference.py`)
+
+- **Table:** `player_stats`
+- **Columns:** `sh_pct_career_avg` (float, rolling career SH%), `nhl_experience` (int, seasons with GP>0), `career_goals` (int), `career_shots` (int)
+- **Frequency:** Annual (retraining cron) — `scrape_history("2005-06", current_season, db)` for initial backfill; `scrape(season, db)` for yearly updates
+- **Rate limit:** `Crawl-delay: 3` per robots.txt — `MIN_DELAY_SECONDS = 3.0`
+
+#### Elite Prospects (`scrapers/elite_prospects.py`)
+
+- **Table:** `player_stats`
+- **Columns:** `elc_flag` (bool), `contract_year_flag` (bool)
+- **Frequency:** Weekly via `scrape-projections.yml`
+- **Requires:** `ELITE_PROSPECTS_API_KEY` env var (free tier at eliteprospects.com/api)
+- **Note:** Field names (`firstName`, `lastName`, `contract.type`, `contract.expiryYear`) are approximate — verify against live API before use.
+
+#### NHL EDGE (`scrapers/nhl_edge.py`) — Tier 3, Optional
+
+- **Table:** `player_stats`
+- **Columns:** `speed_bursts_22` (float), `top_speed` (float)
+- **Frequency:** Weekly via `scrape-projections.yml`
+- **Note:** Field names (`sprintBurstsPerGame`, `topSpeed`) are approximate — verify against live API before use.
+
+---
+
 #### DailyFaceoff (`pp_unit` upload)
 
 DailyFaceoff is paste/upload only — no CLI. Use the upload UI or test via the API directly:
