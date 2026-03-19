@@ -138,7 +138,9 @@ A reproducible pipeline that reads raw stats from Supabase and produces a normal
 
 ```
 apps/api/scrapers/features/
-  __init__.py          # public API: build_feature_matrix(season) → pd.DataFrame
+  __init__.py          # public API: build_feature_matrix(completed_season) → pd.DataFrame
+                       #   completed_season: the most recently finished NHL season (e.g. "2025-26")
+                       #   reads player_stats WHERE season <= completed_season (all historical data)
   raw.py               # fetch player_stats from Supabase (flags are columns in player_stats)
   transforms.py        # compute derived features (sh_pct_delta, toi_rank, etc.)
   labels.py            # compute breakout/regression labels from historical data
@@ -225,7 +227,7 @@ apps/api/ml/
   train.py             # train() → uploads artifacts to Supabase Storage (primary store)
   loader.py            # load_model_artifacts(season) → downloads from Supabase Storage to disk cache
   evaluate.py          # cross-validation, AUC-ROC, precision@K
-  shap_compute.py      # compute SHAP values for each player in current season
+  shap_compute.py      # compute SHAP values for each player on the upcoming season's roster
   artifacts/           # gitignored — local disk cache only; populated by loader.py at startup
     breakout_model.joblib
     regression_model.joblib
@@ -245,7 +247,7 @@ apps/api/ml/
 ### SHAP
 
 - Use `shap.TreeExplainer` (fast for tree models, <1ms per player)
-- Compute SHAP values for every player in the current season's feature matrix
+- Compute SHAP values for every player on the upcoming season's roster (using the trained model and completed-season features as inputs)
 - Store as JSONB in `player_trends.shap_values`:
 
 ```json
@@ -275,9 +277,12 @@ PRIMARY KEY / UNIQUE (player_id, season)
 
 ### Training Script Invocation
 
+`--season` is the **prediction target** (the upcoming draft season). Internally, `train.py` derives the completed data season as `season - 1` (e.g., `--season 2026-27` → reads stats through 2025-26). This means the stat scrapers in the retraining workflow must ingest `<completed_season>` data *before* this command runs.
+
 ```bash
-# from apps/api/
+# from apps/api/ — run after all stat scrapers have ingested <completed_season> data
 python -m ml.train --season 2026-27 --output ml/artifacts/
+# internally: build_feature_matrix("2025-26"), train on 2005-06…2025-26, write player_trends for 2026-27
 ```
 
 ### Testing
@@ -363,12 +368,13 @@ on:
 
 ### Steps
 
-1. Run all stat scrapers (NHL.com, MoneyPuck, NST) for completed season
+Steps 1–2 ingest **completed season** data. Steps 3–4 pass `<next_season>` (the prediction target); each script internally derives the completed data season as `next_season - 1`.
+
+1. Run all stat scrapers (NHL.com, MoneyPuck, NST) for `<completed_season>` (e.g., 2025-26)
 2. Run Hockey Reference historical pull for career SH% update
-3. `python -m ml.train --season <next_season>`
-4. `python -m ml.shap_compute --season <next_season>`
-5. Upsert `player_trends` rows for upcoming season
-6. Slack notification on success/failure
+3. `python -m ml.train --season <next_season>` — reads stats through `<completed_season>`, trains model, writes `player_trends` rows for `<next_season>`
+4. `python -m ml.shap_compute --season <next_season>` — reads trained model + `<completed_season>` features, writes SHAP values to `player_trends` for `<next_season>`
+5. Slack notification on success/failure
 
 ### Testing
 
