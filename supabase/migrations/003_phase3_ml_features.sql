@@ -17,7 +17,10 @@
 -- player_stats — Tier 1 core ML features
 -- ===========================================================================
 
--- Individual Corsi For per 60 min (shot volume; do NOT include alongside iscf_per_60 in model)
+-- Individual Corsi For per 60 min (shot volume).
+-- Multicollinearity: do NOT include alongside ixg_per60 (one volume metric is sufficient)
+-- or isf_per60 (individual shots for — collinear per feature spec §Multicollinearity Warnings).
+-- Distinct from existing iscf_per_60 (individual scoring chances — a different metric).
 alter table player_stats add column if not exists icf_per60 float;
 
 -- Individual expected goals per 60 min (shot quality; pair with icf_per60)
@@ -38,33 +41,51 @@ alter table player_stats add column if not exists cf_pct_adj float;
 -- On-ice scoring chance % (outperforms CF% and xG for offensive prediction)
 alter table player_stats add column if not exists scf_pct float;
 
--- Individual scoring chances per 60 min (most predictive for future goals)
--- NOTE: existing iscf_per_60 captures the same underlying stat but may use different
--- source normalisation. scf_per60 is written by the NST scraper using the canonical
--- NST column name and is the value consumed by the feature pipeline.
+-- Individual scoring chances per 60 min (most predictive for future goals).
+-- The existing iscf_per_60 column remains written by the legacy NST scraper path but is NOT
+-- read by the Phase 3 feature pipeline. Do not deprecate iscf_per_60 until the scraper
+-- migration to scf_per60 is verified complete and all tests pass.
 alter table player_stats add column if not exists scf_per60 float;
 
 -- Primary points (G + A1) per 60 min — strips near-random A2 noise
 alter table player_stats add column if not exists p1_per60 float;
 
--- Even-strength TOI per game (minutes)
--- Distinct from existing toi_per_game (total TOI across all situations)
+-- Even-strength TOI per game (minutes). Distinct from toi_per_game (total TOI, all situations).
+-- NOTE: docs/feature-engineering-spec.md names this feature toi_ev_per_game. The feature
+-- engineering pipeline (transforms.py) must alias toi_ev → toi_ev_per_game when building
+-- the feature matrix to match the spec's column naming.
 alter table player_stats add column if not exists toi_ev float;
 
--- Power play TOI per game (minutes)
--- Distinct from existing pp_toi_pg which may use different source/normalisation;
--- toi_pp is the canonical name for the feature pipeline
+-- Power play TOI per game (minutes). Distinct from pp_toi_pg (may differ in source/normalisation).
+-- NOTE: spec names this toi_pp_per_game — pipeline must alias accordingly.
 alter table player_stats add column if not exists toi_pp float;
 
--- Short-handed TOI per game (minutes)
+-- Short-handed TOI per game (minutes).
+-- NOTE: spec names this toi_sh_per_game — pipeline must alias accordingly.
 alter table player_stats add column if not exists toi_sh float;
 
--- PP unit designation: 1 = PP1, 2 = PP2, 0 = no PP time
--- Written by DailyFaceoff scraper
-alter table player_stats add column if not exists pp_unit smallint check (pp_unit in (0, 1, 2));
+-- PP unit designation: 1 = PP1, 2 = PP2, 0 = no PP time. Written by DailyFaceoff scraper.
+-- Season-level aggregate (most recent assignment per season).
+-- The per-day snapshot lives in player_lines.pp_unit (Layer 2 source). The feature pipeline
+-- reads player_stats.pp_unit for training; player_lines is the Layer 2 signal source.
+alter table player_stats add column if not exists pp_unit smallint;
 
--- Rolling career shooting % (Hockey Reference) — for sh_pct_delta feature
--- sh_pct_delta is computed in transforms.py as: sh_pct (season) - sh_pct_career_avg
+-- Inline CHECK omitted to preserve ADD COLUMN IF NOT EXISTS idempotency.
+-- Named constraint added separately below so it can be applied conditionally.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'player_stats_pp_unit_valid'
+    and conrelid = 'player_stats'::regclass
+  ) then
+    alter table player_stats add constraint player_stats_pp_unit_valid
+      check (pp_unit in (0, 1, 2));
+  end if;
+end $$;
+
+-- Rolling career SH% (Hockey Reference) — used to derive sh_pct_delta in the feature pipeline.
+-- Formula: sh_pct_delta = sh_pct (current season) - sh_pct_career_avg (career average, not single-season).
 alter table player_stats add column if not exists sh_pct_career_avg float;
 
 -- ===========================================================================
@@ -160,9 +181,24 @@ alter table player_trends add column if not exists shap_top3 jsonb;
 -- Projected fantasy points output from the projection pipeline
 alter table player_trends add column if not exists projection_pts float;
 
--- Confidence tier based on signal count: 'HIGH' (4+ signals), 'MEDIUM' (3), 'LOW' (2)
-alter table player_trends add column if not exists projection_tier text
-  check (projection_tier in ('HIGH', 'MEDIUM', 'LOW'));
+-- Projection tier from the rule-based breakout/regression signal count (NOT model confidence).
+-- 'HIGH' = 4+ signals fired, 'MEDIUM' = 3, 'LOW' = 2.
+-- Distinct from the `confidence` column (XGBoost max class probability).
+-- See docs/feature-engineering-spec.md §Projection Pipeline step 7.
+alter table player_trends add column if not exists projection_tier text;
+
+-- Named constraint added separately for idempotency (same pattern as pp_unit above).
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'player_trends_projection_tier_valid'
+    and conrelid = 'player_trends'::regclass
+  ) then
+    alter table player_trends add constraint player_trends_projection_tier_valid
+      check (projection_tier in ('HIGH', 'MEDIUM', 'LOW'));
+  end if;
+end $$;
 
 -- ===========================================================================
 -- player_trends — indexes

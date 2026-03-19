@@ -6,7 +6,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from typing import Literal
+
+from pydantic import BaseModel, EmailStr, Field, StrictBool, computed_field, model_validator
 
 # ---------------------------------------------------------------------------
 # Sources
@@ -306,32 +308,60 @@ class UploadResponse(BaseModel):
 # Layer 2 columns (trending_up_score etc.) added in v2.0.
 # ---------------------------------------------------------------------------
 
+# Canonical type aliases — match the SQL CHECK constraints in 003_phase3_ml_features.sql
+ProjectionTier = Literal["HIGH", "MEDIUM", "LOW"]
+SkaterPosition = Literal["C", "LW", "RW", "D", "G"]
+
 
 class ShapValues(BaseModel):
-    """Per-feature SHAP contributions for breakout and regression models."""
+    """Per-feature SHAP contributions for breakout and regression models.
+
+    Both dicts must not be simultaneously empty — use shap_values=None on TrendedPlayer
+    when SHAP has not been computed for a player.
+    """
 
     breakout: dict[str, float] = Field(default_factory=dict)
     regression: dict[str, float] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def at_least_one_shap_entry(self) -> ShapValues:
+        if not self.breakout and not self.regression:
+            raise ValueError(
+                "ShapValues must contain at least one entry in breakout or regression; "
+                "use shap_values=None on TrendedPlayer if SHAP was not computed."
+            )
+        return self
 
 
 class TrendedPlayer(BaseModel):
     player_id: str
     name: str
-    position: str | None = None
+    position: SkaterPosition | None = None
     team: str | None = None
-    breakout_score: float | None = None
-    regression_risk: float | None = None
-    confidence: float | None = None
-    projection_tier: str | None = None       # 'HIGH' / 'MEDIUM' / 'LOW'
+    # Probability scores — validated to [0, 1] range; values outside range indicate ML bug
+    breakout_score: float | None = Field(None, ge=0.0, le=1.0)
+    regression_risk: float | None = Field(None, ge=0.0, le=1.0)
+    confidence: float | None = Field(None, ge=0.0, le=1.0)
+    projection_tier: ProjectionTier | None = None
     projection_pts: float | None = None
-    breakout_signals: dict[str, bool] | None = None
-    regression_signals: dict[str, bool] | None = None
-    shap_top3: dict[str, list] | None = None  # {"breakout": [[feat, val], ...], "regression": [...]}
-    shap_values: ShapValues | None = None     # full per-feature SHAP (may be large)
+    # Signal dicts: keys are signal names, values are strict booleans (int 0/1 not accepted)
+    breakout_signals: dict[str, StrictBool] | None = None
+    regression_signals: dict[str, StrictBool] | None = None
+    # shap_top3: each inner list is exactly [feature_name: str, shap_value: float] (2 elements)
+    shap_top3: dict[str, list[list[str | float]]] | None = None
+    shap_values: ShapValues | None = None  # full per-feature SHAP (may be large)
 
 
 class TrendsResponse(BaseModel):
     season: str
+    # None when no player_trends rows exist for this season yet (check has_trends first)
     updated_at: datetime | None = None
-    player_count: int
+    # True when player_trends rows exist for this season; False = model not yet run
+    has_trends: bool
     players: list[TrendedPlayer]
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def player_count(self) -> int:
+        """Always consistent with len(players) — do not pass separately."""
+        return len(self.players)

@@ -129,7 +129,9 @@ create table if not exists player_stats (
 -- ---------------------------------------------------------------------------
 -- player_trends
 -- Layer 1 ML output: pre-season breakout / regression scores.
--- Layer 2 columns (trending_up_score etc.) added in 002_v2_layer2.sql.
+-- Phase 3 Layer 1 ML output columns (breakout_signals, shap_top3, projection_pts, etc.)
+-- added in 003_phase3_ml_features.sql.
+-- Layer 2 columns (trending_up_score, momentum_score, signals_json) deferred to v2.0.
 -- ---------------------------------------------------------------------------
 create table if not exists player_trends (
   id               uuid primary key default gen_random_uuid(),
