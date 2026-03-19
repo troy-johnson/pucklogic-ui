@@ -56,12 +56,6 @@ async def delete_user_kit(
     db: Any = Depends(get_db),
 ) -> None:
     """Delete a saved kit. Only the owning user may delete their own kits."""
-    result = (
-        db.table("user_kits")
-        .delete()
-        .eq("id", kit_id)
-        .eq("user_id", user["id"])
-        .execute()
-    )
+    result = db.table("user_kits").delete().eq("id", kit_id).eq("user_id", user["id"]).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Kit not found")

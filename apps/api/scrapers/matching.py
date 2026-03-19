@@ -11,6 +11,7 @@ Usage:
     matcher = PlayerMatcher(players=db_players, aliases=db_aliases)
     player_id = matcher.resolve("J. Kotkaniemi")  # → UUID or None
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -25,9 +26,7 @@ class PlayerMatcher:
         aliases: list[dict[str, Any]],
     ) -> None:
         # Exact match index: normalised name → player_id
-        self._exact: dict[str, str] = {
-            p["name"].strip().lower(): p["id"] for p in players
-        }
+        self._exact: dict[str, str] = {p["name"].strip().lower(): p["id"] for p in players}
         # Alias index: normalised alias → list of player_ids.
         # The player_aliases table allows the same alias_name for different
         # sources (unique on alias_name+source), so we must collect all

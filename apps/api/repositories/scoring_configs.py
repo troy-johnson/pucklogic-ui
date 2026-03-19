@@ -12,12 +12,7 @@ class ScoringConfigRepository:
 
     def list_presets(self) -> list[dict[str, Any]]:
         """Return all preset scoring configs (public, no user scoping)."""
-        result = (
-            self._db.table("scoring_configs")
-            .select("*")
-            .eq("is_preset", True)
-            .execute()
-        )
+        result = self._db.table("scoring_configs").select("*").eq("is_preset", True).execute()
         return result.data
 
     def list(self, user_id: str) -> list[dict[str, Any]]:

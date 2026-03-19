@@ -81,9 +81,7 @@ async def generate_export(
         content = generate_excel(ranked, req.season)
         return Response(
             content=content,
-            media_type=(
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            ),
+            media_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
             headers={"Content-Disposition": f'attachment; filename="{filename}.xlsx"'},
         )
 

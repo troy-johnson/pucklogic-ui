@@ -92,6 +92,9 @@ NHL_PLAYER_1 = {
     "teamAbbrevs": "EDM",
     "positionCode": "C",
     "points": 100,
+    "goals": 52,
+    "assists": 89,
+    "gamesPlayed": 82,
 }
 NHL_PLAYER_2 = {
     "playerId": 8477492,
@@ -99,6 +102,9 @@ NHL_PLAYER_2 = {
     "teamAbbrevs": "COL",
     "positionCode": "C",
     "points": 95,
+    "goals": 45,
+    "assists": 79,
+    "gamesPlayed": 80,
 }
 
 
@@ -194,6 +200,82 @@ class TestScrape:
         with patch("scrapers.base.asyncio.sleep", new_callable=AsyncMock):
             count = await scraper.scrape(SEASON, db)
         assert count == PAGE + 1
+
+    @pytest.mark.asyncio
+    async def test_upserts_goals_and_gp_to_player_stats(self) -> None:
+        mock_http = AsyncMock()
+        mock_http.get.side_effect = [
+            httpx.Response(
+                200,
+                text="User-agent: *\nAllow: /",
+                request=httpx.Request("GET", "http://x"),
+            ),
+            _make_response({"data": [NHL_PLAYER_1], "total": 1}),
+        ]
+        db = _mock_db()
+        scraper = NhlComScraper(http=mock_http)
+        await scraper.scrape(SEASON, db)
+        tables_written = [str(c) for c in db.table.call_args_list]
+        assert any("player_stats" in t for t in tables_written)
+
+    @pytest.mark.asyncio
+    async def test_player_stats_payload_contains_gp(self) -> None:
+        mock_http = AsyncMock()
+        mock_http.get.side_effect = [
+            httpx.Response(
+                200,
+                text="User-agent: *\nAllow: /",
+                request=httpx.Request("GET", "http://x"),
+            ),
+            _make_response({"data": [NHL_PLAYER_1], "total": 1}),
+        ]
+        db = _mock_db()
+        scraper = NhlComScraper(http=mock_http)
+        await scraper.scrape(SEASON, db)
+        upsert_calls = str(db.table.return_value.upsert.call_args_list)
+        assert "'gp': 82" in upsert_calls
+
+    @pytest.mark.asyncio
+    async def test_player_stats_payload_contains_goals(self) -> None:
+        mock_http = AsyncMock()
+        mock_http.get.side_effect = [
+            httpx.Response(
+                200,
+                text="User-agent: *\nAllow: /",
+                request=httpx.Request("GET", "http://x"),
+            ),
+            _make_response({"data": [NHL_PLAYER_1], "total": 1}),
+        ]
+        db = _mock_db()
+        scraper = NhlComScraper(http=mock_http)
+        await scraper.scrape(SEASON, db)
+        upsert_calls = str(db.table.return_value.upsert.call_args_list)
+        assert "'goals': 52" in upsert_calls
+
+    @pytest.mark.asyncio
+    async def test_player_stats_skips_when_gp_missing(self) -> None:
+        """Players without gamesPlayed should not trigger a player_stats upsert."""
+        player_no_gp = {
+            "playerId": 9999999,
+            "skaterFullName": "Unknown Player",
+            "teamAbbrevs": "UNK",
+            "positionCode": "C",
+            "points": 0,
+        }
+        mock_http = AsyncMock()
+        mock_http.get.side_effect = [
+            httpx.Response(
+                200,
+                text="User-agent: *\nAllow: /",
+                request=httpx.Request("GET", "http://x"),
+            ),
+            _make_response({"data": [player_no_gp], "total": 1}),
+        ]
+        db = _mock_db()
+        scraper = NhlComScraper(http=mock_http)
+        await scraper.scrape(SEASON, db)
+        tables_written = [str(c) for c in db.table.call_args_list]
+        assert not any("player_stats" in t for t in tables_written)
 
     @pytest.mark.asyncio
     async def test_sleeps_between_pages(self) -> None:

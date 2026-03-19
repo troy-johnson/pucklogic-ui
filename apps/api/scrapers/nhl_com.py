@@ -87,6 +87,23 @@ class NhlComScraper(BaseScraper):
         )
         return result.data[0]["id"]
 
+    def _upsert_player_stats(
+        self, db: Any, player_id: str, season: str, player: dict[str, Any]
+    ) -> None:
+        stats: dict[str, Any] = {}
+        if (gp := player.get("gamesPlayed")) is not None:
+            stats["gp"] = int(gp)
+        if (goals := player.get("goals")) is not None:
+            stats["goals"] = int(goals)
+        if (assists := player.get("assists")) is not None:
+            stats["assists"] = int(assists)
+        if not stats:
+            return
+        db.table("player_stats").upsert(
+            {"player_id": player_id, "season": season, **stats},
+            on_conflict="player_id,season",
+        ).execute()
+
     def _upsert_ranking(
         self, db: Any, player_id: str, source_id: str, rank: int, season: str
     ) -> None:
@@ -106,9 +123,7 @@ class NhlComScraper(BaseScraper):
 
     async def scrape(self, season: str, db: Any) -> int:  # noqa: D102
         if not await self._check_robots_txt(_NHL_STATS_URL):
-            raise RobotsDisallowedError(
-                f"robots.txt disallows scraping {_NHL_STATS_URL}"
-            )
+            raise RobotsDisallowedError(f"robots.txt disallows scraping {_NHL_STATS_URL}")
 
         source_id = self._upsert_source(db)
         rows_upserted = 0
@@ -126,6 +141,7 @@ class NhlComScraper(BaseScraper):
                 rank = start + offset + 1
                 player_id = self._upsert_player(db, player)
                 self._upsert_ranking(db, player_id, source_id, rank, season)
+                self._upsert_player_stats(db, player_id, season, player)
                 rows_upserted += 1
 
             if len(players) < self.PAGE_SIZE:

@@ -7,6 +7,7 @@ Pipeline:
   3. compute_vorp()             — fantasy points → VORP per position
   4. aggregate_projections()    — top-level orchestrator
 """
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -14,8 +15,22 @@ from typing import Any
 
 # All stat columns in player_projections (skater + goalie)
 SKATER_STATS: list[str] = [
-    "g", "a", "plus_minus", "pim", "ppg", "ppa", "ppp",
-    "shg", "sha", "shp", "sog", "fow", "fol", "hits", "blocks", "gp",
+    "g",
+    "a",
+    "plus_minus",
+    "pim",
+    "ppg",
+    "ppa",
+    "ppp",
+    "shg",
+    "sha",
+    "shp",
+    "sog",
+    "fow",
+    "fol",
+    "hits",
+    "blocks",
+    "gp",
 ]
 GOALIE_STATS: list[str] = ["gs", "w", "l", "ga", "sa", "sv", "sv_pct", "so", "otl"]
 ALL_STATS: list[str] = SKATER_STATS + GOALIE_STATS
@@ -232,15 +247,17 @@ def aggregate_projections(
             source_count = 0
             fp = None
 
-        aggregated.append({
-            **meta,
-            "projected_fantasy_points": fp,
-            "vorp": None,  # filled in step 3
-            "source_count": source_count,
-            "projected_stats": {s: stats.get(s) for s in ALL_STATS},
-            "breakout_score": None,
-            "regression_risk": None,
-        })
+        aggregated.append(
+            {
+                **meta,
+                "projected_fantasy_points": fp,
+                "vorp": None,  # filled in step 3
+                "source_count": source_count,
+                "projected_stats": {s: stats.get(s) for s in ALL_STATS},
+                "breakout_score": None,
+                "regression_risk": None,
+            }
+        )
 
     # 3. Compute VORP if league profile provided
     if league_profile:

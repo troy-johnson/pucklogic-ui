@@ -12,6 +12,7 @@ rested opponents and reduced goaltending depth on those nights.
 Usage:
     python -m scrapers.schedule_scores
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -44,9 +45,7 @@ def count_off_night_games(
     """
     date_team_count: dict[str, int] = {g["date"]: len(g["teams"]) for g in schedule}
     return sum(
-        1
-        for date in player_game_dates
-        if date_team_count.get(date, 0) <= off_night_threshold
+        1 for date in player_game_dates if date_team_count.get(date, 0) <= off_night_threshold
     )
 
 
@@ -115,9 +114,7 @@ async def ingest(season: str, db: Any) -> None:
     logger.info("Fetched %d game days for %s", len(schedule), season)
 
     # Build date → teams index
-    date_teams: dict[str, set[str]] = {
-        g["date"]: set(g["teams"]) for g in schedule
-    }
+    date_teams: dict[str, set[str]] = {g["date"]: set(g["teams"]) for g in schedule}
 
     # Get all players with their team
     players = db.table("players").select("id, team").execute().data
@@ -156,4 +153,5 @@ async def ingest(season: str, db: Any) -> None:
 if __name__ == "__main__":
     from core.config import settings
     from core.dependencies import get_db
+
     asyncio.run(ingest(settings.current_season, get_db()))

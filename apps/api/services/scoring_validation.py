@@ -1,4 +1,5 @@
 """Scoring config validation — enforces double-counting rules."""
+
 from __future__ import annotations
 
 

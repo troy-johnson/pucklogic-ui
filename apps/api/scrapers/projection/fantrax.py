@@ -11,6 +11,7 @@ paste/upload mode (same as Dobber — no HTTP, just CSV parse).
 Requires FANTRAX_SESSION_TOKEN in .env / GitHub Actions secrets.
 Last verified: <DATE> — re-verify XHR endpoints each season.
 """
+
 from __future__ import annotations
 
 import logging

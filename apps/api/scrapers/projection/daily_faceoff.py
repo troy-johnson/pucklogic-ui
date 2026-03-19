@@ -50,6 +50,11 @@ COLUMN_MAP: dict[str, str] = {
     "PIM": "pim",
 }
 
+# Columns that route to player_stats instead of player_projections.
+STATS_COLUMN_MAP: dict[str, str] = {
+    "PP_Unit": "pp_unit",
+}
+
 PLAYER_NAME_COLUMN = "Player"
 
 
@@ -88,7 +93,8 @@ class DailyFaceoffScraper(BaseProjectionScraper):
             if not player_name:
                 continue
             stats = apply_column_map(raw_row, COLUMN_MAP)
-            rows.append({"player_name": player_name, **stats})
+            player_stats = apply_column_map(raw_row, STATS_COLUMN_MAP)
+            rows.append({"player_name": player_name, **stats, **player_stats})
         return rows
 
     # ------------------------------------------------------------------
@@ -115,12 +121,21 @@ class DailyFaceoffScraper(BaseProjectionScraper):
 
         for row in projection_rows:
             player_name = row.pop("player_name")
+            # Split player_stats columns out before writing projections
+            stats_payload = {
+                col: row.pop(col) for col in list(STATS_COLUMN_MAP.values()) if col in row
+            }
             player_id = matcher.resolve(player_name)
             if player_id is None:
                 log_unmatched(db, self.SOURCE_NAME, player_name, season)
                 logger.debug("DailyFaceoff: unmatched player %r — skipping", player_name)
                 continue
             upsert_projection_row(db, player_id, source_id, season, row)
+            if stats_payload:
+                db.table("player_stats").upsert(
+                    {"player_id": player_id, "season": season, **stats_payload},
+                    on_conflict="player_id,season",
+                ).execute()
             upserted += 1
 
         if upserted > 0:

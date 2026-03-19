@@ -11,12 +11,7 @@ class LeagueProfileRepository:
         self._db = db
 
     def list(self, user_id: str) -> list[dict[str, Any]]:
-        result = (
-            self._db.table("league_profiles")
-            .select("*")
-            .eq("user_id", user_id)
-            .execute()
-        )
+        result = self._db.table("league_profiles").select("*").eq("user_id", user_id).execute()
         return result.data
 
     def create(self, data: dict[str, Any]) -> dict[str, Any]:

@@ -28,11 +28,5 @@ class PlayerRepository:
         return result.data
 
     def get(self, player_id: str) -> dict[str, Any] | None:
-        result = (
-            self._db.table("players")
-            .select("*")
-            .eq("id", player_id)
-            .maybe_single()
-            .execute()
-        )
+        result = self._db.table("players").select("*").eq("id", player_id).maybe_single().execute()
         return result.data
