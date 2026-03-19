@@ -676,18 +676,18 @@ JOIN sources s ON s.id = pr.source_id
 WHERE s.name = 'nhl_com' AND pr.season = '2025-26';
 -- Expect: > 500 rows
 
--- player_stats written (gp, goals, assists)
-SELECT p.name, ps.gp, ps.goals, ps.assists
+-- player_stats written (gp, g, a)
+SELECT p.name, ps.gp, ps.g, ps.a
 FROM player_stats ps
 JOIN players p ON p.id = ps.player_id
 WHERE ps.season = '2025-26'
   AND ps.gp IS NOT NULL
-ORDER BY ps.goals DESC NULLS LAST
+ORDER BY ps.g DESC NULLS LAST
 LIMIT 10;
--- Expect: top scorers with non-null gp, goals, assists
+-- Expect: top scorers with non-null gp, g, a
 ```
 
-**Pass criteria:** `player_rankings` has ≥ 500 rows; `player_stats` rows show non-null `gp`, `goals`, `assists` for top players.
+**Pass criteria:** `player_rankings` has ≥ 500 rows; `player_stats` rows show non-null `gp`, `g`, `a` for top players.
 
 ---
 
@@ -842,7 +842,7 @@ After running all three stat scrapers, verify the feature columns needed for Pha
 SELECT
   p.name,
   ps.gp,
-  ps.goals,
+  ps.g,
   ps.ixg_per60,
   ps.g_minus_ixg,
   ps.xgf_pct_5v5,
