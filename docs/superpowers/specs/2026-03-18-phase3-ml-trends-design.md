@@ -9,16 +9,16 @@
 
 ## Overview
 
-Phase 3 builds the ML Trends Engine that overlays breakout/regression scores on top of the Phase 2 rankings dashboard. It is divided into five sequential milestones:
+Phase 3 builds the ML Trends Engine that overlays breakout/regression scores on top of the Phase 2 rankings dashboard. It is divided into six sequential milestones:
 
 | Milestone | Name | Goal |
 |-----------|------|------|
 | **3a** | Scrapers & Data Pipeline | All data sources ingested, scrapers verified green |
-| **3b** | Feature Engineering | Cleaned, normalized feature matrix per player per season |
-| **3c** | Model Training | XGBoost/LightGBM breakout + regression models, SHAP values |
-| **3d** | Inference API | `GET /trends` endpoint serving pre-computed scores |
-| **3e** | Retraining Workflow | GitHub Actions yearly retraining trigger |
-| **3f** | Local Dev Smoke Test | Supabase CLI local stack; live end-to-end scraper verification |
+| **3b** | Local Dev Smoke Test | Supabase CLI local stack; live end-to-end scraper verification |
+| **3c** | Feature Engineering | Cleaned, normalized feature matrix per player per season |
+| **3d** | Model Training | XGBoost/LightGBM breakout + regression models, SHAP values |
+| **3e** | Inference API | `GET /trends` endpoint serving pre-computed scores |
+| **3f** | Retraining Workflow | GitHub Actions yearly retraining trigger |
 
 Each milestone ships independently and has its own test coverage before the next begins.
 
@@ -129,7 +129,80 @@ A scraper is considered "verified" when:
 
 ---
 
-## Milestone 3b — Feature Engineering
+## Milestone 3b — Local Dev Smoke Test
+
+### Goal
+
+Run every scraper end-to-end against a real Postgres instance before the project goes live, without requiring a Supabase Pro account or touching production data.
+
+### Background
+
+Supabase branching (isolated dev environments) is a Pro feature unavailable on the free tier. Until the project upgrades, live smoke testing requires a local Supabase CLI stack. This milestone runs once after 3a is complete and before feature engineering (3c) begins — it validates that all scrapers are writing correct, non-null data to the DB before the feature matrix and model depend on it.
+
+### Setup
+
+```bash
+# Install Supabase CLI (macOS)
+brew install supabase/tap/supabase
+
+# From repo root
+supabase init          # creates supabase/config.toml (one-time)
+supabase start         # starts local Postgres + Auth + REST on localhost:54321
+                       # prints local anon key and service_role key
+supabase db push       # applies all migrations from supabase/migrations/
+```
+
+Create `apps/api/.env.local` (gitignored):
+
+```
+SUPABASE_URL=http://localhost:54321
+SUPABASE_SERVICE_ROLE_KEY=<service_role key printed by supabase start>
+```
+
+### Smoke Test Checklist
+
+Run each scraper manually from `apps/api/` with the local env active:
+
+```bash
+# Load local env
+export $(cat .env.local | xargs)
+
+python -m scrapers.nhl_com
+python -m scrapers.moneypuck
+python -m scrapers.nst
+python -m scrapers.hockey_reference        # annual; use scrape_history() for first run
+python -m scrapers.elite_prospects         # needs ELITE_PROSPECTS_API_KEY
+python -m scrapers.nhl_edge
+```
+
+Verify rows were written:
+
+```bash
+supabase db query "SELECT COUNT(*) FROM player_stats WHERE season = '2024-25';"
+supabase db query "SELECT COUNT(*) FROM player_projections WHERE season = '2024-25';"
+```
+
+Expected: `player_stats` ≥ 500 rows with non-null `gp`; top rows show non-null `g`, `a`, `cf_pct`, `xgf_pct`, `sh_pct_career_avg`. `player_projections` ≥ 500 rows from HashtagHockey or whichever projection sources have been run.
+
+### Teardown
+
+```bash
+supabase stop          # shuts down containers; data is discarded
+```
+
+### Pass Criteria
+
+All six scrapers exit with non-zero row counts and no Python exceptions. No `FATAL` or `PostgREST` column-rejection errors in output. Row counts match expectations above.
+
+### Notes
+
+- Do **not** commit `supabase/config.toml` or `apps/api/.env.local` if they contain local-only values — both should remain gitignored.
+- `supabase start` requires Docker. Ensure Docker Desktop is running.
+- Hockey Reference `scrape_history("2005-06", "2024-25", db)` takes ~60s (20 pages × 3s crawl delay). Run it once to establish career baselines, then use `scrape(season, db)` for subsequent runs.
+
+---
+
+## Milestone 3c — Feature Engineering
 
 ### Goal
 
@@ -214,7 +287,7 @@ Labels are mutually exclusive by construction (a player cannot be both ≥20% ab
 
 ---
 
-## Milestone 3c — Model Training
+## Milestone 3d — Model Training
 
 ### Goal
 
@@ -295,7 +368,7 @@ python -m ml.train --season 2026-27 --output ml/artifacts/
 
 ---
 
-## Milestone 3d — Inference API
+## Milestone 3e — Inference API
 
 ### Goal
 
@@ -350,7 +423,7 @@ apps/api/models/schemas.py          # TrendsResponse, TrendedPlayer (add to exis
 
 ---
 
-## Milestone 3e — Retraining Workflow
+## Milestone 3f — Retraining Workflow
 
 ### Goal
 
@@ -384,88 +457,15 @@ Steps 1–2 ingest **completed season** data. Steps 3–4 pass `<next_season>` (
 
 ---
 
-## Milestone 3f — Local Dev Smoke Test
-
-### Goal
-
-Run every scraper end-to-end against a real Postgres instance before the project goes live, without requiring a Supabase Pro account or touching production data.
-
-### Background
-
-Supabase branching (isolated dev environments) is a Pro feature unavailable on the free tier. Until the project upgrades, live smoke testing requires a local Supabase CLI stack. This milestone should run once after 3e is complete and all scrapers are stable.
-
-### Setup
-
-```bash
-# Install Supabase CLI (macOS)
-brew install supabase/tap/supabase
-
-# From repo root
-supabase init          # creates supabase/config.toml (one-time)
-supabase start         # starts local Postgres + Auth + REST on localhost:54321
-                       # prints local anon key and service_role key
-supabase db push       # applies all migrations from supabase/migrations/
-```
-
-Create `apps/api/.env.local` (gitignored):
-
-```
-SUPABASE_URL=http://localhost:54321
-SUPABASE_SERVICE_ROLE_KEY=<service_role key printed by supabase start>
-```
-
-### Smoke Test Checklist
-
-Run each scraper manually from `apps/api/` with the local env active:
-
-```bash
-# Load local env
-export $(cat .env.local | xargs)
-
-python -m scrapers.nhl_com
-python -m scrapers.moneypuck
-python -m scrapers.nst
-python -m scrapers.hockey_reference        # annual; use scrape_history() for first run
-python -m scrapers.elite_prospects         # needs ELITE_PROSPECTS_API_KEY
-python -m scrapers.nhl_edge
-```
-
-Verify rows were written:
-
-```bash
-supabase db query "SELECT COUNT(*) FROM player_stats WHERE season = '2024-25';"
-supabase db query "SELECT COUNT(*) FROM player_projections WHERE season = '2024-25';"
-```
-
-Expected: `player_stats` ≥ 500 rows with non-null `gp`; top rows show non-null `g`, `a`, `cf_pct`, `xgf_pct`, `sh_pct_career_avg`. `player_projections` ≥ 500 rows from HashtagHockey or whichever projection sources have been run.
-
-### Teardown
-
-```bash
-supabase stop          # shuts down containers; data is discarded
-```
-
-### Pass Criteria
-
-All six scrapers exit with non-zero row counts and no Python exceptions. No `FATAL` or `PostgREST` column-rejection errors in output. Row counts match expectations above.
-
-### Notes
-
-- Do **not** commit `supabase/config.toml` or `apps/api/.env.local` if they contain local-only values — both should remain gitignored.
-- `supabase start` requires Docker. Ensure Docker Desktop is running.
-- Hockey Reference `scrape_history("2005-06", "2024-25", db)` takes ~60s (20 pages × 3s crawl delay). Run it once to establish career baselines, then use `scrape(season, db)` for subsequent runs.
-
----
-
 ## Dependencies Between Milestones
 
 ```
 3a (scrapers + data)
-  └─→ 3b (feature engineering requires stat data in DB)
-        └─→ 3c (model training requires feature matrix)
-              └─→ 3d (inference API requires trained model + player_trends populated)
-                    └─→ 3e (retraining workflow wraps 3a → 3c → player_trends upsert)
-                          └─→ 3f (smoke test — all scrapers stable, run once end-to-end)
+  └─→ 3b (smoke test — scrapers verified writing correct data to real DB)
+        └─→ 3c (feature engineering requires validated stat data in DB)
+              └─→ 3d (model training requires feature matrix)
+                    └─→ 3e (inference API requires trained model + player_trends populated)
+                          └─→ 3f (retraining workflow wraps 3a → 3d → player_trends upsert)
 ```
 
 ---
