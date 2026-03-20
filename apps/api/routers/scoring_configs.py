@@ -39,9 +39,11 @@ async def create_scoring_config(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    row = repo.create({
-        **body.model_dump(),
-        "user_id": user["id"],
-        "is_preset": False,
-    })
+    row = repo.create(
+        {
+            **body.model_dump(),
+            "user_id": user["id"],
+            "is_preset": False,
+        }
+    )
     return ScoringConfigOut(**row)

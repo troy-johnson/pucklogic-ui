@@ -639,6 +639,234 @@ Workflow: `.github/workflows/scrape-platform-data.yml`
 
 ---
 
+### Scraper Smoke Test Runbook
+
+Run this after any scraper change to verify data actually lands in Supabase.
+
+**Prerequisites**
+
+```bash
+cd apps/api
+cp .env.example .env          # if not already present
+# Set in .env:
+#   SUPABASE_URL=https://<project>.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY=<service_role_key>
+#   CURRENT_SEASON=2025-26
+
+pip install -e ".[dev]"
+```
+
+> Target the **dev** Supabase project, not production. All writes are upserts so re-running is safe.
+
+---
+
+#### NHL.com
+
+```bash
+python -m scrapers.nhl_com
+# Expected output: "NHL.com: upserted N rankings for 2025-26"
+```
+
+Verify in Supabase SQL editor:
+
+```sql
+-- Rankings written
+SELECT COUNT(*) FROM player_rankings pr
+JOIN sources s ON s.id = pr.source_id
+WHERE s.name = 'nhl_com' AND pr.season = '2025-26';
+-- Expect: > 500 rows
+
+-- player_stats written (gp, g, a)
+SELECT p.name, ps.gp, ps.g, ps.a
+FROM player_stats ps
+JOIN players p ON p.id = ps.player_id
+WHERE ps.season = '2025-26'
+  AND ps.gp IS NOT NULL
+ORDER BY ps.g DESC NULLS LAST
+LIMIT 10;
+-- Expect: top scorers with non-null gp, g, a
+```
+
+**Pass criteria:** `player_rankings` has ≥ 500 rows; `player_stats` rows show non-null `gp`, `g`, `a` for top players.
+
+---
+
+#### MoneyPuck
+
+```bash
+python -m scrapers.moneypuck
+# Expected output: "MoneyPuck: upserted N rankings for 2025-26"
+```
+
+Verify:
+
+```sql
+-- player_stats written (ixg_per60, g_minus_ixg, xgf_pct_5v5)
+SELECT p.name, ps.ixg_per60, ps.g_minus_ixg, ps.xgf_pct_5v5
+FROM player_stats ps
+JOIN players p ON p.id = ps.player_id
+WHERE ps.season = '2025-26'
+  AND ps.ixg_per60 IS NOT NULL
+ORDER BY ps.ixg_per60 DESC NULLS LAST
+LIMIT 10;
+-- Expect: top players with non-null ixg_per60, g_minus_ixg
+-- xgf_pct_5v5 may be null for players with zero 5v5 on-ice xG
+
+-- Sanity check arithmetic (Connor McDavid, id varies)
+SELECT p.name, ps.ixg_per60, ps.g_minus_ixg, ps.xgf_pct_5v5
+FROM player_stats ps
+JOIN players p ON p.id = ps.player_id
+WHERE p.name ILIKE '%mcdavid%' AND ps.season = '2025-26';
+-- ixg_per60 should be a positive float (~3–5 range for elite players)
+-- g_minus_ixg positive = lucky shooter, negative = unlucky
+-- xgf_pct_5v5 should be 50–70 range for top players
+```
+
+**Pass criteria:** At least 400 `player_stats` rows with non-null `ixg_per60`; `xgf_pct_5v5` populated for players with 5v5 ice time.
+
+---
+
+#### Natural Stat Trick (NST)
+
+```bash
+python -m scrapers.nst
+# Expected output: "NstScraper: upserted N/M player_stats rows for 2025-26"
+# N < M is normal — some names won't resolve on first run if players table is sparse
+```
+
+Verify:
+
+```sql
+-- Phase 3 Tier 1 columns written
+SELECT p.name,
+       ps.cf_pct, ps.xgf_pct, ps.sh_pct, ps.pdo,
+       ps.icf_per60, ps.ixg_per60, ps.scf_pct, ps.scf_per60, ps.p1_per60,
+       ps.xgf_pct_5v5, ps.toi_ev, ps.toi_pp, ps.toi_sh
+FROM player_stats ps
+JOIN players p ON p.id = ps.player_id
+WHERE ps.season = '2025-26'
+  AND ps.cf_pct IS NOT NULL
+ORDER BY ps.icf_per60 DESC NULLS LAST
+LIMIT 10;
+-- Expect: rows with a mix of the above columns populated
+
+-- Check unmatched names (expected to be low after NHL.com has run first)
+SELECT COUNT(*) FROM scraper_logs
+WHERE scraper_name = 'nst'
+  AND event = 'unmatched_player'
+  AND created_at > NOW() - INTERVAL '1 hour';
+-- Expect: < 20 unmatched for a healthy run
+```
+
+**Pass criteria:** At least 300 `player_stats` rows with non-null `cf_pct`; all 9 all-situations columns and 4 situation columns (`xgf_pct_5v5`, `toi_ev`, `toi_pp`, `toi_sh`) present for the top rows.
+
+> **Note:** Run NHL.com first. NST matches by player name against the `players` table; an empty `players` table means 0 matches.
+
+---
+
+#### Hockey Reference (`scrapers/hockey_reference.py`)
+
+- **Table:** `player_stats`
+- **Columns:** `sh_pct_career_avg` (float, rolling career SH%), `nhl_experience` (int, seasons with GP>0), `career_goals` (int), `career_shots` (int)
+- **Frequency:** Annual (retraining cron) — `scrape_history("2005-06", current_season, db)` for initial backfill; `scrape(season, db)` for yearly updates
+- **Rate limit:** `Crawl-delay: 3` per robots.txt — `MIN_DELAY_SECONDS = 3.0`
+
+#### Elite Prospects (`scrapers/elite_prospects.py`)
+
+- **Table:** `player_stats`
+- **Columns:** `elc_flag` (bool), `contract_year_flag` (bool)
+- **Frequency:** Weekly via `scrape-projections.yml`
+- **Requires:** `ELITE_PROSPECTS_API_KEY` env var (free tier at eliteprospects.com/api)
+- **Note:** Field names (`firstName`, `lastName`, `contract.type`, `contract.expiryYear`) are approximate — verify against live API before use.
+
+#### NHL EDGE (`scrapers/nhl_edge.py`) — Tier 3, Optional
+
+- **Table:** `player_stats`
+- **Columns:** `speed_bursts_22` (float), `top_speed` (float)
+- **Frequency:** Weekly via `scrape-projections.yml`
+- **Note:** Field names (`sprintBurstsPerGame`, `topSpeed`) are approximate — verify against live API before use.
+
+---
+
+#### DailyFaceoff (`pp_unit` upload)
+
+DailyFaceoff is paste/upload only — no CLI. Use the upload UI or test via the API directly:
+
+```bash
+# Minimal test CSV (save as /tmp/df_pp_test.csv):
+cat > /tmp/df_pp_test.csv <<'EOF'
+Player,G,A,PPP,SOG,HIT,BLK,GP,PIM,PP_Unit
+Connor McDavid,52,72,28,280,32,18,82,24,1
+Leon Draisaitl,45,65,30,260,40,20,82,36,1
+Nathan MacKinnon,42,68,25,250,28,22,82,28,2
+EOF
+
+# Call the upload endpoint (requires auth token):
+curl -X POST http://localhost:8000/sources/upload \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@/tmp/df_pp_test.csv" \
+  -F "source_name=daily_faceoff" \
+  -F "season=2025-26"
+```
+
+Verify:
+
+```sql
+-- pp_unit written to player_stats
+SELECT p.name, ps.pp_unit
+FROM player_stats ps
+JOIN players p ON p.id = ps.player_id
+WHERE ps.season = '2025-26'
+  AND ps.pp_unit IS NOT NULL
+ORDER BY ps.pp_unit;
+-- Expect: McDavid and Draisaitl with pp_unit=1, MacKinnon with pp_unit=2
+
+-- pp_unit must NOT appear in player_projections
+SELECT COUNT(*) FROM player_projections pp
+JOIN sources s ON s.id = pp.source_id
+WHERE s.name = 'daily_faceoff'
+  AND pp.season = '2025-26'
+  AND pp.extra_stats ? 'pp_unit';
+-- Expect: 0 rows
+```
+
+**Pass criteria:** `pp_unit` present in `player_stats` for uploaded players; absent from `player_projections`.
+
+---
+
+#### Full end-to-end check
+
+After running all three stat scrapers, verify the feature columns needed for Phase 3b model training are populated:
+
+```sql
+SELECT
+  p.name,
+  ps.gp,
+  ps.g,
+  ps.ixg_per60,
+  ps.g_minus_ixg,
+  ps.xgf_pct_5v5,
+  ps.cf_pct,
+  ps.xgf_pct,
+  ps.icf_per60,
+  ps.scf_pct,
+  ps.scf_per60,
+  ps.p1_per60,
+  ps.toi_ev,
+  ps.toi_pp,
+  ps.toi_sh,
+  ps.pp_unit
+FROM player_stats ps
+JOIN players p ON p.id = ps.player_id
+WHERE ps.season = '2025-26'
+ORDER BY ps.ixg_per60 DESC NULLS LAST
+LIMIT 20;
+```
+
+A healthy result has the top 20 players with most columns non-null. `toi_pp` / `pp_unit` will be null for players with no PP time, which is expected.
+
+---
+
 ## 7. ML Model
 
 ### Label Definition (CRITICAL)

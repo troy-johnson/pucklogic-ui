@@ -85,9 +85,7 @@ async def register(req: RegisterRequest) -> AuthResponse | dict[str, str]:
 async def login(req: LoginRequest) -> AuthResponse:
     """Sign in with email + password."""
     try:
-        resp = get_db().auth.sign_in_with_password(
-            {"email": req.email, "password": req.password}
-        )
+        resp = get_db().auth.sign_in_with_password({"email": req.email, "password": req.password})
         return _build_auth_response(resp)
     except Exception as exc:
         logger.warning("Login failed: %s", exc)

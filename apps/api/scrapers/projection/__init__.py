@@ -5,6 +5,7 @@ Shared helpers for projection scrapers.
 Each projection scraper calls these helpers rather than duplicating
 DB interaction logic.
 """
+
 from __future__ import annotations
 
 import logging
@@ -65,11 +66,13 @@ def upsert_projection_row(
 def log_unmatched(db: Any, source_name: str, raw_name: str, season: str) -> None:
     """Insert a scraper_logs row for a player name that could not be matched."""
     try:
-        db.table("scraper_logs").insert({
-            "source": source_name,
-            "event": "unmatched_player",
-            "detail": f"season={season} raw_name={raw_name!r}",
-        }).execute()
+        db.table("scraper_logs").insert(
+            {
+                "source": source_name,
+                "event": "unmatched_player",
+                "detail": f"season={season} raw_name={raw_name!r}",
+            }
+        ).execute()
     except Exception as exc:
         logger.warning("Failed to log unmatched player %r: %s", raw_name, exc)
 
@@ -77,9 +80,7 @@ def log_unmatched(db: Any, source_name: str, raw_name: str, season: str) -> None
 def update_last_successful_scrape(db: Any, source_id: str) -> None:
     """Stamp sources.last_successful_scrape with the current UTC time."""
     now = datetime.now(UTC).isoformat()
-    db.table("sources").update(
-        {"last_successful_scrape": now}
-    ).eq("id", source_id).execute()
+    db.table("sources").update({"last_successful_scrape": now}).eq("id", source_id).execute()
 
 
 def apply_column_map(

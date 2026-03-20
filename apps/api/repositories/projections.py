@@ -22,6 +22,7 @@ Join shape (each row):
     "schedule_scores": [{"schedule_score": float, "off_night_games": int}],  # 0 or 1
   }
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -70,20 +71,17 @@ class ProjectionRepository:
         # Also filter player_platform_positions to the requested platform only.
         filtered = []
         for row in result.data:
-            if (
-                row["sources"]["user_id"] is not None
-                and row["sources"]["user_id"] != user_id
-            ):
+            if row["sources"]["user_id"] is not None and row["sources"]["user_id"] != user_id:
                 continue
-            filtered.append({
-                **row,
-                "player_platform_positions": [
-                    p for p in row["player_platform_positions"]
-                    if p.get("platform") == platform
-                ],
-                "schedule_scores": [
-                    s for s in row["schedule_scores"]
-                    if s.get("season") == season
-                ],
-            })
+            filtered.append(
+                {
+                    **row,
+                    "player_platform_positions": [
+                        p for p in row["player_platform_positions"] if p.get("platform") == platform
+                    ],
+                    "schedule_scores": [
+                        s for s in row["schedule_scores"] if s.get("season") == season
+                    ],
+                }
+            )
         return filtered

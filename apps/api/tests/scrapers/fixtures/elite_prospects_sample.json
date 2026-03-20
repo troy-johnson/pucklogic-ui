@@ -1,0 +1,28 @@
+{
+  "data": [
+    {
+      "player": {
+        "firstName": "Connor",
+        "lastName": "McDavid",
+        "contract": { "type": "SPC", "expiryYear": 2026 }
+      }
+    },
+    {
+      "player": {
+        "firstName": "Matvei",
+        "lastName": "Michkov",
+        "contract": { "type": "ELC", "expiryYear": 2025 }
+      }
+    },
+    {
+      "player": {
+        "firstName": "Nico",
+        "lastName": "Hischier",
+        "contract": { "type": "SPC", "expiryYear": 2025 }
+      }
+    }
+  ],
+  "total": 3,
+  "limit": 100,
+  "offset": 0
+}

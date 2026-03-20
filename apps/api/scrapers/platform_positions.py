@@ -10,6 +10,7 @@ Run pre-season (September). Safe to re-run — uses UPSERT.
 Usage:
     python -m scrapers.platform_positions
 """
+
 from __future__ import annotations
 
 import logging
@@ -31,15 +32,14 @@ ESPN_POSITION_MAP: dict[int, str] = {
     4: "D",
     5: "G",
     6: "UTIL",
-    10: "F",    # Forward (generic)
+    10: "F",  # Forward (generic)
     # 7 = BN (bench) — excluded
     # 8 = IR — excluded
     # 9 = IR+ — excluded
 }
 
 ESPN_PLAYERS_URL = (
-    "https://fantasy.espn.com/apis/v3/games/fhl/players"
-    "?scoringPeriodId=0&view=players_wl"
+    "https://fantasy.espn.com/apis/v3/games/fhl/players?scoringPeriodId=0&view=players_wl"
 )
 
 
@@ -55,9 +55,7 @@ def map_espn_positions(eligible_slots: list[int]) -> list[str]:
     return result
 
 
-def upsert_platform_positions(
-    db: Any, player_id: str, platform: str, positions: list[str]
-) -> None:
+def upsert_platform_positions(db: Any, player_id: str, platform: str, positions: list[str]) -> None:
     """Upsert a player_platform_positions row."""
     db.table("player_platform_positions").upsert(
         {"player_id": player_id, "platform": platform, "positions": positions},
@@ -68,6 +66,7 @@ def upsert_platform_positions(
 def _fetch_espn_players() -> list[dict[str, Any]]:
     """Fetch all NHL players from ESPN Fantasy API with exponential-backoff retry."""
     import time
+
     max_retries = 3
     retry_statuses = {429, 500, 502, 503, 504}
     last_exc: Exception | None = None
@@ -132,6 +131,7 @@ def ingest_yahoo_positions(db: Any) -> int:
     Returns 0 if no token configured.
     """
     from core.config import settings
+
     if not settings.yahoo_oauth_refresh_token:
         logger.warning("Yahoo positions: no OAuth token — skipping")
         return 0
@@ -170,6 +170,7 @@ def ingest_yahoo_positions(db: Any) -> int:
 def ingest_fantrax_positions(db: Any) -> int:
     """Ingest position eligibility from Fantrax. Returns 0 if no session token."""
     from core.config import settings
+
     if not settings.fantrax_session_token:
         logger.warning("Fantrax positions: no session token — skipping")
         return 0
@@ -181,6 +182,7 @@ def ingest_fantrax_positions(db: Any) -> int:
 
 if __name__ == "__main__":
     from core.dependencies import get_db
+
     db = get_db()
     total = ingest_espn_positions(db) + ingest_yahoo_positions(db) + ingest_fantrax_positions(db)
     print(f"Total platform positions upserted: {total}")

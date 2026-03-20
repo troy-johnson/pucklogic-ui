@@ -120,6 +120,126 @@ class TestIngest:
 
 
 # ---------------------------------------------------------------------------
+# _parse_csv — pp_unit column
+# ---------------------------------------------------------------------------
+
+
+class TestParseCsvPpUnit:
+    CSV_WITH_PP_UNIT = (
+        "Player,G,A,PP_Unit\n"
+        "Connor McDavid,52,72,1\n"
+        "Leon Draisaitl,45,65,2\n"
+        "Nathan MacKinnon,42,68,-\n"
+    )
+
+    def test_parses_pp_unit_as_integer(self) -> None:
+        rows = DailyFaceoffScraper._parse_csv(self.CSV_WITH_PP_UNIT)
+        mcdavid = next(r for r in rows if r["player_name"] == "Connor McDavid")
+        assert mcdavid["pp_unit"] == 1
+
+    def test_parses_pp_unit_2(self) -> None:
+        rows = DailyFaceoffScraper._parse_csv(self.CSV_WITH_PP_UNIT)
+        draisaitl = next(r for r in rows if r["player_name"] == "Leon Draisaitl")
+        assert draisaitl["pp_unit"] == 2
+
+    def test_omits_pp_unit_when_dash(self) -> None:
+        rows = DailyFaceoffScraper._parse_csv(self.CSV_WITH_PP_UNIT)
+        mackinnon = next(r for r in rows if r["player_name"] == "Nathan MacKinnon")
+        assert "pp_unit" not in mackinnon
+
+    def test_pp_unit_absent_when_column_missing(self) -> None:
+        rows = DailyFaceoffScraper._parse_csv(FIXTURE_CSV.read_text())
+        assert all("pp_unit" not in r for r in rows)
+
+
+# ---------------------------------------------------------------------------
+# ingest() — pp_unit written to player_stats, not player_projections
+# ---------------------------------------------------------------------------
+
+
+class TestIngestPpUnit:
+    CSV_WITH_PP_UNIT = "Player,G,A,PP_Unit\nConnor McDavid,52,72,1\n"
+
+    def test_ingest_writes_pp_unit_to_player_stats(self, mock_db: MagicMock) -> None:
+        from unittest.mock import patch
+
+        players = [{"id": "p1", "name": "Connor McDavid", "nhl_id": "8478402"}]
+        scraper = DailyFaceoffScraper()
+        with patch(
+            "scrapers.projection.daily_faceoff.fetch_players_and_aliases",
+            return_value=(players, []),
+        ):
+            scraper.ingest(self.CSV_WITH_PP_UNIT, "2025-26", mock_db)
+        tables_written = [str(c) for c in mock_db.table.call_args_list]
+        assert any("player_stats" in t for t in tables_written)
+
+    def test_ingest_pp_unit_not_written_to_player_projections(self, mock_db: MagicMock) -> None:
+        from unittest.mock import patch
+
+        players = [{"id": "p1", "name": "Connor McDavid", "nhl_id": "8478402"}]
+        scraper = DailyFaceoffScraper()
+        with patch(
+            "scrapers.projection.daily_faceoff.fetch_players_and_aliases",
+            return_value=(players, []),
+        ):
+            scraper.ingest(self.CSV_WITH_PP_UNIT, "2025-26", mock_db)
+        proj_calls = [
+            str(c) for c in mock_db.table.call_args_list if "player_projections" in str(c)
+        ]
+        assert "pp_unit" not in "".join(proj_calls)
+
+    def test_ingest_without_pp_unit_does_not_write_player_stats(self, mock_db: MagicMock) -> None:
+        """CSV with no PP_Unit column should not touch player_stats."""
+        from unittest.mock import patch
+
+        players = [{"id": "p1", "name": "Connor McDavid", "nhl_id": "8478402"}]
+        scraper = DailyFaceoffScraper()
+        with patch(
+            "scrapers.projection.daily_faceoff.fetch_players_and_aliases",
+            return_value=(players, []),
+        ):
+            scraper.ingest(FIXTURE_CSV.read_text(), "2025-26", mock_db)
+        tables_written = [str(c) for c in mock_db.table.call_args_list]
+        assert not any("player_stats" in t for t in tables_written)
+
+    def test_pp_only_row_does_not_create_projection_row(self, mock_db: MagicMock) -> None:
+        """A CSV with only PP_Unit and no projection stats must not write to
+        player_projections — doing so would create an all-null row that pollutes
+        aggregate rankings with null fantasy-point players."""
+        from unittest.mock import patch
+
+        csv_pp_only = "Player,PP_Unit\nConnor McDavid,1\n"
+        players = [{"id": "p1", "name": "Connor McDavid", "nhl_id": "8478402"}]
+        scraper = DailyFaceoffScraper()
+        with patch(
+            "scrapers.projection.daily_faceoff.fetch_players_and_aliases",
+            return_value=(players, []),
+        ):
+            count = scraper.ingest(csv_pp_only, "2025-26", mock_db)
+
+        proj_calls = [c for c in mock_db.table.call_args_list if "player_projections" in str(c)]
+        assert proj_calls == [], "player_projections must not be written for a PP-only row"
+        assert count == 0, "upserted count must be 0 when no projection stats are present"
+
+    def test_pp_only_row_still_writes_player_stats(self, mock_db: MagicMock) -> None:
+        """A PP-only row must still write pp_unit to player_stats even though
+        no player_projections row is created."""
+        from unittest.mock import patch
+
+        csv_pp_only = "Player,PP_Unit\nConnor McDavid,1\n"
+        players = [{"id": "p1", "name": "Connor McDavid", "nhl_id": "8478402"}]
+        scraper = DailyFaceoffScraper()
+        with patch(
+            "scrapers.projection.daily_faceoff.fetch_players_and_aliases",
+            return_value=(players, []),
+        ):
+            scraper.ingest(csv_pp_only, "2025-26", mock_db)
+
+        tables_written = [str(c) for c in mock_db.table.call_args_list]
+        assert any("player_stats" in t for t in tables_written)
+
+
+# ---------------------------------------------------------------------------
 # scrape() raises NotImplementedError
 # ---------------------------------------------------------------------------
 

@@ -9,6 +9,7 @@ Yahoo stat IDs → our player_projections columns.
 Verify stat IDs by calling the API and inspecting a live response.
 Last verified: 2026-03-18
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -167,4 +168,5 @@ if __name__ == "__main__":
     import asyncio
 
     from core.dependencies import get_db
+
     asyncio.run(YahooScraper().scrape("2025-26", get_db()))

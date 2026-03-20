@@ -58,9 +58,7 @@ def compute_weighted_rankings(
 
             if pid not in player_data:
                 # Store stable player metadata from first source seen
-                player_data[pid] = {
-                    k: v for k, v in entry.items() if k not in ("rank", "score")
-                }
+                player_data[pid] = {k: v for k, v in entry.items() if k not in ("rank", "score")}
                 player_weighted_sum[pid] = 0.0
                 player_total_weight[pid] = 0.0
                 player_source_ranks[pid] = {}

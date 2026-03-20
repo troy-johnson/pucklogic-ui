@@ -17,20 +17,36 @@ from scrapers.moneypuck import MoneyPuckScraper
 
 SEASON = "2025-26"
 
-# Minimal CSV matching the columns the scraper cares about
+# Full CSV with all columns needed for ranking + player_stats writes.
+# iceTime is in seconds; I_F_xGoals and I_F_goals are raw season totals.
+# Using round numbers for easy test arithmetic:
+#   ixg_per60 = I_F_xGoals / iceTime * 3600
+#   g_minus_ixg = I_F_goals - I_F_xGoals
+#   xgf_pct_5v5 = OnIce_F_xGoals / (OnIce_F_xGoals + OnIce_A_xGoals) * 100
 SKATERS_CSV = textwrap.dedent("""\
-    playerId,name,team,position,situation,I_F_xGoals
-    8478402,Connor McDavid,EDM,C,all,45.3
-    8477492,Nathan MacKinnon,COL,C,all,40.1
-    9999999,Leon Draisaitl,EDM,C,all,38.7
+    playerId,name,team,position,situation,I_F_xGoals,I_F_goals,iceTime,OnIce_F_xGoals,OnIce_A_xGoals
+    8478402,Connor McDavid,EDM,C,all,36.0,46,3600,0.0,0.0
+    8477492,Nathan MacKinnon,COL,C,all,30.0,38,3000,0.0,0.0
+    9999999,Leon Draisaitl,EDM,C,all,27.0,32,2700,0.0,0.0
+    8478402,Connor McDavid,EDM,C,5v5,0.0,0,0,25.0,15.0
+    8477492,Nathan MacKinnon,COL,C,5v5,0.0,0,0,20.0,14.0
+    9999999,Leon Draisaitl,EDM,C,5v5,0.0,0,0,18.0,12.0
 """)
 
-# A row that should be SKIPPED because situation != "all"
+# Minimal CSV matching the columns the ranking path cares about (backward compat)
+SKATERS_CSV_RANKINGS_ONLY = textwrap.dedent("""\
+    playerId,name,team,position,situation,I_F_xGoals,I_F_goals,iceTime,OnIce_F_xGoals,OnIce_A_xGoals
+    8478402,Connor McDavid,EDM,C,all,45.3,64,98460,0.0,0.0
+    8477492,Nathan MacKinnon,COL,C,all,40.1,56,92000,0.0,0.0
+    9999999,Leon Draisaitl,EDM,C,all,38.7,52,89000,0.0,0.0
+""")
+
+# A row that should be SKIPPED because situation != "all" or "5v5"
 SKATERS_CSV_MIXED = textwrap.dedent("""\
-    playerId,name,team,position,situation,I_F_xGoals
-    8478402,Connor McDavid,EDM,C,all,45.3
-    8478402,Connor McDavid,EDM,C,5v5,20.1
-    8477492,Nathan MacKinnon,COL,C,all,40.1
+    playerId,name,team,position,situation,I_F_xGoals,I_F_goals,iceTime,OnIce_F_xGoals,OnIce_A_xGoals
+    8478402,Connor McDavid,EDM,C,all,45.3,64,98460,0.0,0.0
+    8478402,Connor McDavid,EDM,C,5v5,20.1,0,0,25.0,15.0
+    8477492,Nathan MacKinnon,COL,C,all,40.1,56,92000,0.0,0.0
 """)
 
 
@@ -183,3 +199,128 @@ class TestScrape:
         await scraper.scrape(SEASON, db)
         csv_url = mock_http.get.call_args_list[1].args[0]
         assert "2025" in csv_url
+
+
+# ---------------------------------------------------------------------------
+# _parse_stats_csv()
+# ---------------------------------------------------------------------------
+
+
+class TestParseStatsCsv:
+    def test_returns_one_dict_per_player(self) -> None:
+        rows = MoneyPuckScraper._parse_stats_csv(SKATERS_CSV)
+        assert len(rows) == 3
+
+    def test_computes_ixg_per60(self) -> None:
+        # McDavid: 36.0 / 3600 * 3600 = 36.0
+        rows = MoneyPuckScraper._parse_stats_csv(SKATERS_CSV)
+        mcDavid = next(r for r in rows if r["player_id"] == "8478402")
+        assert mcDavid["ixg_per60"] == pytest.approx(36.0)
+
+    def test_computes_g_minus_ixg(self) -> None:
+        # McDavid: 46 - 36.0 = 10.0
+        rows = MoneyPuckScraper._parse_stats_csv(SKATERS_CSV)
+        mcDavid = next(r for r in rows if r["player_id"] == "8478402")
+        assert mcDavid["g_minus_ixg"] == pytest.approx(10.0)
+
+    def test_computes_xgf_pct_5v5(self) -> None:
+        # McDavid: 25.0 / (25.0 + 15.0) * 100 = 62.5
+        rows = MoneyPuckScraper._parse_stats_csv(SKATERS_CSV)
+        mcDavid = next(r for r in rows if r["player_id"] == "8478402")
+        assert mcDavid["xgf_pct_5v5"] == pytest.approx(62.5)
+
+    def test_ixg_per60_zero_when_icetime_zero(self) -> None:
+        # 5v5 rows have iceTime=0 — should not divide by zero
+        csv = textwrap.dedent("""\
+            playerId,name,team,position,situation,I_F_xGoals,I_F_goals,iceTime,OnIce_F_xGoals,OnIce_A_xGoals
+            8478402,Connor McDavid,EDM,C,all,36.0,46,0,0.0,0.0
+        """)
+        rows = MoneyPuckScraper._parse_stats_csv(csv)
+        assert rows[0]["ixg_per60"] == pytest.approx(0.0)
+
+    def test_xgf_pct_5v5_none_when_no_5v5_row(self) -> None:
+        # Player only has all-situations row — xgf_pct_5v5 should be absent
+        csv = textwrap.dedent("""\
+            playerId,name,team,position,situation,I_F_xGoals,I_F_goals,iceTime,OnIce_F_xGoals,OnIce_A_xGoals
+            8478402,Connor McDavid,EDM,C,all,36.0,46,3600,0.0,0.0
+        """)
+        rows = MoneyPuckScraper._parse_stats_csv(csv)
+        assert "xgf_pct_5v5" not in rows[0]
+
+    def test_xgf_pct_5v5_none_when_both_xg_zero(self) -> None:
+        # OnIce_F_xGoals + OnIce_A_xGoals == 0 → avoid division by zero
+        csv = textwrap.dedent("""\
+            playerId,name,team,position,situation,I_F_xGoals,I_F_goals,iceTime,OnIce_F_xGoals,OnIce_A_xGoals
+            8478402,Connor McDavid,EDM,C,all,36.0,46,3600,0.0,0.0
+            8478402,Connor McDavid,EDM,C,5v5,0.0,0,0,0.0,0.0
+        """)
+        rows = MoneyPuckScraper._parse_stats_csv(csv)
+        assert "xgf_pct_5v5" not in rows[0]
+
+    def test_row_has_player_id(self) -> None:
+        rows = MoneyPuckScraper._parse_stats_csv(SKATERS_CSV)
+        assert all("player_id" in r for r in rows)
+
+    def test_filters_out_non_all_situation_rows(self) -> None:
+        # SKATERS_CSV has 3 all + 3 5v5 = 6 raw rows; should return 3 player dicts
+        rows = MoneyPuckScraper._parse_stats_csv(SKATERS_CSV)
+        assert len(rows) == 3
+
+
+# ---------------------------------------------------------------------------
+# scrape() — player_stats write path
+# ---------------------------------------------------------------------------
+
+
+class TestScrapePlayerStats:
+    @pytest.mark.asyncio
+    async def test_scrape_writes_to_player_stats_table(self) -> None:
+        mock_http = AsyncMock()
+        mock_http.get.side_effect = [
+            _make_response("User-agent: *\nAllow: /"),
+            _make_response(SKATERS_CSV),
+        ]
+        db = _mock_db()
+        scraper = MoneyPuckScraper(http=mock_http)
+        await scraper.scrape(SEASON, db)
+        tables_written = [str(c) for c in db.table.call_args_list]
+        assert any("player_stats" in t for t in tables_written)
+
+    @pytest.mark.asyncio
+    async def test_scrape_upserts_ixg_per60(self) -> None:
+        mock_http = AsyncMock()
+        mock_http.get.side_effect = [
+            _make_response("User-agent: *\nAllow: /"),
+            _make_response(SKATERS_CSV),
+        ]
+        db = _mock_db()
+        scraper = MoneyPuckScraper(http=mock_http)
+        await scraper.scrape(SEASON, db)
+        upsert_calls = str(db.table.return_value.upsert.call_args_list)
+        assert "ixg_per60" in upsert_calls
+
+    @pytest.mark.asyncio
+    async def test_scrape_upserts_g_minus_ixg(self) -> None:
+        mock_http = AsyncMock()
+        mock_http.get.side_effect = [
+            _make_response("User-agent: *\nAllow: /"),
+            _make_response(SKATERS_CSV),
+        ]
+        db = _mock_db()
+        scraper = MoneyPuckScraper(http=mock_http)
+        await scraper.scrape(SEASON, db)
+        upsert_calls = str(db.table.return_value.upsert.call_args_list)
+        assert "g_minus_ixg" in upsert_calls
+
+    @pytest.mark.asyncio
+    async def test_scrape_upserts_xgf_pct_5v5(self) -> None:
+        mock_http = AsyncMock()
+        mock_http.get.side_effect = [
+            _make_response("User-agent: *\nAllow: /"),
+            _make_response(SKATERS_CSV),
+        ]
+        db = _mock_db()
+        scraper = MoneyPuckScraper(http=mock_http)
+        await scraper.scrape(SEASON, db)
+        upsert_calls = str(db.table.return_value.upsert.call_args_list)
+        assert "xgf_pct_5v5" in upsert_calls

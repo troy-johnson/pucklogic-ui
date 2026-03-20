@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     current_season: str = "2025-26"
     yahoo_oauth_refresh_token: str = ""
     fantrax_session_token: str = ""
+    elite_prospects_api_key: str = ""
 
     @property
     def is_production(self) -> bool:

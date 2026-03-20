@@ -6,6 +6,7 @@ All projection scrapers — auto-scraped and user-uploaded — implement this AB
 HTTP helpers (robots.txt, retry) are inherited from BaseScraper where needed;
 import BaseScraper in your concrete class if you need network access.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -29,12 +30,8 @@ class BaseProjectionScraper(ABC):
         # immediately, not at instantiation. Skip check for abstract subclasses.
         if not getattr(cls, "__abstractmethods__", None):
             for attr in ("SOURCE_NAME", "DISPLAY_NAME"):
-                if not hasattr(cls, attr) or isinstance(
-                    getattr(cls, attr), property
-                ):
-                    raise TypeError(
-                        f"{cls.__name__} must define class attribute {attr!r}"
-                    )
+                if not hasattr(cls, attr) or isinstance(getattr(cls, attr), property):
+                    raise TypeError(f"{cls.__name__} must define class attribute {attr!r}")
 
     @abstractmethod
     async def scrape(self, season: str, db: Any) -> int:

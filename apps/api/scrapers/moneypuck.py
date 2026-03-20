@@ -22,8 +22,7 @@ from scrapers.base import BaseScraper, RobotsDisallowedError
 logger = logging.getLogger(__name__)
 
 _MP_CSV_TEMPLATE = (
-    "https://moneypuck.com/moneypuck/playerData/seasonSummary"
-    "/{year}/regular/skaters.csv"
+    "https://moneypuck.com/moneypuck/playerData/seasonSummary/{year}/regular/skaters.csv"
 )
 
 
@@ -44,6 +43,62 @@ class MoneyPuckScraper(BaseScraper):
     def _csv_url(season: str) -> str:
         year = MoneyPuckScraper._season_year(season)
         return _MP_CSV_TEMPLATE.format(year=year)
+
+    @staticmethod
+    def _parse_stats_csv(text: str) -> list[dict[str, Any]]:
+        """Parse skaters CSV into player_stats rows.
+
+        Computes derived Phase 3 Tier 1 features from the CSV columns:
+          - ixg_per60   : I_F_xGoals / iceTime * 3600  (all situations)
+          - g_minus_ixg : I_F_goals  - I_F_xGoals      (all situations)
+          - xgf_pct_5v5 : OnIce_F_xGoals / (OnIce_F_xGoals + OnIce_A_xGoals) * 100
+                          (5v5 situation only; omitted if no 5v5 row or both are zero)
+
+        Returns one dict per player keyed by ``player_id``.
+        Only ``situation == "all"`` rows are used for ixg_per60 / g_minus_ixg.
+        Only ``situation == "5v5"`` rows are used for xgf_pct_5v5.
+        """
+        reader = csv.DictReader(io.StringIO(text))
+        all_rows: dict[str, dict[str, Any]] = {}
+        five_v_five: dict[str, dict[str, float]] = {}
+
+        for row in reader:
+            pid = row.get("playerId", "")
+            sit = row.get("situation", "")
+
+            if sit == "all":
+                try:
+                    xgoals = float(row.get("I_F_xGoals", 0) or 0)
+                    goals = float(row.get("I_F_goals", 0) or 0)
+                    ice_time = float(row.get("iceTime", 0) or 0)
+                except (ValueError, TypeError):
+                    continue
+
+                ixg_per60 = (xgoals / ice_time * 3600) if ice_time > 0 else 0.0
+                g_minus_ixg = goals - xgoals
+                all_rows[pid] = {
+                    "player_id": pid,
+                    "ixg_per60": ixg_per60,
+                    "g_minus_ixg": g_minus_ixg,
+                }
+
+            elif sit == "5v5":
+                try:
+                    on_ice_f = float(row.get("OnIce_F_xGoals", 0) or 0)
+                    on_ice_a = float(row.get("OnIce_A_xGoals", 0) or 0)
+                except (ValueError, TypeError):
+                    continue
+
+                total = on_ice_f + on_ice_a
+                if total > 0:
+                    five_v_five[pid] = {"xgf_pct_5v5": on_ice_f / total * 100}
+
+        # Merge 5v5 stats into all-situation rows
+        for pid, stats in five_v_five.items():
+            if pid in all_rows:
+                all_rows[pid].update(stats)
+
+        return list(all_rows.values())
 
     @staticmethod
     def _parse_csv(text: str) -> list[dict[str, Any]]:
@@ -108,6 +163,15 @@ class MoneyPuckScraper(BaseScraper):
         )
         return result.data[0]["id"]
 
+    def _upsert_player_stats(
+        self, db: Any, player_id: str, season: str, stats: dict[str, Any]
+    ) -> None:
+        payload = {"player_id": player_id, "season": season, **stats}
+        db.table("player_stats").upsert(
+            payload,
+            on_conflict="player_id,season",
+        ).execute()
+
     def _upsert_ranking(
         self, db: Any, player_id: str, source_id: str, rank: int, season: str
     ) -> None:
@@ -133,11 +197,20 @@ class MoneyPuckScraper(BaseScraper):
 
         response = await self._get_with_retry(csv_url)
         players = self._parse_csv(response.text)
+        stats_rows = self._parse_stats_csv(response.text)
         source_id = self._upsert_source(db)
+
+        # Build a nhl_id → stats map for the player_stats write
+        stats_by_nhl_id = {r["player_id"]: r for r in stats_rows}
 
         for rank, row in enumerate(players, start=1):
             player_id = self._upsert_player(db, row)
             self._upsert_ranking(db, player_id, source_id, rank, season)
+            # Write derived Phase 3 stats if available
+            nhl_id = row["player_id"]
+            if nhl_id in stats_by_nhl_id:
+                stats = {k: v for k, v in stats_by_nhl_id[nhl_id].items() if k != "player_id"}
+                self._upsert_player_stats(db, player_id, season, stats)
 
         logger.info("MoneyPuck: upserted %d rankings for %s", len(players), season)
         return len(players)

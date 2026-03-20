@@ -147,7 +147,10 @@ Do not build Layer 2 Celery jobs, Z-score computation, or the paywall gate until
 | Area | Status | Notes |
 |------|--------|-------|
 | Scraper verification (NHL.com, MoneyPuck, NST, DailyFaceoff) | ⬜ Not started | Verify scrapers write all Tier 1 columns added in 003 migration |
-| New scrapers (Hockey Reference, Elite Prospects, NHL EDGE) | ⬜ Not started | Career SH%, ELC/contract flags, speed data |
+| Hockey Reference (`scrapers/hockey_reference.py`) | ✅ Complete | `sh_pct_career_avg` (Tier 1), `nhl_experience` (Tier 2); `scrape_history()` for backfill; `scrape()` for annual updates; 21 tests |
+| Elite Prospects (`scrapers/elite_prospects.py`) | ✅ Complete | `elc_flag`, `contract_year_flag` (Tier 3); requires `ELITE_PROSPECTS_API_KEY` secret; field names are approximate — verify against live API |
+| NHL EDGE (`scrapers/nhl_edge.py`) | ✅ Complete | `speed_bursts_22`, `top_speed` (Tier 3, optional); free NHL API; field names approximate — verify against live API |
+| Evolving Hockey (`gar`, `xgar`) | 🔁 Manual | No scraper — $5/month subscription; ingest via `POST /sources/upload`; per spec Decisions §2 |
 | `services/feature_engineering.py` | ⬜ Not started | Feature matrix assembly, aliasing (toi_ev → toi_ev_per_game, etc.), sh_pct_delta derivation |
 
 ### Phase 3c — Model Training

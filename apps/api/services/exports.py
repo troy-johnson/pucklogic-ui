@@ -11,10 +11,24 @@ import io
 from typing import Any
 
 _HEADERS = [
-    "Rank", "Player", "Team", "Pos", "FanPts", "VORP",
-    "OffNightGames", "Sources",
-    "G", "A", "PPP", "SOG", "Hits", "Blocks", "GP",
-    "W", "GA", "SV%",
+    "Rank",
+    "Player",
+    "Team",
+    "Pos",
+    "FanPts",
+    "VORP",
+    "OffNightGames",
+    "Sources",
+    "G",
+    "A",
+    "PPP",
+    "SOG",
+    "Hits",
+    "Blocks",
+    "GP",
+    "W",
+    "GA",
+    "SV%",
 ]
 
 # Skater positions in display order, then goalies.
@@ -39,26 +53,28 @@ def _write_rankings_sheet(
 
     for row in rankings:
         stats = row.get("projected_stats", {})
-        ws.append([
-            row["composite_rank"],
-            row.get("name", ""),
-            row.get("team", ""),
-            row.get("default_position", ""),
-            _fmt(row.get("projected_fantasy_points")),
-            _fmt(row.get("vorp")),
-            row.get("off_night_games", ""),
-            row.get("source_count", 0),
-            _fmt(stats.get("g")),
-            _fmt(stats.get("a")),
-            _fmt(stats.get("ppp")),
-            _fmt(stats.get("sog")),
-            _fmt(stats.get("hits")),
-            _fmt(stats.get("blocks")),
-            _fmt(stats.get("gp")),
-            _fmt(stats.get("w")),
-            _fmt(stats.get("ga")),
-            _fmt(stats.get("sv_pct")),
-        ])
+        ws.append(
+            [
+                row["composite_rank"],
+                row.get("name", ""),
+                row.get("team", ""),
+                row.get("default_position", ""),
+                _fmt(row.get("projected_fantasy_points")),
+                _fmt(row.get("vorp")),
+                row.get("off_night_games", ""),
+                row.get("source_count", 0),
+                _fmt(stats.get("g")),
+                _fmt(stats.get("a")),
+                _fmt(stats.get("ppp")),
+                _fmt(stats.get("sog")),
+                _fmt(stats.get("hits")),
+                _fmt(stats.get("blocks")),
+                _fmt(stats.get("gp")),
+                _fmt(stats.get("w")),
+                _fmt(stats.get("ga")),
+                _fmt(stats.get("sv_pct")),
+            ]
+        )
 
     for col_idx in range(1, len(_HEADERS) + 1):
         ws.column_dimensions[get_column_letter(col_idx)].width = 12
@@ -97,26 +113,28 @@ def _write_by_position_sheet(
 
         for row in by_position[pos]:
             stats = row.get("projected_stats", {})
-            ws.append([
-                row["composite_rank"],
-                row.get("name", ""),
-                row.get("team", ""),
-                row.get("default_position", ""),
-                _fmt(row.get("projected_fantasy_points")),
-                _fmt(row.get("vorp")),
-                row.get("off_night_games", ""),
-                row.get("source_count", 0),
-                _fmt(stats.get("g")),
-                _fmt(stats.get("a")),
-                _fmt(stats.get("ppp")),
-                _fmt(stats.get("sog")),
-                _fmt(stats.get("hits")),
-                _fmt(stats.get("blocks")),
-                _fmt(stats.get("gp")),
-                _fmt(stats.get("w")),
-                _fmt(stats.get("ga")),
-                _fmt(stats.get("sv_pct")),
-            ])
+            ws.append(
+                [
+                    row["composite_rank"],
+                    row.get("name", ""),
+                    row.get("team", ""),
+                    row.get("default_position", ""),
+                    _fmt(row.get("projected_fantasy_points")),
+                    _fmt(row.get("vorp")),
+                    row.get("off_night_games", ""),
+                    row.get("source_count", 0),
+                    _fmt(stats.get("g")),
+                    _fmt(stats.get("a")),
+                    _fmt(stats.get("ppp")),
+                    _fmt(stats.get("sog")),
+                    _fmt(stats.get("hits")),
+                    _fmt(stats.get("blocks")),
+                    _fmt(stats.get("gp")),
+                    _fmt(stats.get("w")),
+                    _fmt(stats.get("ga")),
+                    _fmt(stats.get("sv_pct")),
+                ]
+            )
 
     for col_idx in range(1, len(_HEADERS) + 1):
         ws.column_dimensions[get_column_letter(col_idx)].width = 12
@@ -136,9 +154,7 @@ def generate_excel(
 
     wb = Workbook()
 
-    header_fill = PatternFill(
-        start_color="1E3A5F", end_color="1E3A5F", fill_type="solid"
-    )
+    header_fill = PatternFill(start_color="1E3A5F", end_color="1E3A5F", fill_type="solid")
     header_font = Font(color="FFFFFF", bold=True)
     section_font = Font(bold=True)
 
