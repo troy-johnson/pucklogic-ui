@@ -111,6 +111,10 @@ def cleanup_smoke_data(pg: Any, smoke_season: str) -> Generator[None, None, None
     with pg.cursor() as cur:
         cur.execute("DELETE FROM player_stats WHERE season = %s", (smoke_season,))
         cur.execute("DELETE FROM player_rankings WHERE season = %s", (smoke_season,))
+        # The @pytest.mark.slow scrape_history test writes season "2024-25" rows
+        # (always one season behind smoke_season). Clean those up too so a slow-test
+        # run does not leave residual data in the local DB.
+        cur.execute("DELETE FROM player_stats WHERE season = '2024-25'")
 
 
 # ---------------------------------------------------------------------------
