@@ -82,7 +82,7 @@ class MoneyPuckScraper(BaseScraper):
                     "g_minus_ixg": g_minus_ixg,
                 }
 
-            elif sit == "5v5":
+            elif sit == "5on5":
                 try:
                     on_ice_f = float(row.get("OnIce_F_xGoals", 0) or 0)
                     on_ice_a = float(row.get("OnIce_A_xGoals", 0) or 0)

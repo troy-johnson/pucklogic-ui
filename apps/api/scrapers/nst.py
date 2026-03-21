@@ -332,7 +332,22 @@ class NstScraper(BaseScraper):
 
         # All-situations fetch (primary)
         await asyncio.sleep(self.MIN_DELAY_SECONDS)
-        response = await self._get_with_retry(base_url)
+        try:
+            response = await self._get_with_retry(base_url)
+        except Exception as exc:
+            logger.warning(
+                "NstScraper: primary fetch failed for %s (%s) — returning 0 rows. "
+                "NST may be behind a Cloudflare challenge; try with a browser session.",
+                season,
+                exc,
+            )
+            return 0
+        if response.status_code == 403:
+            logger.warning(
+                "NstScraper: 403 from NST for %s — likely Cloudflare challenge. Returning 0 rows.",
+                season,
+            )
+            return 0
         rows = self._parse_html(response.text)
 
         # Situation-specific fetches — merge into primary rows

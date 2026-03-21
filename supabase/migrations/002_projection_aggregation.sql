@@ -6,6 +6,16 @@
 -- ---------------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------------
+-- sources additions (must precede player_projections RLS that references sources.user_id)
+-- ---------------------------------------------------------------------------
+alter table sources add column if not exists default_weight float;
+alter table sources add column if not exists is_paid boolean not null default false;
+-- user_id references auth.users — set for user-uploaded custom sources, null for system sources
+alter table sources add column if not exists user_id uuid references auth.users (id) on delete set null;
+
+create index if not exists sources_user_idx on sources (user_id);
+
+-- ---------------------------------------------------------------------------
 -- player_projections (recreate with correct schema)
 -- Per-source projected counting stats. source_id FK makes the unique
 -- constraint (player_id, source_id, season) rather than (player_id, season).
@@ -81,16 +91,6 @@ create policy "Visible sources read" on sources
 create policy "Owner manage custom sources" on sources
   for all using (user_id = auth.uid());
 -- System rows (user_id IS NULL) remain read-only from user context
-
--- ---------------------------------------------------------------------------
--- sources additions
--- ---------------------------------------------------------------------------
-alter table sources add column if not exists default_weight float;
-alter table sources add column if not exists is_paid boolean not null default false;
--- user_id references auth.users — set for user-uploaded custom sources, null for system sources
-alter table sources add column if not exists user_id uuid references auth.users (id) on delete set null;
-
-create index if not exists sources_user_idx on sources (user_id);
 
 -- ---------------------------------------------------------------------------
 -- schedule_scores
