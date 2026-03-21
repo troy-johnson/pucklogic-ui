@@ -332,7 +332,22 @@ class NstScraper(BaseScraper):
 
         # All-situations fetch (primary)
         await asyncio.sleep(self.MIN_DELAY_SECONDS)
-        response = await self._get_with_retry(base_url)
+        try:
+            response = await self._get_with_retry(base_url)
+        except Exception as exc:
+            logger.warning(
+                "NstScraper: primary fetch failed for %s (%s) — returning 0 rows. "
+                "NST may be behind a Cloudflare challenge; try with a browser session.",
+                season,
+                exc,
+            )
+            return 0
+        if response.status_code == 403:
+            logger.warning(
+                "NstScraper: 403 from NST for %s — likely Cloudflare challenge. Returning 0 rows.",
+                season,
+            )
+            return 0
         rows = self._parse_html(response.text)
 
         # Situation-specific fetches — merge into primary rows
@@ -340,7 +355,25 @@ class NstScraper(BaseScraper):
         for sit, float_map, toi_name in _SITUATION_FETCHES:
             await asyncio.sleep(self.MIN_DELAY_SECONDS)
             sit_url = self._build_url(season, sit=sit)
-            sit_response = await self._get_with_retry(sit_url)
+            try:
+                sit_response = await self._get_with_retry(sit_url)
+            except Exception as exc:
+                logger.warning(
+                    "NstScraper: situation fetch failed for sit=%s season=%s (%s) — skipping.",
+                    sit,
+                    season,
+                    exc,
+                )
+                situation_row_lists.append([])
+                continue
+            if sit_response.status_code == 403:
+                logger.warning(
+                    "NstScraper: 403 for sit=%s season=%s — skipping situation columns.",
+                    sit,
+                    season,
+                )
+                situation_row_lists.append([])
+                continue
             sit_rows = self._parse_html(
                 sit_response.text,
                 float_col_map=float_map,

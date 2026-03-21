@@ -91,7 +91,16 @@ class NhlEdgeScraper(BaseScraper):
         count = 0
         while True:
             url = _BASE_URL.format(start=start, season_id=season_id)
-            response = await self._get_with_retry(url)
+            try:
+                response = await self._get_with_retry(url)
+            except Exception as exc:
+                logger.warning(
+                    "NHL EDGE: request failed for %s (%s) — returning 0 rows. "
+                    "This is expected when the skating endpoint has no data yet for the season.",
+                    season,
+                    exc,
+                )
+                return 0
             data = response.json().get("data", [])
             if not data:
                 break

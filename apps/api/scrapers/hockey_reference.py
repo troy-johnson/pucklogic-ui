@@ -60,16 +60,19 @@ class HockeyReferenceScraper(BaseScraper):
         Skips rows with class "thead" (mid-table repeat headers).
         """
         soup = BeautifulSoup(html, "lxml")
-        table = soup.find("table", {"id": "stats"})
+        table = soup.find("table", {"id": "player_stats"})
         if table is None:
-            logger.warning("Hockey Reference: table id='stats' not found")
+            logger.warning("Hockey Reference: table id='player_stats' not found")
             return []
 
         rows: list[dict[str, Any]] = []
         for tr in table.find("tbody").find_all("tr"):
             if "thead" in (tr.get("class") or []):
                 continue
-            td = tr.find("td", {"data-stat": "player"})
+            # data-stat "name_display" (current); fall back to legacy "player"
+            td = tr.find("td", {"data-stat": "name_display"}) or tr.find(
+                "td", {"data-stat": "player"}
+            )
             if td is None:
                 continue
             player_name = td.get_text(strip=True)
@@ -83,10 +86,12 @@ class HockeyReferenceScraper(BaseScraper):
 
             goals = _int("goals")
             shots = _int("shots")
+            # data-stat "games" (current); fall back to legacy "games_played"
+            gp = _int("games") or _int("games_played")
             rows.append(
                 {
                     "player_name": player_name,
-                    "gp": _int("games_played"),
+                    "gp": gp,
                     "goals": goals,
                     "shots": shots,
                     "sh_pct": (goals / shots) if shots > 0 else None,

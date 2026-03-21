@@ -28,9 +28,9 @@ SKATERS_CSV = textwrap.dedent("""\
     8478402,Connor McDavid,EDM,C,all,36.0,46,3600,0.0,0.0
     8477492,Nathan MacKinnon,COL,C,all,30.0,38,3000,0.0,0.0
     9999999,Leon Draisaitl,EDM,C,all,27.0,32,2700,0.0,0.0
-    8478402,Connor McDavid,EDM,C,5v5,0.0,0,0,25.0,15.0
-    8477492,Nathan MacKinnon,COL,C,5v5,0.0,0,0,20.0,14.0
-    9999999,Leon Draisaitl,EDM,C,5v5,0.0,0,0,18.0,12.0
+    8478402,Connor McDavid,EDM,C,5on5,0.0,0,0,25.0,15.0
+    8477492,Nathan MacKinnon,COL,C,5on5,0.0,0,0,20.0,14.0
+    9999999,Leon Draisaitl,EDM,C,5on5,0.0,0,0,18.0,12.0
 """)
 
 # Minimal CSV matching the columns the ranking path cares about (backward compat)
@@ -41,11 +41,11 @@ SKATERS_CSV_RANKINGS_ONLY = textwrap.dedent("""\
     9999999,Leon Draisaitl,EDM,C,all,38.7,52,89000,0.0,0.0
 """)
 
-# A row that should be SKIPPED because situation != "all" or "5v5"
+# A row that should be SKIPPED because situation != "all" or "5on5"
 SKATERS_CSV_MIXED = textwrap.dedent("""\
     playerId,name,team,position,situation,I_F_xGoals,I_F_goals,iceTime,OnIce_F_xGoals,OnIce_A_xGoals
     8478402,Connor McDavid,EDM,C,all,45.3,64,98460,0.0,0.0
-    8478402,Connor McDavid,EDM,C,5v5,20.1,0,0,25.0,15.0
+    8478402,Connor McDavid,EDM,C,5on5,20.1,0,0,25.0,15.0
     8477492,Nathan MacKinnon,COL,C,all,40.1,56,92000,0.0,0.0
 """)
 
@@ -230,7 +230,7 @@ class TestParseStatsCsv:
         assert mcDavid["xgf_pct_5v5"] == pytest.approx(62.5)
 
     def test_ixg_per60_zero_when_icetime_zero(self) -> None:
-        # 5v5 rows have iceTime=0 — should not divide by zero
+        # 5on5 rows have iceTime=0 — should not divide by zero
         csv = textwrap.dedent("""\
             playerId,name,team,position,situation,I_F_xGoals,I_F_goals,iceTime,OnIce_F_xGoals,OnIce_A_xGoals
             8478402,Connor McDavid,EDM,C,all,36.0,46,0,0.0,0.0
@@ -252,7 +252,7 @@ class TestParseStatsCsv:
         csv = textwrap.dedent("""\
             playerId,name,team,position,situation,I_F_xGoals,I_F_goals,iceTime,OnIce_F_xGoals,OnIce_A_xGoals
             8478402,Connor McDavid,EDM,C,all,36.0,46,3600,0.0,0.0
-            8478402,Connor McDavid,EDM,C,5v5,0.0,0,0,0.0,0.0
+            8478402,Connor McDavid,EDM,C,5on5,0.0,0,0,0.0,0.0
         """)
         rows = MoneyPuckScraper._parse_stats_csv(csv)
         assert "xgf_pct_5v5" not in rows[0]
@@ -262,7 +262,7 @@ class TestParseStatsCsv:
         assert all("player_id" in r for r in rows)
 
     def test_filters_out_non_all_situation_rows(self) -> None:
-        # SKATERS_CSV has 3 all + 3 5v5 = 6 raw rows; should return 3 player dicts
+        # SKATERS_CSV has 3 all + 3 5on5 = 6 raw rows; should return 3 player dicts
         rows = MoneyPuckScraper._parse_stats_csv(SKATERS_CSV)
         assert len(rows) == 3
 
