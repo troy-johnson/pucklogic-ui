@@ -227,8 +227,14 @@ def build_feature_matrix(
                 missing a current-season row (injured, in minors, or retired).
 
     Returns:
-        List of feature dicts, one per player (excluding players with 0 qualifying
-        seasons after TOI filter). Ordered by player_id ascending.
+        List of feature dicts, one per player, ordered by player_id ascending.
+        Each dict includes two eligibility flags for downstream filtering:
+          - ``stale_season``: True when the player has no row for the requested season
+            (injured, in minors, or retired). Training pipeline should exclude these
+            until player_status schema is added (Notion backlog).
+          - ``position_type``: "goalie" | "skater". Training pipeline should route
+            goalies to a separate model (goalie model is Notion backlog).
+        Players with 0 qualifying seasons after TOI filter are excluded entirely.
     """
     output: list[dict[str, Any]] = []
 
@@ -241,7 +247,7 @@ def build_feature_matrix(
         # Possible reasons: injured to start season, in minors (with NHL history), or retired.
         # Retired/minors detection requires player_status schema addition (Notion backlog).
         # For now, fall back to most recent available row for all cases.
-        if rows[0].get("season") != season:
+        if int(rows[0].get("season", 0)) != season:
             logger.warning(
                 "player %s: missing current-season row for %d; "
                 "falling back to most recent season %s (injured/minors/retired — "
@@ -261,6 +267,8 @@ def build_feature_matrix(
 
         current = rows[0]
         prev = rows[1] if len(rows) > 1 else None
+        stale_season = int(current.get("season", 0)) != season
+        position_type = "goalie" if current.get("position") == "G" else "skater"
 
         # Step 2: Aliases (use original unfiltered rows)
         aliases = _compute_aliases(weighted, current, prev)
@@ -291,6 +299,9 @@ def build_feature_matrix(
             {
                 "player_id": player_id,
                 "season": current.get("season"),
+                # Eligibility flags — for training pipeline filtering
+                "stale_season": stale_season,
+                "position_type": position_type,
                 # Weighted rate features
                 "icf_per60": weighted.get("icf_per60"),
                 "ixg_per60": weighted.get("ixg_per60"),
