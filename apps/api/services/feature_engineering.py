@@ -247,7 +247,7 @@ def build_feature_matrix(
         # Possible reasons: injured to start season, in minors (with NHL history), or retired.
         # Retired/minors detection requires player_status schema addition (Notion backlog).
         # For now, fall back to most recent available row for all cases.
-        if rows[0].get("season") != season:
+        if int(rows[0].get("season", 0)) != season:
             logger.warning(
                 "player %s: missing current-season row for %d; "
                 "falling back to most recent season %s (injured/minors/retired — "
@@ -267,7 +267,7 @@ def build_feature_matrix(
 
         current = rows[0]
         prev = rows[1] if len(rows) > 1 else None
-        stale_season = current.get("season") != season
+        stale_season = int(current.get("season", 0)) != season
         position_type = "goalie" if current.get("position") == "G" else "skater"
 
         # Step 2: Aliases (use original unfiltered rows)

@@ -691,6 +691,7 @@ class TestBuildFeatureMatrix:
         result = build_feature_matrix({"p-injured": [row]}, season=2025)
         assert len(result) == 1
         assert result[0]["season"] == 2024
+        assert result[0]["stale_season"] is True
 
     def test_stale_season_logs_warning(self, caplog: pytest.LogCaptureFixture) -> None:
         import logging
