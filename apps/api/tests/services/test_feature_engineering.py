@@ -701,12 +701,40 @@ class TestBuildFeatureMatrix:
             build_feature_matrix({"p-injured": [row]}, season=2025)
         assert any("stale" in msg.lower() or "missing" in msg.lower() for msg in caplog.messages)
 
+    def test_stale_season_false_for_current_player(self) -> None:
+        result = build_feature_matrix(self._grouped(), season=2025)
+        assert result[0]["stale_season"] is False
+
+    def test_stale_season_true_when_no_current_row(self) -> None:
+        row = _make_row(season=2024, toi_ev=21.0)
+        row["player_id"] = "p-injured"
+        result = build_feature_matrix({"p-injured": [row]}, season=2025)
+        assert result[0]["stale_season"] is True
+
+    def test_position_type_skater_for_forward(self) -> None:
+        result = build_feature_matrix(self._grouped(), season=2025)
+        assert result[0]["position_type"] == "skater"
+
+    def test_position_type_skater_for_defenseman(self) -> None:
+        row = _make_row(season=2025, toi_ev=21.0, position="D")
+        row["player_id"] = "p-d"
+        result = build_feature_matrix({"p-d": [row]}, season=2025)
+        assert result[0]["position_type"] == "skater"
+
+    def test_position_type_goalie(self) -> None:
+        row = _make_row(season=2025, toi_ev=21.0, position="G")
+        row["player_id"] = "p-goalie"
+        result = build_feature_matrix({"p-goalie": [row]}, season=2025)
+        assert result[0]["position_type"] == "goalie"
+
     def test_all_required_keys_in_output(self) -> None:
         result = build_feature_matrix(self._grouped(), season=2025)
         player = result[0]
         required_keys = {
             "player_id",
             "season",
+            "stale_season",
+            "position_type",
             # weighted rates
             "icf_per60",
             "ixg_per60",

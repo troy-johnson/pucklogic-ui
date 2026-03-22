@@ -123,13 +123,13 @@ regression_signals = {
     "sh_pct_above_career": player["sh_pct_delta"] > 0.04,                        # SH% inflated vs. career
     "high_pdo":            player["pdo"] > 1.025,                                # Unsustainably lucky PDO
     "high_oi_sh_pct":      player["oi_sh_pct"] > 0.11,                          # 96.4% don't repeat this
-    "high_secondary_pct":  player["a2_pct_of_assists"] > 0.60,                  # High secondary assist ratio
-    "age_declining":       player["age"] > 30 and player["position"] == "F",     # Forward past peak
+    "high_secondary_pct":  False,  # D8: a1 (primary assists) counting stat not in schema; always False
+    "age_declining":       player["age"] > 30 and player["position"] in {"C", "LW", "RW"},  # NHL.com canonical positions
     "declining_shot_gen":  player["icf_per60_delta"] < -0.5,                    # Shot volume dropping
 }
 ```
 
-> **Elite finisher exemption:** Do not apply `g_above_ixg` flag to confirmed elite shooters with 3+ seasons of above-expected finishing (e.g., top-5 career SH% with minimum 500 shots). Track a whitelist.
+> **Elite finisher exemption:** ~~Do not apply `g_above_ixg` flag to confirmed elite shooters with 3+ seasons of above-expected finishing.~~ **D5: No whitelist — XGBoost learns from data. `g_above_ixg` fires for all players.**
 
 -----
 
