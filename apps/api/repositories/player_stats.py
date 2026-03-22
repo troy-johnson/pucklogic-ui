@@ -41,6 +41,7 @@ class PlayerStatsRepository:
             self._db.table("player_stats")
             .select(f"{_STAT_COLUMNS}, players!inner(date_of_birth, position)")
             .in_("season", seasons)
+            .order("season", desc=True)
             .execute()
         )
 

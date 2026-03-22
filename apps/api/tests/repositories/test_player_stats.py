@@ -22,9 +22,9 @@ def repo(mock_db: MagicMock) -> PlayerStatsRepository:
 
 
 def _configure_db(mock_db: MagicMock, rows: list[dict]) -> None:
-    """Wire mock_db so .table().select().in_().execute().data = rows."""
+    """Wire mock_db so .table().select().in_().order().execute().data = rows."""
     (
-        mock_db.table.return_value.select.return_value.in_.return_value.execute.return_value
+        mock_db.table.return_value.select.return_value.in_.return_value.order.return_value.execute.return_value
     ).data = rows
 
 
