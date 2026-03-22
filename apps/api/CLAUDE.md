@@ -151,7 +151,7 @@ Do not build Layer 2 Celery jobs, Z-score computation, or the paywall gate until
 | Scraper bug fixes | ✅ Complete | HR HTML attrs (`id="player_stats"`, `name_display`, `games`); MoneyPuck `5on5`; NHL EDGE 500 handling; NST 403 handling on primary + situation fetches |
 | Migration fix (`002_projection_aggregation.sql`) | ✅ Complete | Moved `sources` column additions before `player_projections` RLS policy that referenced `sources.user_id` |
 
-### Phase 3c — Feature Engineering Pipeline
+### Phase 3c — Feature Engineering Pipeline (✅ Complete, PR #26)
 
 | Area | Status | Notes |
 |------|--------|-------|
@@ -159,7 +159,10 @@ Do not build Layer 2 Celery jobs, Z-score computation, or the paywall gate until
 | Elite Prospects (`scrapers/elite_prospects.py`) | ✅ Complete | `elc_flag`, `contract_year_flag` (Tier 3); requires `ELITE_PROSPECTS_API_KEY` secret; field names are approximate — verify against live API |
 | NHL EDGE (`scrapers/nhl_edge.py`) | ✅ Complete | `speed_bursts_22`, `top_speed` (Tier 3, optional); free NHL API; field names approximate — verify against live API |
 | Evolving Hockey (`gar`, `xgar`) | 🔁 Manual | No scraper — $5/month subscription; ingest via `POST /sources/upload`; per spec Decisions §2 |
-| `services/feature_engineering.py` | ⬜ Not started | Feature matrix assembly, aliasing (toi_ev → toi_ev_per_game, etc.), sh_pct_delta derivation |
+| `repositories/player_stats.py` | ✅ Complete | `PlayerStatsRepository.get_seasons_grouped()` — 3-season window, players join flattened, newest-first; 9 tests |
+| `services/feature_engineering.py` | ✅ Complete | Marcel 3yr weighted rates, breakout/regression signals (8+7), tier assignment; stale-season fallback with warning; 96 tests |
+
+**Phase 3c backlog (resolve before Phase 3d):** `stale_season` + `position_type` output flags + spec drift fix for `a2_pct_of_assists` (Notion P2). All scrapers are skater-only so goalie contamination is not a current risk.
 
 ### Phase 3d — Model Training
 
