@@ -142,18 +142,26 @@ Do not build Layer 2 Celery jobs, Z-score computation, or the paywall gate until
 | `models/schemas.py` Phase 3 section | ✅ Complete | `ShapValues`, `TrendedPlayer`, `TrendsResponse`; `ProjectionTier`/`SkaterPosition` Literals; `StrictBool` signals; `Field(ge=0, le=1)` probability scores; `@computed_field` for `player_count`; `has_trends` + `updated_at` consistency enforced by model_validator |
 | `tests/models/test_schemas.py` | ✅ Complete | 26 tests covering all new schemas; boundary values, Literal enforcement, StrictBool rejection, round-trip serialization |
 
-### Phase 3b — Feature Engineering Pipeline
+### Phase 3b — Smoke Tests (✅ Complete, PR #25)
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Scraper verification (NHL.com, MoneyPuck, NST, DailyFaceoff) | ⬜ Not started | Verify scrapers write all Tier 1 columns added in 003 migration |
-| Hockey Reference (`scrapers/hockey_reference.py`) | ✅ Complete | `sh_pct_career_avg` (Tier 1), `nhl_experience` (Tier 2); `scrape_history()` for backfill; `scrape()` for annual updates; 21 tests |
+| `tests/smoke/` — per-scraper live integration tests | ✅ Complete | NHL.com, MoneyPuck, Hockey Reference, NST, NHL EDGE; 24 passed, 12 skipped (NST Cloudflare) |
+| `scripts/run_smoke_tests.sh` | ✅ Complete | venv detection, dynamic JWT from `supabase status`, `--override-ini` to bypass coverage flags |
+| Scraper bug fixes | ✅ Complete | HR HTML attrs (`id="player_stats"`, `name_display`, `games`); MoneyPuck `5on5`; NHL EDGE 500 handling; NST 403 handling on primary + situation fetches |
+| Migration fix (`002_projection_aggregation.sql`) | ✅ Complete | Moved `sources` column additions before `player_projections` RLS policy that referenced `sources.user_id` |
+
+### Phase 3c — Feature Engineering Pipeline
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Hockey Reference (`scrapers/hockey_reference.py`) | ✅ Complete | `sh_pct_career_avg` (Tier 1), `nhl_experience` (Tier 2); `scrape_history()` for backfill; `scrape()` for annual updates; 25 tests |
 | Elite Prospects (`scrapers/elite_prospects.py`) | ✅ Complete | `elc_flag`, `contract_year_flag` (Tier 3); requires `ELITE_PROSPECTS_API_KEY` secret; field names are approximate — verify against live API |
 | NHL EDGE (`scrapers/nhl_edge.py`) | ✅ Complete | `speed_bursts_22`, `top_speed` (Tier 3, optional); free NHL API; field names approximate — verify against live API |
 | Evolving Hockey (`gar`, `xgar`) | 🔁 Manual | No scraper — $5/month subscription; ingest via `POST /sources/upload`; per spec Decisions §2 |
 | `services/feature_engineering.py` | ⬜ Not started | Feature matrix assembly, aliasing (toi_ev → toi_ev_per_game, etc.), sh_pct_delta derivation |
 
-### Phase 3c — Model Training
+### Phase 3d — Model Training
 
 | Area | Status | Notes |
 |------|--------|-------|
@@ -161,7 +169,7 @@ Do not build Layer 2 Celery jobs, Z-score computation, or the paywall gate until
 | SHAP value computation | ⬜ Not started | |
 | Yearly retraining GitHub Action | ⬜ Not started | |
 
-### Phase 3d — Inference API
+### Phase 3e — Inference API
 
 | Area | Status | Notes |
 |------|--------|-------|
