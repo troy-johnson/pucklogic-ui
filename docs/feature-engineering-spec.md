@@ -282,5 +282,29 @@ Minimum TOI threshold: 500 ES minutes per season (filter noise from depth player
 
 -----
 
+## Scope: Skaters Only (Phase 3c)
+
+The feature engineering pipeline in Phase 3c is **skaters only**. Goalies are not filtered out, but
+the skater-specific signals (icf_per60, ixg_per60, xgf_pct_5v5, etc.) are meaningless for goalies.
+
+**Goalie projections are a future requirement** (Notion backlog: "Goalie projections statistical
+model — design and implement feature engineering"). A separate model with goalie-specific features
+is required:
+
+| Feature (proposed) | Description | Source |
+|--------------------|-------------|--------|
+| `sv_pct`           | Save percentage | NHL.com, Hockey Reference |
+| `gaa`              | Goals-against average | NHL.com, Hockey Reference |
+| `high_danger_sv_pct` | High-danger save % | MoneyPuck, NST |
+| `gsax`             | Goals saved above expected | MoneyPuck |
+| `start_pct`        | % of team starts | NST |
+| `qstart_pct`       | Quality start % | Hockey Reference |
+
+Until this is implemented, goalie rows pass through `build_feature_matrix` using skater logic and
+produce undefined/misleading results. Do not surface goalie trend scores to users until the goalie
+model is complete.
+
+-----
+
 *Full methodology and source citations: `docs/stats-research.md`*
 *Architecture context: `pucklogic_architecture.docx`*

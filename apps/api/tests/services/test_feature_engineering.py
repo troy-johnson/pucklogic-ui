@@ -598,7 +598,7 @@ class TestBuildFeatureMatrix:
         return {player_id: rows}
 
     def test_returns_list(self) -> None:
-        result = build_feature_matrix(self._grouped())
+        result = build_feature_matrix(self._grouped(), season=2025)
         assert isinstance(result, list)
 
     def test_one_dict_per_player(self) -> None:
@@ -606,33 +606,33 @@ class TestBuildFeatureMatrix:
             "p-mcdavid": self._grouped()["p-mcdavid"],
             "p-draisaitl": self._grouped("p-draisaitl")["p-draisaitl"],
         }
-        result = build_feature_matrix(grouped)
+        result = build_feature_matrix(grouped, season=2025)
         assert len(result) == 2
 
     def test_player_id_in_output(self) -> None:
-        result = build_feature_matrix(self._grouped())
+        result = build_feature_matrix(self._grouped(), season=2025)
         assert result[0]["player_id"] == "p-mcdavid"
 
     def test_weighted_rate_stats_in_output(self) -> None:
-        result = build_feature_matrix(self._grouped())
+        result = build_feature_matrix(self._grouped(), season=2025)
         for stat in _RATE_STATS:
             assert stat in result[0], f"Missing stat: {stat}"
 
     def test_breakout_tier_present(self) -> None:
-        result = build_feature_matrix(self._grouped())
+        result = build_feature_matrix(self._grouped(), season=2025)
         assert "breakout_tier" in result[0]
 
     def test_regression_tier_present(self) -> None:
-        result = build_feature_matrix(self._grouped())
+        result = build_feature_matrix(self._grouped(), season=2025)
         assert "regression_tier" in result[0]
 
     def test_breakout_signals_dict_in_output(self) -> None:
-        result = build_feature_matrix(self._grouped())
+        result = build_feature_matrix(self._grouped(), season=2025)
         assert isinstance(result[0]["breakout_signals"], dict)
         assert len(result[0]["breakout_signals"]) == 8
 
     def test_regression_signals_dict_in_output(self) -> None:
-        result = build_feature_matrix(self._grouped())
+        result = build_feature_matrix(self._grouped(), season=2025)
         assert isinstance(result[0]["regression_signals"], dict)
         assert len(result[0]["regression_signals"]) == 7
 
@@ -640,7 +640,7 @@ class TestBuildFeatureMatrix:
         # toi_ev below threshold → excluded from output
         row = _make_row(season=2025, toi_ev=2.0)
         row["player_id"] = "p-healthy-scratch"
-        result = build_feature_matrix({"p-healthy-scratch": [row]})
+        result = build_feature_matrix({"p-healthy-scratch": [row]}, season=2025)
         assert result == []
 
     def test_both_tiers_independently_tracked(self) -> None:
@@ -679,12 +679,30 @@ class TestBuildFeatureMatrix:
             "p-breakout": [breakout_row],
             "p-regression": [regression_row],
         }
-        result = {r["player_id"]: r for r in build_feature_matrix(grouped)}
+        result = {r["player_id"]: r for r in build_feature_matrix(grouped, season=2025)}
         assert result["p-breakout"]["breakout_tier"] == "HIGH"
         assert result["p-regression"]["regression_tier"] == "HIGH"
 
+    def test_stale_season_player_falls_back_to_most_recent(self) -> None:
+        """Player missing current-season row falls back to most recent available row."""
+        # Only has a 2024 row; requested season=2025
+        row = _make_row(season=2024, toi_ev=21.0)
+        row["player_id"] = "p-injured"
+        result = build_feature_matrix({"p-injured": [row]}, season=2025)
+        assert len(result) == 1
+        assert result[0]["season"] == 2024
+
+    def test_stale_season_logs_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+        import logging
+
+        row = _make_row(season=2024, toi_ev=21.0)
+        row["player_id"] = "p-injured"
+        with caplog.at_level(logging.WARNING, logger="services.feature_engineering"):
+            build_feature_matrix({"p-injured": [row]}, season=2025)
+        assert any("stale" in msg.lower() or "missing" in msg.lower() for msg in caplog.messages)
+
     def test_all_required_keys_in_output(self) -> None:
-        result = build_feature_matrix(self._grouped())
+        result = build_feature_matrix(self._grouped(), season=2025)
         player = result[0]
         required_keys = {
             "player_id",

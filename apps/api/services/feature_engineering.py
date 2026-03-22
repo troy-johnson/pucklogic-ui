@@ -216,12 +216,15 @@ def _compute_projection_tier(signal_count: int) -> str | None:
 
 def build_feature_matrix(
     grouped_stats: dict[str, list[dict[str, Any]]],
+    season: int,
 ) -> list[dict[str, Any]]:
     """Assemble the feature matrix from grouped player_stats rows.
 
     Args:
         grouped_stats: Output of PlayerStatsRepository.get_seasons_grouped().
                        {player_id: [current_row, y1_row, y2_row]} newest-first.
+        season: The requested season year (e.g. 2025). Used to detect players
+                missing a current-season row (injured, in minors, or retired).
 
     Returns:
         List of feature dicts, one per player (excluding players with 0 qualifying
@@ -233,6 +236,20 @@ def build_feature_matrix(
         rows = grouped_stats[player_id]
         if not rows:
             continue
+
+        # Detect stale current-season row: player has no row for the requested season.
+        # Possible reasons: injured to start season, in minors (with NHL history), or retired.
+        # Retired/minors detection requires player_status schema addition (Notion backlog).
+        # For now, fall back to most recent available row for all cases.
+        if rows[0].get("season") != season:
+            logger.warning(
+                "player %s: missing current-season row for %d; "
+                "falling back to most recent season %s (injured/minors/retired — "
+                "add player_status to players table for full detection)",
+                player_id,
+                season,
+                rows[0].get("season"),
+            )
 
         # Step 1: Weighted rates (TOI-filtered)
         weighted = _apply_weighted_rates(rows)
