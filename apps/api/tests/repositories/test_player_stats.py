@@ -174,3 +174,51 @@ class TestGetSeasonsGrouped:
         _configure_db(mock_db, [])
         result = repo.get_seasons_grouped(season=2025)
         assert result == {}
+
+
+class TestGetAllSeasonsGrouped:
+    """get_all_seasons_grouped returns all seasons, no window cap, LEFT JOIN on players."""
+
+    def _configure_db_all(self, mock_db: MagicMock, rows: list[dict]) -> None:
+        """Wire mock for .table().select().order().execute()."""
+        (
+            mock_db.table.return_value.select.return_value.order.return_value.execute.return_value
+        ).data = rows
+
+    def test_returns_all_rows_grouped_by_player(self, repo, mock_db):
+        rows = [
+            _make_db_row("p-mcdavid", season=2025),
+            _make_db_row("p-mcdavid", season=2024),
+            _make_db_row("p-mcdavid", season=2023),
+            _make_db_row("p-draisaitl", season=2025),
+        ]
+        self._configure_db_all(mock_db, rows)
+        result = repo.get_all_seasons_grouped()
+        assert "p-mcdavid" in result
+        assert "p-draisaitl" in result
+        assert len(result["p-mcdavid"]) == 3
+
+    def test_rows_sorted_newest_first(self, repo, mock_db):
+        rows = [
+            _make_db_row("p-mcdavid", season=2020),
+            _make_db_row("p-mcdavid", season=2025),
+            _make_db_row("p-mcdavid", season=2015),
+        ]
+        self._configure_db_all(mock_db, rows)
+        result = repo.get_all_seasons_grouped()
+        seasons = [r["season"] for r in result["p-mcdavid"]]
+        assert seasons == [2025, 2020, 2015]
+
+    def test_left_join_preserves_null_position(self, repo, mock_db):
+        """Players without a players table row (debutants) have position=None."""
+        row = _make_db_row("p-debutant", season=2025)
+        row["players"] = None  # LEFT JOIN returns None for missing row
+        self._configure_db_all(mock_db, [row])
+        result = repo.get_all_seasons_grouped()
+        assert result["p-debutant"][0].get("position") is None
+
+    def test_does_not_call_in_filter(self, repo, mock_db):
+        """Must NOT use .in_() season filter — returns all seasons."""
+        self._configure_db_all(mock_db, [])
+        repo.get_all_seasons_grouped()
+        mock_db.table.return_value.select.return_value.in_.assert_not_called()
