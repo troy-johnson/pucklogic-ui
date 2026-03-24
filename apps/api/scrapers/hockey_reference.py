@@ -306,7 +306,7 @@ async def _main() -> None:
         count = await scraper.scrape_history("2005-06", settings.current_season, db)
         print(
             f"Hockey Reference history: {count} rows upserted "
-            f"(2008-09 to {settings.current_season})"
+            f"(2005-06 to {settings.current_season})"
         )
     else:
         count = await scraper.scrape(settings.current_season, db)
