@@ -382,3 +382,60 @@ class TestScrapeHistory:
         assert last["career_goals"] == 64
         assert last["career_shots"] == 400
         assert last["nhl_experience"] == 2
+
+
+# ---------------------------------------------------------------------------
+# _main() entrypoint --history flag
+# ---------------------------------------------------------------------------
+
+
+class TestMain:
+    """Verify the __main__ entrypoint dispatches to the correct scrape method."""
+
+    @pytest.mark.asyncio
+    async def test_history_flag_calls_scrape_history(self, monkeypatch):
+        """python -m scrapers.hockey_reference --history must call scrape_history."""
+        import sys
+        from unittest.mock import AsyncMock, patch
+
+        from scrapers.hockey_reference import HockeyReferenceScraper
+
+        monkeypatch.setattr(sys, "argv", ["scrapers.hockey_reference", "--history"])
+
+        mock_scraper = MagicMock(spec=HockeyReferenceScraper)
+        mock_scraper.scrape_history = AsyncMock(return_value=42)
+
+        with (
+            patch("scrapers.hockey_reference.HockeyReferenceScraper", return_value=mock_scraper),
+            patch("supabase.create_client"),
+        ):
+            from scrapers.hockey_reference import _main
+
+            await _main()
+
+        mock_scraper.scrape_history.assert_called_once()
+        mock_scraper.scrape.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_no_flag_calls_scrape(self, monkeypatch):
+        """python -m scrapers.hockey_reference (no flags) must call scrape only."""
+        import sys
+        from unittest.mock import AsyncMock, patch
+
+        from scrapers.hockey_reference import HockeyReferenceScraper
+
+        monkeypatch.setattr(sys, "argv", ["scrapers.hockey_reference"])
+
+        mock_scraper = MagicMock(spec=HockeyReferenceScraper)
+        mock_scraper.scrape = AsyncMock(return_value=10)
+
+        with (
+            patch("scrapers.hockey_reference.HockeyReferenceScraper", return_value=mock_scraper),
+            patch("supabase.create_client"),
+        ):
+            from scrapers.hockey_reference import _main
+
+            await _main()
+
+        mock_scraper.scrape.assert_called_once()
+        mock_scraper.scrape_history.assert_not_called()

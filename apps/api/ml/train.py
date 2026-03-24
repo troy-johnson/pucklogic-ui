@@ -272,7 +272,23 @@ def train_xgboost(
 
     best_params = study.best_params
 
-    # Final model: retrain on ALL data (train + holdout)
+    # Pre-retrain evaluation: train on X_train only to obtain valid holdout metrics.
+    # The final artifact is trained on ALL data (train + holdout); evaluating it
+    # on holdout would report inflated performance because the model has seen
+    # those rows. This intermediate model is discarded after evaluation.
+    pre_retrain_model = xgb.XGBClassifier(
+        **best_params,
+        scale_pos_weight=scale_pos_weight,
+        eval_metric="auc",
+        random_state=42,
+        verbosity=0,
+    )
+    pre_retrain_model.fit(X_train, y_train)
+    holdout_proba = pre_retrain_model.predict_proba(X_holdout)[:, 1]
+    metrics = compute_metrics(y_holdout.tolist(), holdout_proba.tolist())
+
+    # Final model: retrain on ALL data (train + holdout) for the production artifact.
+    # Reported metrics above are from pre_retrain_model — valid holdout estimates.
     X_all = np.vstack([X_train, X_holdout])
     y_all = np.concatenate([y_train, y_holdout])
     n_pos_all = int(y_all.sum())
@@ -287,10 +303,6 @@ def train_xgboost(
         verbosity=0,
     )
     final_model.fit(X_all, y_all)
-
-    # Evaluate on holdout only
-    holdout_proba = final_model.predict_proba(X_holdout)[:, 1]
-    metrics = compute_metrics(y_holdout.tolist(), holdout_proba.tolist())
 
     return final_model, {
         "auc_roc": metrics.auc_roc,
@@ -345,7 +357,17 @@ def train_lightgbm(
     study = optuna.create_study(direction="maximize")
     study.optimize(objective, n_trials=n_trials)
 
-    # Final challenger: retrain on all data with best params
+    # Pre-retrain evaluation: same pattern as train_xgboost — evaluate on holdout
+    # before retraining on all data so metrics reflect true out-of-sample performance.
+    pre_retrain_challenger = lgb.LGBMClassifier(
+        **study.best_params, is_unbalance=True, random_state=42, verbose=-1
+    )
+    pre_retrain_challenger.fit(X_train, y_train)
+    holdout_proba = pre_retrain_challenger.predict_proba(X_holdout)[:, 1]
+    metrics = compute_metrics(y_holdout.tolist(), holdout_proba.tolist())
+    logger.info("LightGBM holdout AUC-ROC: %.4f", metrics.auc_roc)
+
+    # Final challenger: retrain on all data with best params (discarded after comparison).
     X_all = np.vstack([X_train, X_holdout])
     y_all = np.concatenate([y_train, y_holdout])
     challenger = lgb.LGBMClassifier(
@@ -353,9 +375,6 @@ def train_lightgbm(
     )
     challenger.fit(X_all, y_all)
 
-    holdout_proba = challenger.predict_proba(X_holdout)[:, 1]
-    metrics = compute_metrics(y_holdout.tolist(), holdout_proba.tolist())
-    logger.info("LightGBM holdout AUC-ROC: %.4f", metrics.auc_roc)
     return {"auc_roc": metrics.auc_roc}
 
 

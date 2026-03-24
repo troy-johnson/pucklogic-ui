@@ -278,3 +278,45 @@ class TestHoldoutSplit:
             "Final retrain must include ALL rows (train + holdout)"
         )
         assert X_train.shape[0] + X_holdout.shape[0] == X_all.shape[0]
+
+
+# ---------------------------------------------------------------------------
+# Holdout metrics validity
+# ---------------------------------------------------------------------------
+
+
+class TestHoldoutMetricsValidity:
+    """train_xgboost and train_lightgbm must report metrics from a pre-retrain
+    model (trained on X_train only), not from the final production model
+    (trained on X_all = train + holdout). Evaluating the final model on
+    holdout data it was trained on would yield inflated, misleading metrics."""
+
+    def test_train_xgboost_metrics_from_pre_retrain_model(self, monkeypatch):
+        """Second-to-last fit call must be on X_train; last fit call on X_all."""
+        import xgboost as xgb
+
+        from ml.train import train_xgboost
+
+        rng = np.random.default_rng(7)
+        n_features = len(FEATURE_NAMES)
+        X_train = rng.random((30, n_features))
+        y_train = np.array([i % 2 for i in range(30)])
+        X_holdout = rng.random((10, n_features))
+        y_holdout = np.array([i % 2 for i in range(10)])
+
+        fit_Xs: list[np.ndarray] = []
+        original_fit = xgb.XGBClassifier.fit
+
+        def tracking_fit(self_inner, X, y, **kwargs):
+            fit_Xs.append(np.asarray(X))
+            return original_fit(self_inner, X, y, **kwargs)
+
+        monkeypatch.setattr(xgb.XGBClassifier, "fit", tracking_fit)
+
+        train_xgboost(X_train, y_train, X_holdout, y_holdout, n_trials=1)
+
+        X_all = np.vstack([X_train, X_holdout])
+        # Last fit: final model trained on all data (train + holdout)
+        np.testing.assert_array_equal(fit_Xs[-1], X_all)
+        # Second-to-last fit: pre-retrain model trained on X_train only
+        np.testing.assert_array_equal(fit_Xs[-2], X_train)
