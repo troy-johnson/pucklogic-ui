@@ -541,9 +541,12 @@ def main() -> None:
         (row, (0, 0)) for row in current_rows
     ]
 
+    # Use args.season (the training/target season, e.g. "2026-27"), NOT data_season.
+    # GET /trends defaults to settings.current_season = "2026-27". Storing rows under
+    # data_season ("2025-26") would cause the default query to return has_trends=False.
     _upsert_player_trends(
         db=db,
-        season=data_season,
+        season=args.season,
         dataset_current=current_dataset_wrapped,
         breakout_model=breakout_model,
         regression_model=regression_model,

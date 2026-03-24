@@ -281,6 +281,59 @@ class TestHoldoutSplit:
 
 
 # ---------------------------------------------------------------------------
+# main() season key for player_trends
+# ---------------------------------------------------------------------------
+
+
+class TestMainPlayerTrendsSeasonKey:
+    """main() must upsert player_trends under args.season (the training/target season,
+    e.g. '2026-27'), not data_season (the completed data season, e.g. '2025-26').
+
+    GET /trends defaults to settings.current_season = '2026-27'. If player_trends
+    rows are stored under '2025-26', the default query returns has_trends=False.
+    """
+
+    def test_upsert_uses_training_season_not_data_season(self, monkeypatch):
+        import sys
+        from unittest.mock import MagicMock, patch
+
+        monkeypatch.setattr(sys, "argv", ["ml.train", "--season", "2026-27"])
+
+        mock_repo = MagicMock()
+        mock_repo.get_all_seasons_grouped.return_value = {}
+
+        captured_season: list[str] = []
+
+        def capture_upsert(db, season, dataset_current, breakout_model, regression_model):
+            captured_season.append(season)
+
+        with (
+            patch("ml.train.get_db"),
+            patch("ml.train.PlayerStatsRepository", return_value=mock_repo),
+            patch("ml.train.build_labeled_dataset", return_value=[]),
+            patch("ml.train.build_feature_matrix", return_value=[]),
+            patch(
+                "ml.train.train_xgboost",
+                return_value=(
+                    MagicMock(),
+                    {"auc_roc": 0.6, "precision_at_50": 0.5, "recall_at_50": 0.5},
+                ),
+            ),
+            patch("ml.train.train_lightgbm", return_value={"auc_roc": 0.55}),
+            patch("ml.train.upload"),
+            patch("ml.train._upsert_player_trends", side_effect=capture_upsert),
+        ):
+            from ml.train import main
+
+            main()
+
+        assert captured_season == ["2026-27"], (
+            f"player_trends must be stored under the training season '2026-27', "
+            f"not the data season '2025-26'. Got: {captured_season}"
+        )
+
+
+# ---------------------------------------------------------------------------
 # Holdout metrics validity
 # ---------------------------------------------------------------------------
 
