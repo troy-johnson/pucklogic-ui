@@ -29,3 +29,14 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python -m scrapers.hockey_reference
+
+      - name: Train Trends model and upload artifacts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # CURRENT_SEASON is a GitHub Actions variable (not a secret), e.g. "2026-27"
+          CURRENT_SEASON: ${{ vars.CURRENT_SEASON }}
+        # Artifacts uploaded to: ml-artifacts/{data_season}/ in Supabase Storage
+        # player_trends upserted for all current-season skaters with qualifying TOI
+        run: python -m ml.train --season "$CURRENT_SEASON"
