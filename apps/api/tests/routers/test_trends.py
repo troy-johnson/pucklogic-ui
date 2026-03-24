@@ -71,11 +71,14 @@ class TestGetTrendsRouter:
         app.dependency_overrides.clear()
 
     def test_default_season_used_when_not_provided(self, client):
+        from core.config import settings
+
         mock_repo = MagicMock()
         mock_repo.get_trends.return_value = _make_response(has_trends=False)
         app.dependency_overrides[_get_guarded_repo] = lambda: mock_repo
 
         response = client.get("/trends")  # no ?season= param
         assert response.status_code == 200
+        mock_repo.get_trends.assert_called_once_with(settings.current_season)
 
         app.dependency_overrides.clear()

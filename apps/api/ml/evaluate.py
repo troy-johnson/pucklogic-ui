@@ -26,7 +26,14 @@ def compute_metrics(y_true: list[int], y_pred_proba: list[float]) -> MetricsResu
     arr_true = np.array(y_true)
     arr_proba = np.array(y_pred_proba)
 
-    auc_roc = float(roc_auc_score(arr_true, arr_proba))
+    try:
+        raw_auc = roc_auc_score(arr_true, arr_proba)
+        # Older sklearn raises ValueError; newer sklearn returns nan for single-class folds.
+        auc_roc = 0.5 if (raw_auc != raw_auc) else float(raw_auc)  # nan check
+    except ValueError:
+        # Single-class fold (all positives or all negatives) — return random baseline.
+        # Occurs in early TimeSeriesSplit folds where breakout events are absent.
+        auc_roc = 0.5
 
     k = min(50, len(arr_true))
     top_k_idx = np.argsort(arr_proba)[::-1][:k]

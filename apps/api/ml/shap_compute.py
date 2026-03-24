@@ -13,6 +13,7 @@ def compute_shap(
     model: xgb.XGBClassifier,
     X: np.ndarray,
     feature_names: list[str],
+    label: str = "breakout",
 ) -> list[dict[str, dict[str, float]]]:
     """Compute top-3 SHAP values per player for a binary XGBoost classifier.
 
@@ -20,9 +21,10 @@ def compute_shap(
         model: Trained XGBoost classifier.
         X: Feature matrix of shape (n_players, n_features).
         feature_names: Column names corresponding to X columns.
+        label: Key to use in the returned dicts (e.g. "breakout" or "regression").
 
     Returns:
-        List of dicts with shape [{"breakout": {"feature_name": shap_value, ...}}, ...]
+        List of dicts with shape [{label: {"feature_name": shap_value, ...}}, ...]
         Each player's dict contains the top-3 features by absolute SHAP value.
     """
     explainer = shap.TreeExplainer(model)
@@ -33,6 +35,6 @@ def compute_shap(
     for row_shap in shap_values:
         top3_idx = np.argsort(np.abs(row_shap))[::-1][:3]
         top3 = {feature_names[i]: float(row_shap[i]) for i in top3_idx}
-        results.append({"breakout": top3})
+        results.append({label: top3})
 
     return results

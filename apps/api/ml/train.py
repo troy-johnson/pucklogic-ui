@@ -380,23 +380,17 @@ def _upsert_player_trends(
     breakout_proba = breakout_model.predict_proba(X_curr)[:, 1]
     regression_proba = regression_model.predict_proba(X_curr)[:, 1]
 
-    breakout_shap = compute_shap(breakout_model, X_curr, FEATURE_NAMES)
-    regression_shap = compute_shap(regression_model, X_curr, FEATURE_NAMES)
+    breakout_shap = compute_shap(breakout_model, X_curr, FEATURE_NAMES, label="breakout")
+    regression_shap = compute_shap(regression_model, X_curr, FEATURE_NAMES, label="regression")
 
     now = datetime.now(tz=UTC).isoformat()
     rows_to_upsert = []
     for i, (row, _) in enumerate(dataset_current):
         shap_top3 = {
             "breakout": list(breakout_shap[i]["breakout"].items()),
-            "regression": list(regression_shap[i]["breakout"].items()),
+            "regression": list(regression_shap[i]["regression"].items()),
         }
-        confidence = float(
-            (
-                breakout_model.predict_proba(X_curr[i : i + 1])[:, 1][0]
-                + regression_model.predict_proba(X_curr[i : i + 1])[:, 1][0]
-            )
-            / 2
-        )
+        confidence = float((breakout_proba[i] + regression_proba[i]) / 2)
         rows_to_upsert.append(
             {
                 "player_id": row["player_id"],
@@ -502,6 +496,8 @@ def main() -> None:
 
     # 7. Upsert player_trends for current season
     # Current season has no N+1 label row — rebuild feature rows without label filter.
+    # data_season "2025-26" → end-year integer 2026.
+    # The most recent player data has season=2026; the feature window is (2026, 2025, 2024).
     current_season_int_val = int(data_season.split("-")[0]) + 1  # e.g. 2026 for "2025-26"
     current_feature_slice = {
         pid: [
@@ -509,16 +505,16 @@ def main() -> None:
             for r in rows
             if r["season"]
             in (
+                current_season_int_val,
                 current_season_int_val - 1,
                 current_season_int_val - 2,
-                current_season_int_val - 3,
             )
         ]
         for pid, rows in all_rows.items()
     }
     current_rows = [
         row
-        for row in build_feature_matrix(current_feature_slice, season=current_season_int_val - 1)
+        for row in build_feature_matrix(current_feature_slice, season=current_season_int_val)
         if not row.get("stale_season") and row.get("position_type") != "goalie"
     ]
     # Wrap as dataset for _upsert_player_trends (labels unused for current season)

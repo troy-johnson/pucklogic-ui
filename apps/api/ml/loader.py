@@ -59,7 +59,13 @@ def _download_model(db: Client, data_season: str, filename: str) -> xgb.XGBClass
 
     if not no_cache and cache_path.exists():
         logger.info("Loading %s from dev cache %s", filename, cache_path)
-        return joblib.load(cache_path)
+        model = joblib.load(cache_path)
+        if not isinstance(model, xgb.XGBClassifier):
+            raise ModelNotAvailableError(
+                f"Dev cache type mismatch for {filename}: expected XGBClassifier, "
+                f"got {type(model).__name__}. Delete {cache_path} to re-download."
+            )
+        return model
 
     logger.info("Downloading %s from Storage ml-artifacts/%s/", filename, data_season)
     try:
@@ -70,6 +76,11 @@ def _download_model(db: Client, data_season: str, filename: str) -> xgb.XGBClass
         ) from exc
 
     model: xgb.XGBClassifier = joblib.load(io.BytesIO(raw))
+    if not isinstance(model, xgb.XGBClassifier):
+        raise ModelNotAvailableError(
+            f"Storage artifact type mismatch for {data_season}/{filename}: "
+            f"expected XGBClassifier, got {type(model).__name__}"
+        )
 
     if not no_cache:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -132,10 +143,12 @@ def upload(
     bucket.upload(
         f"{data_season}/breakout_model.joblib",
         _serialize_model(breakout_model),
+        file_options={"upsert": "true"},
     )
     bucket.upload(
         f"{data_season}/regression_model.joblib",
         _serialize_model(regression_model),
+        file_options={"upsert": "true"},
     )
 
     metadata = {
@@ -152,5 +165,6 @@ def upload(
     bucket.upload(
         f"{data_season}/metadata.json",
         json.dumps(metadata).encode(),
+        file_options={"upsert": "true"},
     )
     logger.info("Artifacts uploaded to ml-artifacts/%s/", data_season)
