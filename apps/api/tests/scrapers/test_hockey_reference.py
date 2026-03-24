@@ -413,7 +413,13 @@ class TestMain:
 
             await _main()
 
+        # Backfill must start at 2005-06, not 2008-09.
+        # Labels start at 2008; the 2008 feature window needs rows for 2006 and 2007.
         mock_scraper.scrape_history.assert_called_once()
+        call_args = mock_scraper.scrape_history.call_args
+        assert call_args.args[0] == "2005-06", (
+            f"History backfill must start at '2005-06', got '{call_args.args[0]}'"
+        )
         mock_scraper.scrape.assert_not_called()
 
     @pytest.mark.asyncio

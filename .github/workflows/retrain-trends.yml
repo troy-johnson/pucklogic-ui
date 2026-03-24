@@ -24,6 +24,8 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]"
 
+      # Prerequisite (one-time, manual): create the 'ml-artifacts' Storage bucket in
+      # Supabase dashboard (private) before the first run of this workflow.
       - name: Run Hockey Reference scraper (full history backfill for training data)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

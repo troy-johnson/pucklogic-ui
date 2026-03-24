@@ -288,7 +288,9 @@ async def _main() -> None:
         "--history",
         action="store_true",
         help=(
-            "Backfill all seasons from 2008-09 to current_season. "
+            "Backfill all seasons from 2005-06 to current_season. "
+            "Starts at 2005-06 (post-lockout) so 2006/2007 seasons serve as "
+            "lookback history for the 2008+ labeled training examples. "
             "Required before the first training run and in the annual retrain workflow."
         ),
     )
@@ -298,7 +300,10 @@ async def _main() -> None:
     scraper = HockeyReferenceScraper()
 
     if args.history:
-        count = await scraper.scrape_history("2008-09", settings.current_season, db)
+        # Start at 2005-06 (post-lockout rules change, D4 in spec).
+        # Labels begin at season 2008; the 2008 feature window needs rows for
+        # 2006 and 2007, so the backfill must reach at least 2005-06.
+        count = await scraper.scrape_history("2005-06", settings.current_season, db)
         print(
             f"Hockey Reference history: {count} rows upserted "
             f"(2008-09 to {settings.current_season})"
