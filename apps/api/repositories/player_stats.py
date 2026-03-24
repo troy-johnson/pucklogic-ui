@@ -57,3 +57,33 @@ class PlayerStatsRepository:
             rows.sort(key=lambda r: r["season"], reverse=True)
 
         return dict(grouped)
+
+    def get_all_seasons_grouped(self) -> dict[str, list[dict[str, Any]]]:
+        """Return ALL player_stats rows for ALL players, grouped by player_id.
+
+        Unlike get_seasons_grouped(), this method has no season window cap and
+        returns every historical row available. Used only by ml/train.py.
+
+        Uses LEFT JOIN on players table so debutants (players with no `players`
+        record) are included; their position and date_of_birth will be None.
+
+        Returns:
+            {player_id: [rows sorted newest-first]}
+        """
+        result = (
+            self._db.table("player_stats")
+            .select(f"{_STAT_COLUMNS}, players(date_of_birth, position)")
+            .order("season", desc=True)
+            .execute()
+        )
+
+        grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for raw in result.data:
+            players_join = raw.pop("players", None) or {}
+            row = {**raw, **players_join}
+            grouped[row["player_id"]].append(row)
+
+        for rows in grouped.values():
+            rows.sort(key=lambda r: r["season"], reverse=True)
+
+        return dict(grouped)

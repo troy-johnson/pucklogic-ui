@@ -277,14 +277,40 @@ class HockeyReferenceScraper(BaseScraper):
 
 
 async def _main() -> None:
+    import argparse
+
     from supabase import create_client
 
     from core.config import settings
 
+    parser = argparse.ArgumentParser(description="Hockey Reference scraper")
+    parser.add_argument(
+        "--history",
+        action="store_true",
+        help=(
+            "Backfill all seasons from 2005-06 to current_season. "
+            "Starts at 2005-06 (post-lockout) so 2006/2007 seasons serve as "
+            "lookback history for the 2008+ labeled training examples. "
+            "Required before the first training run and in the annual retrain workflow."
+        ),
+    )
+    args = parser.parse_args()
+
     db = create_client(settings.supabase_url, settings.supabase_service_role_key)
     scraper = HockeyReferenceScraper()
-    count = await scraper.scrape(settings.current_season, db)
-    print(f"Hockey Reference: {count} rows upserted for {settings.current_season}")
+
+    if args.history:
+        # Start at 2005-06 (post-lockout rules change, D4 in spec).
+        # Labels begin at season 2008; the 2008 feature window needs rows for
+        # 2006 and 2007, so the backfill must reach at least 2005-06.
+        count = await scraper.scrape_history("2005-06", settings.current_season, db)
+        print(
+            f"Hockey Reference history: {count} rows upserted "
+            f"(2005-06 to {settings.current_season})"
+        )
+    else:
+        count = await scraper.scrape(settings.current_season, db)
+        print(f"Hockey Reference: {count} rows upserted for {settings.current_season}")
 
 
 if __name__ == "__main__":

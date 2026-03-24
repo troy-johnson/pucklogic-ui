@@ -21,6 +21,7 @@ from repositories.rankings import RankingsRepository
 from repositories.scoring_configs import ScoringConfigRepository
 from repositories.sources import SourceRepository
 from repositories.subscriptions import SubscriptionRepository
+from repositories.trends import TrendsRepository
 from services.cache import CacheService
 
 if TYPE_CHECKING:
@@ -94,6 +95,10 @@ def get_scoring_config_repository() -> ScoringConfigRepository:
 
 def get_player_repository() -> PlayerRepository:
     return PlayerRepository(get_db())
+
+
+def get_trends_repository() -> TrendsRepository:
+    return TrendsRepository(get_db())
 
 
 # ---------------------------------------------------------------------------
