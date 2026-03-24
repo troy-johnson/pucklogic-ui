@@ -1,11 +1,35 @@
 # Phase 3d — Model Training + Inference API
 
 **Date:** 2026-03-23
-**Status:** Approved for implementation
+**Status:** ✅ Complete — PR #28 open, all review issues resolved (commit 87a2d0a)
 **Notion:** [3d] Model Training + Inference API — XGBoost/LightGBM, SHAP, GET /trends
 **Estimated effort:** 20h across 2–3 sessions
 **Risk tier:** 2 — Cross-module (new ML module, new Supabase Storage integration, writes to player_trends, new inference endpoint)
 **Reviewer policy:** 1 external minimum (Gemini + Codex plan review)
+
+---
+
+## Implementation Notes (post-review deviations from original spec)
+
+**GET /trends split out as Phase 3f (was D9 — merged into 3d):**
+The inference endpoint is deferred. Phase 3e (new) = first real training run against
+production Supabase. Phase 3f = inference API. `player_trends` must be non-empty before
+3f makes sense. See SESSION_STATE.md checklist for the 3e gate.
+
+**Holdout metrics: pre-retrain model evaluation (not final artifact):**
+Original spec implied evaluating `final_model` on holdout. Fixed: `train_xgboost` and
+`train_lightgbm` now train a `pre_retrain_model` on `X_train` only, evaluate it on
+`X_holdout`, then retrain `final_model` on `X_all`. Reported metrics in `metadata.json`
+are from `pre_retrain_model` — valid out-of-sample estimates.
+
+**`--history` flag required in retrain workflow:**
+`python -m scrapers.hockey_reference` with no flags only refreshes the current season.
+`_main()` now accepts `--history` to call `scrape_history("2008-09", current_season)`.
+`retrain-trends.yml` updated to use `--history` so multi-season training data is always
+complete before `ml.train` runs.
+
+**`.gitignore` path corrected:**
+`.worktrees/` → `.claude/worktrees/` (the actual Claude worktree path).
 
 ---
 
@@ -49,7 +73,7 @@
 | D6 | XGBoost handles feature NaN natively | Advanced stats (xG, NST) only available from ~2008–2010; no imputation needed |
 | D7 | `breakout_count` / `regression_count` / tier fields excluded from model features | Signal summaries derived from the same features — would leak label-correlated information |
 | D8 | Two independent binary classifiers: `breakout_model` and `regression_model` | A player can simultaneously show breakout and regression signals (rare but valid) |
-| D9 | `GET /trends` merged into Phase 3d (from 3e) | Inference endpoint is ~4h; deferring creates an underfilled phase with no observable output |
+| D9 | `GET /trends` deferred to Phase 3f (not in 3d) | Originally planned to merge into 3d. Post-implementation: `player_trends` must be verified non-empty via a real training run (Phase 3e) before the inference API is meaningful. Inference API moved to Phase 3f. |
 | D10 | No caching on `GET /trends` in v1.0 | Scores update once per year; DB query is fast; avoids cache invalidation complexity |
 | D11 | `pp_unit_change` excluded from model features | String value (`"PP2→PP1"` etc.) — XGBoost cannot ingest strings; `pp_unit` (current value) already captures PP assignment |
 | D12 | `toi_ev_per_game` excluded from model features | Perfectly collinear with `toi_ev` (weighted average of per-game rate); including both inflates SHAP attribution |
