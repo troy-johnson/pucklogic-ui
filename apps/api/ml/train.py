@@ -10,9 +10,24 @@ Storage, and upserts player_trends for the current season.
 
 from __future__ import annotations
 
+import argparse
 import logging
+import sys
+from datetime import UTC, datetime
 from typing import Any
 
+import lightgbm as lgb
+import numpy as np
+import optuna
+import xgboost as xgb
+from sklearn.model_selection import TimeSeriesSplit
+
+from core.config import settings  # noqa: F401 — imported for side effects (env validation)
+from core.dependencies import get_db
+from ml.evaluate import compute_metrics
+from ml.loader import derive_data_season, upload
+from ml.shap_compute import compute_shap
+from repositories.player_stats import PlayerStatsRepository
 from services.feature_engineering import build_feature_matrix
 
 logger = logging.getLogger(__name__)
@@ -175,3 +190,352 @@ def build_labeled_dataset(
             dataset.append((row, label))
 
     return dataset
+
+
+# ---------------------------------------------------------------------------
+# Feature / label extraction
+# ---------------------------------------------------------------------------
+
+
+def _extract_Xy(
+    dataset: list[tuple[dict[str, Any], tuple[int, int]]],
+    label_idx: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Extract feature matrix X and label vector y from dataset.
+
+    Args:
+        dataset: Output of build_labeled_dataset().
+        label_idx: 0 for breakout label, 1 for regression label.
+    """
+    X = np.array(
+        [[row.get(feat) for feat in FEATURE_NAMES] for row, _ in dataset],
+        dtype=float,
+    )
+    y = np.array([label[label_idx] for _, label in dataset], dtype=int)
+    return X, y
+
+
+# ---------------------------------------------------------------------------
+# XGBoost training
+# ---------------------------------------------------------------------------
+
+
+def train_xgboost(
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    X_holdout: np.ndarray,
+    y_holdout: np.ndarray,
+    n_trials: int = 50,
+) -> tuple[xgb.XGBClassifier, dict[str, float]]:
+    """Train XGBoost with Optuna hyperparameter search + TimeSeriesSplit CV.
+
+    Holdout rows are excluded from ALL CV folds. After CV, retrains on the
+    FULL dataset (train + holdout) with best params.
+
+    Returns:
+        (final_model, metrics_on_holdout)
+    """
+    n_pos = int(y_train.sum())
+    n_neg = len(y_train) - n_pos
+    scale_pos_weight = n_neg / n_pos if n_pos > 0 else 1.0
+
+    cv = TimeSeriesSplit(n_splits=5)
+
+    def objective(trial: optuna.Trial) -> float:
+        params = {
+            "n_estimators": trial.suggest_int("n_estimators", 50, 400),
+            "max_depth": trial.suggest_int("max_depth", 3, 8),
+            "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
+            "subsample": trial.suggest_float("subsample", 0.6, 1.0),
+            "colsample_bytree": trial.suggest_float("colsample_bytree", 0.6, 1.0),
+            "reg_alpha": trial.suggest_float("reg_alpha", 1e-4, 10.0, log=True),
+            "reg_lambda": trial.suggest_float("reg_lambda", 1e-4, 10.0, log=True),
+        }
+        aucs = []
+        for train_idx, val_idx in cv.split(X_train):
+            m = xgb.XGBClassifier(
+                **params,
+                scale_pos_weight=scale_pos_weight,
+                eval_metric="auc",
+                random_state=42,
+                verbosity=0,
+            )
+            m.fit(X_train[train_idx], y_train[train_idx])
+            proba = m.predict_proba(X_train[val_idx])[:, 1]
+            result = compute_metrics(y_train[val_idx].tolist(), proba.tolist())
+            aucs.append(result.auc_roc)
+        return float(np.mean(aucs))
+
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+    study = optuna.create_study(direction="maximize")
+    study.optimize(objective, n_trials=n_trials)
+
+    best_params = study.best_params
+
+    # Final model: retrain on ALL data (train + holdout)
+    X_all = np.vstack([X_train, X_holdout])
+    y_all = np.concatenate([y_train, y_holdout])
+    n_pos_all = int(y_all.sum())
+    n_neg_all = len(y_all) - n_pos_all
+    spw_all = n_neg_all / n_pos_all if n_pos_all > 0 else 1.0
+
+    final_model = xgb.XGBClassifier(
+        **best_params,
+        scale_pos_weight=spw_all,
+        eval_metric="auc",
+        random_state=42,
+        verbosity=0,
+    )
+    final_model.fit(X_all, y_all)
+
+    # Evaluate on holdout only
+    holdout_proba = final_model.predict_proba(X_holdout)[:, 1]
+    metrics = compute_metrics(y_holdout.tolist(), holdout_proba.tolist())
+
+    return final_model, {
+        "auc_roc": metrics.auc_roc,
+        "precision_at_50": metrics.precision_at_50,
+        "recall_at_50": metrics.recall_at_50,
+    }
+
+
+# ---------------------------------------------------------------------------
+# LightGBM challenger
+# ---------------------------------------------------------------------------
+
+
+def train_lightgbm(
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    X_holdout: np.ndarray,
+    y_holdout: np.ndarray,
+    n_trials: int = 25,
+) -> dict[str, float]:
+    """Train LightGBM challenger and return holdout metrics only.
+
+    No artifact upload — challenger metrics are logged and included in
+    metadata.json for comparison only. Emits WARNING if LightGBM
+    AUC-ROC beats XGBoost by > 0.02.
+
+    Returns:
+        metrics dict with auc_roc (on holdout).
+    """
+    cv = TimeSeriesSplit(n_splits=5)
+
+    def objective(trial: optuna.Trial) -> float:
+        params = {
+            "n_estimators": trial.suggest_int("n_estimators", 50, 400),
+            "max_depth": trial.suggest_int("max_depth", 3, 8),
+            "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
+            "subsample": trial.suggest_float("subsample", 0.6, 1.0),
+            "colsample_bytree": trial.suggest_float("colsample_bytree", 0.6, 1.0),
+            "num_leaves": trial.suggest_int("num_leaves", 20, 100),
+            "is_unbalance": True,
+        }
+        aucs = []
+        for train_idx, val_idx in cv.split(X_train):
+            m = lgb.LGBMClassifier(**params, random_state=42, verbose=-1)
+            m.fit(X_train[train_idx], y_train[train_idx])
+            proba = m.predict_proba(X_train[val_idx])[:, 1]
+            result = compute_metrics(y_train[val_idx].tolist(), proba.tolist())
+            aucs.append(result.auc_roc)
+        return float(np.mean(aucs))
+
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+    study = optuna.create_study(direction="maximize")
+    study.optimize(objective, n_trials=n_trials)
+
+    # Final challenger: retrain on all data with best params
+    X_all = np.vstack([X_train, X_holdout])
+    y_all = np.concatenate([y_train, y_holdout])
+    challenger = lgb.LGBMClassifier(
+        **study.best_params, is_unbalance=True, random_state=42, verbose=-1
+    )
+    challenger.fit(X_all, y_all)
+
+    holdout_proba = challenger.predict_proba(X_holdout)[:, 1]
+    metrics = compute_metrics(y_holdout.tolist(), holdout_proba.tolist())
+    logger.info("LightGBM holdout AUC-ROC: %.4f", metrics.auc_roc)
+    return {"auc_roc": metrics.auc_roc}
+
+
+# ---------------------------------------------------------------------------
+# player_trends upsert
+# ---------------------------------------------------------------------------
+
+
+def _upsert_player_trends(
+    db: Any,
+    season: str,
+    dataset_current: list[tuple[dict[str, Any], tuple[int, int]]],
+    breakout_model: xgb.XGBClassifier,
+    regression_model: xgb.XGBClassifier,
+) -> None:
+    """Compute scores + SHAP and upsert player_trends rows."""
+    if not dataset_current:
+        logger.warning("No current-season rows to upsert.")
+        return
+
+    X_curr, _ = _extract_Xy(dataset_current, label_idx=0)
+    breakout_proba = breakout_model.predict_proba(X_curr)[:, 1]
+    regression_proba = regression_model.predict_proba(X_curr)[:, 1]
+
+    breakout_shap = compute_shap(breakout_model, X_curr, FEATURE_NAMES)
+    regression_shap = compute_shap(regression_model, X_curr, FEATURE_NAMES)
+
+    now = datetime.now(tz=UTC).isoformat()
+    rows_to_upsert = []
+    for i, (row, _) in enumerate(dataset_current):
+        shap_top3 = {
+            "breakout": list(breakout_shap[i]["breakout"].items()),
+            "regression": list(regression_shap[i]["breakout"].items()),
+        }
+        confidence = float(
+            (
+                breakout_model.predict_proba(X_curr[i : i + 1])[:, 1][0]
+                + regression_model.predict_proba(X_curr[i : i + 1])[:, 1][0]
+            )
+            / 2
+        )
+        rows_to_upsert.append(
+            {
+                "player_id": row["player_id"],
+                "season": season,
+                "breakout_score": float(breakout_proba[i]),
+                "regression_risk": float(regression_proba[i]),
+                "confidence": confidence,
+                "shap_top3": shap_top3,
+                "updated_at": now,
+            }
+        )
+
+    db.table("player_trends").upsert(
+        rows_to_upsert,
+        on_conflict="player_id,season",
+    ).execute()
+    logger.info("Upserted %d player_trends rows for season %s", len(rows_to_upsert), season)
+
+
+# ---------------------------------------------------------------------------
+# CLI entrypoint
+# ---------------------------------------------------------------------------
+
+
+def main() -> None:
+    """CLI entrypoint: python -m ml.train --season 2026-27"""
+    parser = argparse.ArgumentParser(description="Train PuckLogic Trends models")
+    parser.add_argument("--season", required=True, help="Training season, e.g. 2026-27")
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    logger.info("Starting Phase 3d training pipeline — season=%s", args.season)
+
+    data_season = derive_data_season(args.season)
+    db = get_db()
+
+    # 1. Load all historical player_stats
+    repo = PlayerStatsRepository(db)
+    all_rows = repo.get_all_seasons_grouped()
+    logger.info("Loaded %d players from DB", len(all_rows))
+
+    # 2. Build labeled dataset (2008–2024)
+    full_dataset = build_labeled_dataset(all_rows, train_seasons=range(2008, 2025))
+    logger.info("Labeled dataset: %d examples", len(full_dataset))
+
+    # 3. Split holdout (2023–2024 seasons)
+    holdout_set = [(row, lbl) for row, lbl in full_dataset if row.get("season") in _HOLDOUT_SEASONS]
+    train_set = [
+        (row, lbl) for row, lbl in full_dataset if row.get("season") not in _HOLDOUT_SEASONS
+    ]
+    logger.info("Train: %d  Holdout: %d", len(train_set), len(holdout_set))
+
+    X_train_b, y_train_b = _extract_Xy(train_set, 0)
+    X_train_r, y_train_r = _extract_Xy(train_set, 1)
+    X_holdout_b, y_holdout_b = _extract_Xy(holdout_set, 0)
+    X_holdout_r, y_holdout_r = _extract_Xy(holdout_set, 1)
+
+    # 4. Train XGBoost (breakout + regression)
+    logger.info("Training XGBoost breakout model (50 Optuna trials)...")
+    breakout_model, b_metrics = train_xgboost(X_train_b, y_train_b, X_holdout_b, y_holdout_b)
+    logger.info("Breakout AUC-ROC: %.4f", b_metrics["auc_roc"])
+
+    logger.info("Training XGBoost regression model (50 Optuna trials)...")
+    regression_model, r_metrics = train_xgboost(X_train_r, y_train_r, X_holdout_r, y_holdout_r)
+    logger.info("Regression AUC-ROC: %.4f", r_metrics["auc_roc"])
+
+    # 5. LightGBM challenger (metrics only)
+    logger.info("Training LightGBM challenger (25 trials each)...")
+    lgb_b_metrics = train_lightgbm(X_train_b, y_train_b, X_holdout_b, y_holdout_b)
+    lgb_r_metrics = train_lightgbm(X_train_r, y_train_r, X_holdout_r, y_holdout_r)
+
+    if lgb_b_metrics["auc_roc"] - b_metrics["auc_roc"] > 0.02:
+        logger.warning(
+            "LightGBM breakout AUC (%.4f) exceeds XGBoost (%.4f) by >0.02 — "
+            "consider switching production model",
+            lgb_b_metrics["auc_roc"],
+            b_metrics["auc_roc"],
+        )
+    if lgb_r_metrics["auc_roc"] - r_metrics["auc_roc"] > 0.02:
+        logger.warning(
+            "LightGBM regression AUC (%.4f) exceeds XGBoost (%.4f) by >0.02 — "
+            "consider switching production model",
+            lgb_r_metrics["auc_roc"],
+            r_metrics["auc_roc"],
+        )
+
+    # 6. Upload artifacts to Supabase Storage
+    upload(
+        db=db,
+        breakout_model=breakout_model,
+        regression_model=regression_model,
+        metrics={
+            "breakout": b_metrics,
+            "regression": r_metrics,
+            "lgb_breakout_auc_roc": lgb_b_metrics["auc_roc"],
+            "lgb_regression_auc_roc": lgb_r_metrics["auc_roc"],
+        },
+        feature_names=FEATURE_NAMES,
+        data_season=data_season,
+        n_train=len(train_set),
+        n_holdout=len(holdout_set),
+    )
+
+    # 7. Upsert player_trends for current season
+    # Current season has no N+1 label row — rebuild feature rows without label filter.
+    current_season_int_val = int(data_season.split("-")[0]) + 1  # e.g. 2026 for "2025-26"
+    current_feature_slice = {
+        pid: [
+            r
+            for r in rows
+            if r["season"]
+            in (
+                current_season_int_val - 1,
+                current_season_int_val - 2,
+                current_season_int_val - 3,
+            )
+        ]
+        for pid, rows in all_rows.items()
+    }
+    current_rows = [
+        row
+        for row in build_feature_matrix(current_feature_slice, season=current_season_int_val - 1)
+        if not row.get("stale_season") and row.get("position_type") != "goalie"
+    ]
+    # Wrap as dataset for _upsert_player_trends (labels unused for current season)
+    current_dataset_wrapped: list[tuple[dict[str, Any], tuple[int, int]]] = [
+        (row, (0, 0)) for row in current_rows
+    ]
+
+    _upsert_player_trends(
+        db=db,
+        season=data_season,
+        dataset_current=current_dataset_wrapped,
+        breakout_model=breakout_model,
+        regression_model=regression_model,
+    )
+
+    logger.info("Phase 3d training pipeline complete. Season: %s", args.season)
+
+
+if __name__ == "__main__":
+    main()
