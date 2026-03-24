@@ -33,4 +33,4 @@ build
 .DS_Store
 *.log
 .turbo
-.worktrees/
+.claude/worktrees/
