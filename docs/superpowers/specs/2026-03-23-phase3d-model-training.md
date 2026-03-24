@@ -11,10 +11,11 @@
 
 ## Implementation Notes (post-review deviations from original spec)
 
-**GET /trends split out as Phase 3f (was D9 — merged into 3d):**
-The inference endpoint is deferred. Phase 3e (new) = first real training run against
-production Supabase. Phase 3f = inference API. `player_trends` must be non-empty before
-3f makes sense. See SESSION_STATE.md checklist for the 3e gate.
+**GET /trends is shipped in Phase 3d (D9 reverted to original intent):**
+`routers/trends.py`, `repositories/trends.py`, and the FastAPI lifespan hook are all in
+PR #28. Phase 3e (first real training run gate) and Phase 3f label were a documentation
+artefact of a mid-session split that did not reflect the actual PR contents. The inference
+API is part of Phase 3d as originally planned.
 
 **Holdout metrics: pre-retrain model evaluation (not final artifact):**
 Original spec implied evaluating `final_model` on holdout. Fixed: `train_xgboost` and
@@ -24,7 +25,8 @@ are from `pre_retrain_model` — valid out-of-sample estimates.
 
 **`--history` flag required in retrain workflow:**
 `python -m scrapers.hockey_reference` with no flags only refreshes the current season.
-`_main()` now accepts `--history` to call `scrape_history("2008-09", current_season)`.
+`_main()` now accepts `--history` to call `scrape_history("2005-06", current_season)`.
+Start season 2005-06 so that 2006/2007 rows exist as lookback for the 2008 labeled season.
 `retrain-trends.yml` updated to use `--history` so multi-season training data is always
 complete before `ml.train` runs.
 
@@ -73,7 +75,7 @@ complete before `ml.train` runs.
 | D6 | XGBoost handles feature NaN natively | Advanced stats (xG, NST) only available from ~2008–2010; no imputation needed |
 | D7 | `breakout_count` / `regression_count` / tier fields excluded from model features | Signal summaries derived from the same features — would leak label-correlated information |
 | D8 | Two independent binary classifiers: `breakout_model` and `regression_model` | A player can simultaneously show breakout and regression signals (rare but valid) |
-| D9 | `GET /trends` deferred to Phase 3f (not in 3d) | Originally planned to merge into 3d. Post-implementation: `player_trends` must be verified non-empty via a real training run (Phase 3e) before the inference API is meaningful. Inference API moved to Phase 3f. |
+| D9 | `GET /trends` is in Phase 3d | Inference endpoint (~4h) shipped in same PR. Phase 3e is a manual execution gate (first real training run), not an implementation phase. |
 | D10 | No caching on `GET /trends` in v1.0 | Scores update once per year; DB query is fast; avoids cache invalidation complexity |
 | D11 | `pp_unit_change` excluded from model features | String value (`"PP2→PP1"` etc.) — XGBoost cannot ingest strings; `pp_unit` (current value) already captures PP assignment |
 | D12 | `toi_ev_per_game` excluded from model features | Perfectly collinear with `toi_ev` (weighted average of per-game rate); including both inflates SHAP attribution |
@@ -161,7 +163,7 @@ retrain-trends.yml (GitHub Actions, Aug 1 annually + manual dispatch)
         │
         └── upsert player_trends (current-season skaters only)
               breakout_score, regression_risk, confidence,
-              shap_values (JSONB), updated_at
+              shap_top3 (JSONB), updated_at
 
 FastAPI startup (lifespan in main.py)
   └── loader.load(settings.current_season)
@@ -180,7 +182,7 @@ GET /trends?season=<season>
   └── TrendsRepository.get_trends(season)
         SELECT p.id, p.name, p.position, p.team,
                pt.breakout_score, pt.regression_risk, pt.confidence,
-               pt.shap_values, pt.updated_at
+               pt.shap_top3, pt.updated_at
         FROM players p
         LEFT JOIN player_trends pt ON p.id = pt.player_id AND pt.season = :season
         ORDER BY pt.breakout_score DESC NULLS LAST
