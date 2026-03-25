@@ -2,17 +2,15 @@
 
 | Field | Value |
 |---|---|
-| Active Phase | Phase 3e — First Real Training Run |
-| Active Branch | main (feat/phase3d-model-training open as PR #28) |
-| Open PR | #28 — feat/phase3d-model-training |
-| Current Focus | Phase 3d complete; 3e (first real training run) is next after PR #28 merges |
-| Last Action | Resolved 3 post-review issues on PR #28 (commit 87a2d0a): holdout metrics validity, scraper backfill --history flag, .gitignore path. 790 tests passing. |
+| Active Phase | Phase 3e — First Real Training Run (execution gate, not implementation) |
+| Active Branch | main |
+| Open PR | None |
+| Current Focus | Phase 3d closed (PR #28 merged 2026-03-24); Phase 3e manual execution checklist is next |
+| Last Action | Post-merge cleanup: updated apps/api/CLAUDE.md Phase 3d rows to ✅ Complete; added PR #28 to Notion card Context & Notes |
 | Session Tier | — |
-| Spec | `docs/superpowers/specs/2026-03-23-phase3d-model-training.md` |
-| Plan | `docs/superpowers/plans/2026-03-23-phase3d-model-training.md` |
-| Next Steps | 1. Merge PR #28  2. Phase 3e: first real training run (see checklist below)  3. Phase 3f: inference API (GET /trends) |
+| Next Steps | 1. Phase 3e: run checklist below (manual ops — no code) |
 
-## Phase 3e — First Real Training Run Checklist
+## Phase 3e — First Real Training Run (execution gate, not implementation) Checklist
 
 Prerequisites (manual, before any code):
 - [ ] PR #28 merged
@@ -20,7 +18,7 @@ Prerequisites (manual, before any code):
 - [ ] `.env` confirmed with real `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `CURRENT_SEASON=2026-27`
 
 Steps:
-- [ ] `python -m scrapers.hockey_reference --history` — backfill 2008-09 → current season into `player_stats`
+- [ ] `python -m scrapers.hockey_reference --history` — backfill 2005-06 → current season into `player_stats`
 - [ ] Spot-check `player_stats`: verify `sh_pct_career_avg`, `nhl_experience`, `career_goals` non-null for a known player
 - [ ] `python -m ml.train --season 2026-27` — full training run (~10–30 min with Optuna)
 - [ ] Verify Supabase Storage: `ml-artifacts/2025-26/` contains `breakout_model.joblib`, `regression_model.joblib`, `metadata.json`

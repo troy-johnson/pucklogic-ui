@@ -164,20 +164,18 @@ Do not build Layer 2 Celery jobs, Z-score computation, or the paywall gate until
 
 **Phase 3c backlog (resolve before Phase 3d):** `stale_season` + `position_type` output flags + spec drift fix for `a2_pct_of_assists` (Notion P2). All scrapers are skater-only so goalie contamination is not a current risk.
 
-### Phase 3d — Model Training
+### Phase 3d — Model Training + Inference API (✅ Complete, PR #28, 2026-03-24)
 
 | Area | Status | Notes |
 |------|--------|-------|
-| XGBoost/LightGBM training pipeline | ⬜ Not started | |
-| SHAP value computation | ⬜ Not started | |
-| Yearly retraining GitHub Action | ⬜ Not started | |
-
-### Phase 3e — Inference API
-
-| Area | Status | Notes |
-|------|--------|-------|
-| `routers/trends.py` — GET /trends | ⬜ Not started | Returns `TrendsResponse`; reads from `player_trends` |
-| `repositories/trends.py` | ⬜ Not started | |
+| `apps/api/ml/` module | ✅ Complete | `train.py`, `loader.py`, `evaluate.py`, `shap_compute.py` |
+| XGBoost/LightGBM training pipeline | ✅ Complete | XGBoost primary; LightGBM challenger; 5-fold time-series CV; Optuna 50 trials; holdout 2023–2024 excluded from CV, included in final retrain |
+| SHAP value computation | ✅ Complete | `shap.TreeExplainer`; top-3 by abs(shap_value) stored as JSONB in `player_trends.shap_values` |
+| `player_trends` upserts | ✅ Complete | `breakout_score`, `regression_risk`, `confidence`, `shap_values`, `updated_at`; upsert with `file_options={"upsert": "true"}` |
+| Yearly retraining GitHub Action | ✅ Complete | `retrain-trends.yml` — triggers Aug 1 annually + manual dispatch; steps: pip install → scrape → train |
+| `repositories/trends.py` | ✅ Complete | `TrendsRepository.get_trends(season)` — LEFT JOIN players + player_trends |
+| `routers/trends.py` — GET /trends | ✅ Complete | Returns `TrendsResponse`; 503 if model not loaded; `has_trends=False` for pre-training; no paywall in v1.0 |
+| FastAPI lifespan hook | ✅ Complete | `loader.py` called at startup; raises `ModelNotAvailableError` on Storage failure; dev cache at `~/.pucklogic/models/data_season/` |
 
 ---
 
@@ -262,6 +260,7 @@ STRIPE_WEBHOOK_SECRET=        # whsec_... (Phase 2)
 STRIPE_PRICE_ID=              # price_... (Phase 2)
 FRONTEND_URL=http://localhost:3000
 ENVIRONMENT=development
+CURRENT_SEASON=2026-27           # e.g. 2026-27 — used by ml.train and GET /trends default
 ```
 
 Never commit `.env`. It is gitignored.
