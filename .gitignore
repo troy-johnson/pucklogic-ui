@@ -34,3 +34,13 @@ build
 *.log
 .turbo
 .claude/worktrees/
+.worktrees/
+
+# Test artifacts
+.coverage
+
+# TypeScript build cache
+apps/web/tsconfig.tsbuildinfo
+
+# Serena MCP local state
+.serena/
