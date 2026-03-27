@@ -106,6 +106,11 @@ NHL_PLAYER_2 = {
     "assists": 79,
     "gamesPlayed": 80,
 }
+NHL_REALTIME_PLAYER_1 = {
+    "playerId": 8478402,  # same ID as NHL_PLAYER_1 (McDavid)
+    "hits": 34,
+    "blockedShots": 12,
+}
 
 
 class TestScrape:
@@ -121,6 +126,8 @@ class TestScrape:
             ),
             # NHL API page 1 (2 players — less than PAGE_SIZE so no page 2)
             _make_response({"data": [NHL_PLAYER_1, NHL_PLAYER_2], "total": 2}),
+            # realtime page 1 (empty — no realtime data needed for this test)
+            _make_response({"data": [], "total": 0}),
         ]
         db = _mock_db()
         db.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "p-1"}]
@@ -137,6 +144,8 @@ class TestScrape:
                 text="User-agent: *\nAllow: /",
                 request=httpx.Request("GET", "http://x"),
             ),
+            _make_response({"data": [], "total": 0}),
+            # realtime page 1 (empty)
             _make_response({"data": [], "total": 0}),
         ]
         db = _mock_db()
@@ -171,6 +180,8 @@ class TestScrape:
                 request=httpx.Request("GET", "http://x"),
             ),
             _make_response({"data": [NHL_PLAYER_1], "total": 1}),
+            # realtime page 1 (empty)
+            _make_response({"data": [], "total": 0}),
         ]
         db = _mock_db()
         scraper = NhlComScraper(http=mock_http)
@@ -193,6 +204,8 @@ class TestScrape:
             ),
             _make_response({"data": full_page, "total": PAGE + 1}),
             _make_response({"data": [NHL_PLAYER_2], "total": PAGE + 1}),
+            # realtime page 1 (empty)
+            _make_response({"data": [], "total": 0}),
         ]
         db = _mock_db()
         db.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "p-1"}]
@@ -211,6 +224,8 @@ class TestScrape:
                 request=httpx.Request("GET", "http://x"),
             ),
             _make_response({"data": [NHL_PLAYER_1], "total": 1}),
+            # realtime page 1 (empty)
+            _make_response({"data": [], "total": 0}),
         ]
         db = _mock_db()
         scraper = NhlComScraper(http=mock_http)
@@ -228,6 +243,8 @@ class TestScrape:
                 request=httpx.Request("GET", "http://x"),
             ),
             _make_response({"data": [NHL_PLAYER_1], "total": 1}),
+            # realtime page 1 (empty)
+            _make_response({"data": [], "total": 0}),
         ]
         db = _mock_db()
         scraper = NhlComScraper(http=mock_http)
@@ -245,6 +262,8 @@ class TestScrape:
                 request=httpx.Request("GET", "http://x"),
             ),
             _make_response({"data": [NHL_PLAYER_1], "total": 1}),
+            # realtime page 1 (empty)
+            _make_response({"data": [], "total": 0}),
         ]
         db = _mock_db()
         scraper = NhlComScraper(http=mock_http)
@@ -271,6 +290,8 @@ class TestScrape:
                 request=httpx.Request("GET", "http://x"),
             ),
             _make_response({"data": [player_no_gp], "total": 1}),
+            # realtime page 1 (empty — player_no_gp has no realtime data either)
+            _make_response({"data": [], "total": 0}),
         ]
         db = _mock_db()
         scraper = NhlComScraper(http=mock_http)
@@ -290,6 +311,8 @@ class TestScrape:
             ),
             _make_response({"data": [NHL_PLAYER_1] * PAGE}),
             _make_response({"data": []}),
+            # realtime page 1 (empty — no sleep in realtime loop)
+            _make_response({"data": [], "total": 0}),
         ]
         db = _mock_db()
         db.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "p-1"}]
@@ -298,3 +321,66 @@ class TestScrape:
         with patch("scrapers.nhl_com.asyncio.sleep", sleep_mock):
             await scraper.scrape(SEASON, db)
         sleep_mock.assert_awaited_once_with(scraper.MIN_DELAY_SECONDS)
+
+
+class TestRealtimeEndpoint:
+    def test_build_realtime_url_contains_realtime_path(self) -> None:
+        url = NhlComScraper()._build_realtime_url(SEASON)
+        assert "skater/realtime" in url
+
+    @pytest.mark.asyncio
+    async def test_upserts_hits_and_blocks(self) -> None:
+        """Two-pass scrape: summary then realtime. Hits/blocks land in player_stats."""
+        mock_http = AsyncMock()
+        mock_http.get.side_effect = [
+            # robots.txt
+            httpx.Response(
+                200, text="User-agent: *\nAllow: /", request=httpx.Request("GET", "http://x")
+            ),
+            # summary page 1 (less than PAGE_SIZE → done)
+            _make_response({"data": [NHL_PLAYER_1], "total": 1}),
+            # realtime page 1
+            _make_response({"data": [NHL_REALTIME_PLAYER_1], "total": 1}),
+        ]
+        db = _mock_db()
+        scraper = NhlComScraper(http=mock_http)
+        await scraper.scrape(SEASON, db)
+        upsert_calls = str(db.table.return_value.upsert.call_args_list)
+        assert "'hits': 34" in upsert_calls
+        assert "'blocks': 12" in upsert_calls
+
+    @pytest.mark.asyncio
+    async def test_realtime_skips_player_not_in_summary(self) -> None:
+        """Realtime player whose ID wasn't in the summary pass should be skipped."""
+        realtime_unknown = {"playerId": 9999999, "hits": 100, "blockedShots": 50}
+        mock_http = AsyncMock()
+        mock_http.get.side_effect = [
+            httpx.Response(
+                200, text="User-agent: *\nAllow: /", request=httpx.Request("GET", "http://x")
+            ),
+            _make_response({"data": [NHL_PLAYER_1], "total": 1}),
+            _make_response({"data": [realtime_unknown], "total": 1}),
+        ]
+        db = _mock_db()
+        scraper = NhlComScraper(http=mock_http)
+        await scraper.scrape(SEASON, db)
+        upsert_calls = str(db.table.return_value.upsert.call_args_list)
+        assert "'hits': 100" not in upsert_calls
+
+    @pytest.mark.asyncio
+    async def test_realtime_skips_when_no_hits_or_blocks(self) -> None:
+        """Realtime row with neither hits nor blockedShots should not trigger upsert."""
+        realtime_empty = {"playerId": 8478402}  # no hits, no blockedShots
+        mock_http = AsyncMock()
+        mock_http.get.side_effect = [
+            httpx.Response(
+                200, text="User-agent: *\nAllow: /", request=httpx.Request("GET", "http://x")
+            ),
+            _make_response({"data": [NHL_PLAYER_1], "total": 1}),
+            _make_response({"data": [realtime_empty], "total": 1}),
+        ]
+        db = _mock_db()
+        scraper = NhlComScraper(http=mock_http)
+        await scraper.scrape(SEASON, db)
+        upsert_calls = str(db.table.return_value.upsert.call_args_list)
+        assert "'hits'" not in upsert_calls

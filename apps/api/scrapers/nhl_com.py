@@ -20,6 +20,7 @@ from scrapers.base import BaseScraper, RobotsDisallowedError
 logger = logging.getLogger(__name__)
 
 _NHL_STATS_URL = "https://api.nhle.com/stats/rest/en/skater/summary"
+_NHL_REALTIME_URL = "https://api.nhle.com/stats/rest/en/skater/realtime"
 
 
 class NhlComScraper(BaseScraper):
@@ -49,6 +50,15 @@ class NhlComScraper(BaseScraper):
             f"?isAggregate=false&isGame=false"
             f"&sort={sort}"
             f"&start={start}&limit={self.PAGE_SIZE}"
+            f"&cayenneExp={expr}"
+        )
+
+    def _build_realtime_url(self, season: str, start: int = 0) -> str:
+        sort = json.dumps([{"property": "hits", "direction": "DESC"}])
+        expr = f"seasonId={self._season_id(season)} and gameTypeId=2"
+        return (
+            f"{_NHL_REALTIME_URL}?isAggregate=false&isGame=false"
+            f"&sort={sort}&start={start}&limit={self.PAGE_SIZE}"
             f"&cayenneExp={expr}"
         )
 
@@ -120,6 +130,21 @@ class NhlComScraper(BaseScraper):
             on_conflict="player_id,season",
         ).execute()
 
+    def _upsert_realtime_stats(
+        self, db: Any, player_id: str, season: str, player: dict[str, Any]
+    ) -> None:
+        int_fields = {"hits": "hits", "blockedShots": "blocks"}
+        stats: dict[str, Any] = {}
+        for api_key, col in int_fields.items():
+            if (val := player.get(api_key)) is not None:
+                stats[col] = int(val)
+        if not stats:
+            return
+        db.table("player_stats").upsert(
+            {"player_id": player_id, "season": season, **stats},
+            on_conflict="player_id,season",
+        ).execute()
+
     def _upsert_ranking(
         self, db: Any, player_id: str, source_id: str, rank: int, season: str
     ) -> None:
@@ -144,6 +169,7 @@ class NhlComScraper(BaseScraper):
         source_id = self._upsert_source(db)
         rows_upserted = 0
         start = 0
+        nhl_id_map: dict[str, str] = {}  # nhl_id (str) → internal player_id (uuid)
 
         while True:
             url = self._build_url(season, start)
@@ -156,9 +182,33 @@ class NhlComScraper(BaseScraper):
             for offset, player in enumerate(players):
                 rank = start + offset + 1
                 player_id = self._upsert_player(db, player)
+                nhl_id_map[str(player["playerId"])] = player_id
                 self._upsert_ranking(db, player_id, source_id, rank, season)
                 self._upsert_player_stats(db, player_id, season, player)
                 rows_upserted += 1
+
+            if len(players) < self.PAGE_SIZE:
+                break
+
+            start += self.PAGE_SIZE
+            await asyncio.sleep(self.MIN_DELAY_SECONDS)
+
+        # Realtime pass — hits + blocked shots
+        start = 0
+        while True:
+            url = self._build_realtime_url(season, start)
+            response = await self._get_with_retry(url)
+            players = response.json().get("data", [])
+
+            if not players:
+                break
+
+            for player in players:
+                nhl_id = str(player["playerId"])
+                player_id = nhl_id_map.get(nhl_id)
+                if player_id is None:
+                    continue
+                self._upsert_realtime_stats(db, player_id, season, player)
 
             if len(players) < self.PAGE_SIZE:
                 break
