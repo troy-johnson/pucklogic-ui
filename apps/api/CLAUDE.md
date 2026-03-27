@@ -177,6 +177,23 @@ Do not build Layer 2 Celery jobs, Z-score computation, or the paywall gate until
 | `routers/trends.py` — GET /trends | ✅ Complete | Returns `TrendsResponse`; 503 if model not loaded; `has_trends=False` for pre-training; no paywall in v1.0 |
 | FastAPI lifespan hook | ✅ Complete | `loader.py` called at startup; raises `ModelNotAvailableError` on Storage failure; dev cache at `~/.pucklogic/models/data_season/` |
 
+### Phase 3e — Hits/Blocks Integration (feat/codex-doc-onboarding, PR pending)
+
+Pre-training prerequisite: adds physical stats (hits, blocks) to scraping, feature engineering, and ML model so the training run has complete feature coverage.
+
+| Area | Status | Notes |
+|------|--------|-------|
+| `supabase/migrations/005_hits_blocks_per60.sql` | ✅ Written | Adds `hits_per60 FLOAT`, `blocks_per60 FLOAT` to `player_stats`; apply manually in Supabase dashboard before training |
+| `scrapers/nst.py` | ✅ Complete | Added `"iHF/60": "hits_per60"` and `"iBLK/60": "blocks_per60"` to `_FLOAT_COL_MAP_ALL`; 43 tests passing |
+| `scrapers/nhl_com.py` | ✅ Complete | Added `_NHL_REALTIME_URL`, `_build_realtime_url()`, `_upsert_realtime_stats()`; second pagination pass fetches `hits`/`blockedShots` via `nhl_id_map`; 23 tests passing |
+| `services/feature_engineering.py` | ✅ Complete | `PHYSICAL_SEASON_WEIGHTS = [0.6, 0.25, 0.15]`; `_STAT_WEIGHT_OVERRIDES` dict; `hits_per60`/`blocks_per60` added to `_WEIGHTED_RATE_STATS` and `build_feature_matrix` output; 103 tests passing |
+| `ml/train.py` | ✅ Complete | `FEATURE_NAMES` expanded from 21 → 23 features (added `hits_per60`, `blocks_per60`) |
+
+**Before running `python -m ml.train`:**
+1. Apply migration 005 in Supabase dashboard
+2. `python -m scrapers.nst --history` — backfills `hits_per60`/`blocks_per60` for all seasons
+3. `python -m scrapers.nhl_com --history` — backfills raw `hits`/`blocks` for all seasons
+
 ---
 
 ### Phase 2 — Scrapers Complete (feat/phase2-projection-scrapers)

@@ -151,6 +151,8 @@ CREATE TABLE player_stats (
   toi_per_game FLOAT,             -- minutes
   sog INTEGER,                     -- shots on goal
   hits INTEGER, blocks INTEGER,
+  hits_per60 FLOAT,               -- Marcel-weighted physical rate (from NST iHF/60)
+  blocks_per60 FLOAT,             -- Marcel-weighted physical rate (from NST iBLK/60)
   cf_pct FLOAT,                   -- Corsi for %
   xgf_pct FLOAT,                  -- expected goals for %
   iscf_per_60 FLOAT,              -- individual scoring chances per 60 (KEY METRIC)
