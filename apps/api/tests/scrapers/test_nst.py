@@ -16,6 +16,7 @@ import pytest
 from scrapers.nst import NstScraper
 
 FIXTURE = Path(__file__).parent / "fixtures" / "nst_skaters.html"
+FIXTURE_OI = Path(__file__).parent / "fixtures" / "nst_skaters_oi.html"
 FIXTURE_5V5 = Path(__file__).parent / "fixtures" / "nst_skaters_5v5.html"
 FIXTURE_EV = Path(__file__).parent / "fixtures" / "nst_skaters_ev.html"
 FIXTURE_PP = Path(__file__).parent / "fixtures" / "nst_skaters_pp.html"
@@ -46,14 +47,14 @@ class TestParseHtml:
         assert len(rows_with_stats) > 0
 
     def test_parses_cf_pct(self) -> None:
-        rows = NstScraper._parse_html(FIXTURE.read_text())
+        rows = NstScraper._parse_html(FIXTURE_OI.read_text(), float_col_map={"CF%": "cf_pct"})
         row = rows[0]
         assert "cf_pct" in row
         assert isinstance(row["cf_pct"], float)
         assert row["cf_pct"] == pytest.approx(58.3)
 
     def test_parses_xgf_pct(self) -> None:
-        rows = NstScraper._parse_html(FIXTURE.read_text())
+        rows = NstScraper._parse_html(FIXTURE_OI.read_text(), float_col_map={"xGF%": "xgf_pct"})
         row = rows[0]
         assert "xgf_pct" in row
         assert isinstance(row["xgf_pct"], float)
@@ -67,7 +68,7 @@ class TestParseHtml:
         assert row["sh_pct"] == pytest.approx(14.2)
 
     def test_parses_pdo(self) -> None:
-        rows = NstScraper._parse_html(FIXTURE.read_text())
+        rows = NstScraper._parse_html(FIXTURE_OI.read_text(), float_col_map={"PDO": "pdo"})
         row = rows[0]
         assert "pdo" in row
         assert isinstance(row["pdo"], float)
@@ -240,7 +241,7 @@ class TestParseHtmlPhase3Columns:
         assert rows[0]["ixg_per60"] == pytest.approx(1.42)
 
     def test_parses_scf_pct(self) -> None:
-        rows = NstScraper._parse_html(FIXTURE.read_text())
+        rows = NstScraper._parse_html(FIXTURE_OI.read_text(), float_col_map={"SCF%": "scf_pct"})
         assert "scf_pct" in rows[0]
         assert rows[0]["scf_pct"] == pytest.approx(61.2)
 
@@ -259,7 +260,6 @@ class TestParseHtmlPhase3Columns:
         for row in rows:
             assert "icf_per60" in row
             assert "ixg_per60" in row
-            assert "scf_pct" in row
             assert "scf_per60" in row
             assert "p1_per60" in row
 
@@ -420,15 +420,17 @@ class TestScrapeMultiSituation:
         scraper = NstScraper()
 
         def fake_get(url: str) -> MagicMock:
+            if "stdoi=oi" in url:
+                return MagicMock(text=FIXTURE_OI.read_text(), status_code=200)
             if "sit=ev" in url:
-                return MagicMock(text=FIXTURE_EV.read_text())
+                return MagicMock(text=FIXTURE_EV.read_text(), status_code=200)
             if "sit=5v5" in url:
-                return MagicMock(text=FIXTURE_5V5.read_text())
+                return MagicMock(text=FIXTURE_5V5.read_text(), status_code=200)
             if "sit=pp" in url:
-                return MagicMock(text=FIXTURE_PP.read_text())
+                return MagicMock(text=FIXTURE_PP.read_text(), status_code=200)
             if "sit=sh" in url:
-                return MagicMock(text=FIXTURE_SH.read_text())
-            return MagicMock(text=FIXTURE.read_text())  # sit=all
+                return MagicMock(text=FIXTURE_SH.read_text(), status_code=200)
+            return MagicMock(text=FIXTURE.read_text(), status_code=200)  # sit=all
 
         with (
             patch.object(scraper, "_check_robots_txt", new=AsyncMock(return_value=True)),
@@ -450,21 +452,23 @@ class TestScrapeMultiSituation:
         assert "icf_per60" in call_kwargs
 
     @pytest.mark.asyncio
-    async def test_scrape_makes_five_http_requests(self) -> None:
-        """scrape() fetches all, 5v5, ev, pp, sh situations."""
+    async def test_scrape_makes_six_http_requests(self) -> None:
+        """scrape() fetches all, 5v5, ev, pp, sh, and on-ice (stdoi=oi) situations."""
         mock_db = self._make_db()
         scraper = NstScraper()
 
         def fake_get(url: str) -> MagicMock:
+            if "stdoi=oi" in url:
+                return MagicMock(text=FIXTURE_OI.read_text(), status_code=200)
             if "sit=ev" in url:
-                return MagicMock(text=FIXTURE_EV.read_text())
+                return MagicMock(text=FIXTURE_EV.read_text(), status_code=200)
             if "sit=5v5" in url:
-                return MagicMock(text=FIXTURE_5V5.read_text())
+                return MagicMock(text=FIXTURE_5V5.read_text(), status_code=200)
             if "sit=pp" in url:
-                return MagicMock(text=FIXTURE_PP.read_text())
+                return MagicMock(text=FIXTURE_PP.read_text(), status_code=200)
             if "sit=sh" in url:
-                return MagicMock(text=FIXTURE_SH.read_text())
-            return MagicMock(text=FIXTURE.read_text())
+                return MagicMock(text=FIXTURE_SH.read_text(), status_code=200)
+            return MagicMock(text=FIXTURE.read_text(), status_code=200)
 
         mock_get = AsyncMock(side_effect=fake_get)
         with (
@@ -473,4 +477,4 @@ class TestScrapeMultiSituation:
         ):
             await scraper.scrape("2025-26", mock_db)
 
-        assert mock_get.call_count == 5
+        assert mock_get.call_count == 6

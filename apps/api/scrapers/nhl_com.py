@@ -90,15 +90,31 @@ class NhlComScraper(BaseScraper):
     def _upsert_player_stats(
         self, db: Any, player_id: str, season: str, player: dict[str, Any]
     ) -> None:
-        stats: dict[str, Any] = {}
-        if (gp := player.get("gamesPlayed")) is not None:
-            stats["gp"] = int(gp)
-        if (goals := player.get("goals")) is not None:
-            stats["g"] = int(goals)
-        if (assists := player.get("assists")) is not None:
-            stats["a"] = int(assists)
-        if not stats:
+        # Require gamesPlayed — without it the row is not meaningful.
+        if player.get("gamesPlayed") is None:
             return
+        int_fields = {
+            "gamesPlayed": "gp",
+            "goals": "g",
+            "assists": "a",
+            "points": "pts",
+            "ppPoints": "ppp",
+            "shPoints": "sh_points",
+            "shots": "sog",
+        }
+        float_fields = {
+            "faceoffWinPct": "fo_pct",
+        }
+        stats: dict[str, Any] = {}
+        for api_key, col in int_fields.items():
+            if (val := player.get(api_key)) is not None:
+                stats[col] = int(val)
+        for api_key, col in float_fields.items():
+            if (val := player.get(api_key)) is not None:
+                try:
+                    stats[col] = float(val)
+                except (ValueError, TypeError):
+                    pass
         db.table("player_stats").upsert(
             {"player_id": player_id, "season": season, **stats},
             on_conflict="player_id,season",

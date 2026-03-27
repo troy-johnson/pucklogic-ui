@@ -73,23 +73,42 @@ logger = logging.getLogger(__name__)
 _NST_URL_TEMPLATE = (
     "https://www.naturalstattrick.com/playerteams.php"
     "?fromseason={sid}&thruseason={sid}"
-    "&stype=2&sit={sit}&score=all&stdoi=std&rate=n"
+    "&stype=2&sit={sit}&score=all&stdoi=std&rate=y"
+    "&team=ALL&pos=S&loc=B&toi=0&gpfilt=none"
+    "&fd=&td=&tgfrom=0&tgthru=0&lines=single&draftteam=ALL"
+)
+
+# On-ice stats URL (stdoi=oi) — provides CF%, xGF%, SCF%, PDO, On-Ice SH%.
+# These are absent from the individual-stats (stdoi=std) view.
+_NST_OI_URL_TEMPLATE = (
+    "https://www.naturalstattrick.com/playerteams.php"
+    "?fromseason={sid}&thruseason={sid}"
+    "&stype=2&sit=all&score=all&stdoi=oi&rate=y"
     "&team=ALL&pos=S&loc=B&toi=0&gpfilt=none"
     "&fd=&td=&tgfrom=0&tgthru=0&lines=single&draftteam=ALL"
 )
 
 # Maps NST column headers → player_stats column names for the all-situations fetch.
 # GP and TOI are handled separately in _parse_html.
+# NST renamed P1/60 → "First Assists/60" and moved on-ice stats to stdoi=oi.
 _FLOAT_COL_MAP_ALL: dict[str, str] = {
-    "CF%": "cf_pct",
-    "xGF%": "xgf_pct",
     "SH%": "sh_pct",
-    "PDO": "pdo",
     "iCF/60": "icf_per60",
     "ixG/60": "ixg_per60",
-    "SCF%": "scf_pct",
     "iSCF/60": "scf_per60",
-    "P1/60": "p1_per60",
+    "First Assists/60": "p1_per60",
+    "Goals/60": "g_per60",
+}
+
+# On-ice column map (stdoi=oi fetch).
+# CF% is mapped to both cf_pct and cf_pct_adj (proxy — NST does not expose
+# zone-adjusted CF% in the free data view).
+_FLOAT_COL_MAP_OI: dict[str, str] = {
+    "CF%": "cf_pct",
+    "xGF%": "xgf_pct",
+    "SCF%": "scf_pct",
+    "PDO": "pdo",
+    "On-Ice SH%": "oi_sh_pct",
 }
 
 # Situation fetches beyond all-situations: (sit param, float_col_map, toi_col_name)
@@ -130,6 +149,11 @@ class NstScraper(BaseScraper):
         return _NST_URL_TEMPLATE.format(sid=sid, sit=sit)
 
     @staticmethod
+    def _build_oi_url(season: str) -> str:
+        sid = NstScraper._season_id(season)
+        return _NST_OI_URL_TEMPLATE.format(sid=sid)
+
+    @staticmethod
     def _parse_html(
         html: str,
         float_col_map: dict[str, str] | None = None,
@@ -162,7 +186,17 @@ class NstScraper(BaseScraper):
         soup = BeautifulSoup(html, "html.parser")
         table = soup.find("table", id="players")
         if table is None:
-            logger.warning("NstScraper: skaters table (id='players') not found in HTML")
+            # Fallback: find the first table whose header row contains "Player"
+            for candidate in soup.find_all("table"):
+                header = candidate.find("tr")
+                if header and any(
+                    cell.get_text(strip=True) == "Player" for cell in header.find_all(["th", "td"])
+                ):
+                    table = candidate
+                    logger.info("NstScraper: found skaters table via header fallback")
+                    break
+        if table is None:
+            logger.warning("NstScraper: skaters table not found in HTML")
             return []
 
         all_rows = table.find_all("tr")
@@ -383,9 +417,32 @@ class NstScraper(BaseScraper):
 
         rows = self._merge_situation_rows(rows, *situation_row_lists)
 
+        # On-ice stats fetch (stdoi=oi): cf_pct, xgf_pct, scf_pct, pdo, oi_sh_pct
+        await asyncio.sleep(self.MIN_DELAY_SECONDS)
+        oi_url = self._build_oi_url(season)
+        try:
+            oi_response = await self._get_with_retry(oi_url)
+            if oi_response.status_code == 403:
+                logger.warning("NstScraper: 403 for on-ice fetch season=%s — skipping.", season)
+            else:
+                oi_rows = self._parse_html(
+                    oi_response.text,
+                    float_col_map=_FLOAT_COL_MAP_OI,
+                    toi_col_name="",
+                )
+                rows = self._merge_situation_rows(rows, oi_rows)
+        except Exception as exc:
+            logger.warning("NstScraper: on-ice fetch failed for %s (%s) — skipping.", season, exc)
+
         if not rows:
             logger.warning("NstScraper: no rows parsed for season %s", season)
             return 0
+
+        # cf_pct_adj proxy: NST does not expose zone-adjusted CF% in free data.
+        # Copy cf_pct as a same-season proxy until a better source is available.
+        for row in rows:
+            if row.get("cf_pct") is not None and row.get("cf_pct_adj") is None:
+                row["cf_pct_adj"] = row["cf_pct"]
 
         players = self._fetch_players(db)
         aliases = self._fetch_aliases(db)
@@ -424,14 +481,56 @@ class NstScraper(BaseScraper):
 # ------------------------------------------------------------------
 
 
+def _iter_seasons(start: str, end: str) -> list[str]:
+    """Return season strings from start to end inclusive.
+
+    "2005-06", "2025-26" → ["2005-06", "2006-07", ..., "2025-26"]
+    """
+    start_year = int(start.split("-")[0])
+    end_year = int(end.split("-")[0])
+    seasons = []
+    for y in range(start_year, end_year + 1):
+        short = str(y + 1)[-2:]
+        seasons.append(f"{y}-{short}")
+    return seasons
+
+
 async def _main() -> None:
+    import argparse
+
     from supabase import create_client
 
     from core.config import settings
 
+    parser = argparse.ArgumentParser(description="Natural Stat Trick scraper")
+    parser.add_argument(
+        "--history",
+        action="store_true",
+        help=(
+            "Backfill all seasons from 2005-06 to current_season. "
+            "NST data availability varies by season; seasons that return no rows "
+            "are skipped gracefully. Run before the first training run."
+        ),
+    )
+    args = parser.parse_args()
+
     db = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    count = await NstScraper().scrape(settings.current_season, db)
-    print(f"Upserted {count} rows.")
+    scraper = NstScraper()
+
+    if args.history:
+        seasons = _iter_seasons("2005-06", settings.current_season)
+        total = 0
+        for season in seasons:
+            try:
+                count = await scraper.scrape(season, db)
+                total += count
+                print(f"NST {season}: {count} rows")
+            except Exception as exc:
+                logger.warning("NST %s: skipped — %s", season, exc)
+        print(f"NST history: {total} total rows upserted")
+    else:
+        count = await scraper.scrape(settings.current_season, db)
+        print(f"Upserted {count} rows.")
 
 
 if __name__ == "__main__":
