@@ -264,6 +264,20 @@ class TestParseHtmlPhase3Columns:
             assert "p1_per60" in row
 
 
+class TestParseHtmlPhase3ColumnsHitsBlocks:
+    def test_parses_hits_per60(self) -> None:
+        rows = NstScraper._parse_html(FIXTURE.read_text())
+        row = rows[0]
+        assert "hits_per60" in row
+        assert row["hits_per60"] == pytest.approx(3.42)
+
+    def test_parses_blocks_per60(self) -> None:
+        rows = NstScraper._parse_html(FIXTURE.read_text())
+        row = rows[0]
+        assert "blocks_per60" in row
+        assert row["blocks_per60"] == pytest.approx(0.85)
+
+
 # ---------------------------------------------------------------------------
 # _build_url — sit parameter
 # ---------------------------------------------------------------------------

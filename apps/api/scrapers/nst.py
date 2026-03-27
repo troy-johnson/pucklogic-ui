@@ -98,6 +98,8 @@ _FLOAT_COL_MAP_ALL: dict[str, str] = {
     "iSCF/60": "scf_per60",
     "First Assists/60": "p1_per60",
     "Goals/60": "g_per60",
+    "iHF/60": "hits_per60",
+    "iBLK/60": "blocks_per60",
 }
 
 # On-ice column map (stdoi=oi fetch).
