@@ -6,6 +6,13 @@ from typing import Any
 
 PROJECTION_WINDOW: int = 3
 SEASON_WEIGHTS: list[float] = [0.5, 0.3, 0.2]  # index 0 = most recent
+PHYSICAL_SEASON_WEIGHTS: list[float] = [0.6, 0.25, 0.15]
+
+_STAT_WEIGHT_OVERRIDES: dict[str, list[float]] = {
+    "hits_per60": PHYSICAL_SEASON_WEIGHTS,
+    "blocks_per60": PHYSICAL_SEASON_WEIGHTS,
+}
+
 TOI_THRESHOLD: float = 5.0  # toi_ev per game minimum (300 ES-min / 60 games)
 
 _WEIGHTED_RATE_STATS: list[str] = [
@@ -19,6 +26,8 @@ _WEIGHTED_RATE_STATS: list[str] = [
     "toi_ev",
     "toi_pp",
     "toi_sh",
+    "hits_per60",  # physical stickiness signal
+    "blocks_per60",  # physical stickiness signal
 ]
 
 logger = logging.getLogger(__name__)
@@ -44,23 +53,16 @@ def _apply_weighted_rates(rows: list[dict[str, Any]]) -> dict[str, Any]:
     if not qualifying:
         return result
 
-    # Step 2: take raw SEASON_WEIGHTS for qualifying count, renormalize
-    raw_weights = SEASON_WEIGHTS[: len(qualifying)]
-    weight_total = sum(raw_weights)
-    normalized = [w / weight_total for w in raw_weights]
-
-    # Step 3: per-stat weighted average (further renormalize for per-stat nulls)
     for stat in _WEIGHTED_RATE_STATS:
+        base_weights = _STAT_WEIGHT_OVERRIDES.get(stat, SEASON_WEIGHTS)
+        raw_w = base_weights[: len(qualifying)]
+        norm = [w / sum(raw_w) for w in raw_w]
         stat_pairs = [
-            (normalized[i], row[stat])
-            for i, row in enumerate(qualifying)
-            if row.get(stat) is not None
+            (norm[i], row[stat]) for i, row in enumerate(qualifying) if row.get(stat) is not None
         ]
         if not stat_pairs:
             result[stat] = None
             continue
-
-        # Renormalize weights for non-null rows of this stat
         stat_weight_total = sum(w for w, _ in stat_pairs)
         result[stat] = sum((w / stat_weight_total) * v for w, v in stat_pairs)
 

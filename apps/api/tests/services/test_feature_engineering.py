@@ -774,3 +774,37 @@ class TestBuildFeatureMatrix:
         }
         missing = required_keys - set(player.keys())
         assert not missing, f"Missing keys: {missing}"
+
+
+# ---------------------------------------------------------------------------
+# Tests: physical stat Marcel weight overrides
+# ---------------------------------------------------------------------------
+
+
+class TestPhysicalStatWeights:
+    def test_hits_per60_uses_physical_weights(self) -> None:
+        """hits_per60 should use [0.6, 0.25, 0.15], not [0.5, 0.3, 0.2]."""
+        # Three seasons newest-first, each with toi_ev above threshold
+        rows = [
+            {**_make_row(season=2025), "hits_per60": 4.0},  # current (weight 0.6)
+            {**_make_row(season=2024), "hits_per60": 2.0},  # yr -1  (weight 0.25)
+            {**_make_row(season=2023), "hits_per60": 1.0},  # yr -2  (weight 0.15)
+        ]
+        result = _apply_weighted_rates(rows)
+        # Normalized: 0.6/1.0=0.6, 0.25/1.0=0.25, 0.15/1.0=0.15
+        expected = 0.6 * 4.0 + 0.25 * 2.0 + 0.15 * 1.0
+        assert result["hits_per60"] == pytest.approx(expected)
+
+    def test_standard_stats_unaffected_by_override(self) -> None:
+        """icf_per60 should still use [0.5, 0.3, 0.2] weights, not [0.6, 0.25, 0.15]."""
+        rows = [
+            {**_make_row(season=2025), "icf_per60": 20.0},  # current  (weight 0.5)
+            {**_make_row(season=2024), "icf_per60": 15.0},  # yr -1    (weight 0.3)
+            {**_make_row(season=2023), "icf_per60": 10.0},  # yr -2    (weight 0.2)
+        ]
+        result = _apply_weighted_rates(rows)
+        # With [0.5, 0.3, 0.2]: 0.5*20 + 0.3*15 + 0.2*10 = 17.5
+        # With [0.6, 0.25, 0.15]: 0.6*20 + 0.25*15 + 0.15*10 = 17.75  ← different
+        expected = 0.5 * 20.0 + 0.3 * 15.0 + 0.2 * 10.0
+        assert result["icf_per60"] == pytest.approx(expected)
+        assert result["icf_per60"] != pytest.approx(0.6 * 20.0 + 0.25 * 15.0 + 0.15 * 10.0)
