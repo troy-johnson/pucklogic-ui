@@ -312,6 +312,8 @@ def build_feature_matrix(
                 "scf_per60": weighted.get("scf_per60"),
                 "scf_pct": weighted.get("scf_pct"),
                 "p1_per60": weighted.get("p1_per60"),
+                "hits_per60": weighted.get("hits_per60"),
+                "blocks_per60": weighted.get("blocks_per60"),
                 "toi_ev": weighted.get("toi_ev"),
                 "toi_pp": weighted.get("toi_pp"),
                 "toi_sh": weighted.get("toi_sh"),

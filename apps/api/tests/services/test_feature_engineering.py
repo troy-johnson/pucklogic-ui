@@ -744,6 +744,8 @@ class TestBuildFeatureMatrix:
             "scf_per60",
             "scf_pct",
             "p1_per60",
+            "hits_per60",
+            "blocks_per60",
             "toi_ev_per_game",
             "toi_pp_per_game",
             "toi_sh_per_game",
