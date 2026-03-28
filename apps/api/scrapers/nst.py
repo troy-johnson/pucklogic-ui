@@ -98,8 +98,12 @@ _FLOAT_COL_MAP_ALL: dict[str, str] = {
     "iSCF/60": "scf_per60",
     "First Assists/60": "p1_per60",
     "Goals/60": "g_per60",
+    # NST has used both older individual-stat headers (iHF/iBLK) and newer
+    # visible labels (Hits/60, Shots Blocked/60) over time.
     "iHF/60": "hits_per60",
+    "Hits/60": "hits_per60",
     "iBLK/60": "blocks_per60",
+    "Shots Blocked/60": "blocks_per60",
 }
 
 # On-ice column map (stdoi=oi fetch).
@@ -218,7 +222,8 @@ class NstScraper(BaseScraper):
             return []
 
         gp_col: int | None = headers.index("GP") if "GP" in headers else None
-        toi_col: int | None = headers.index("TOI") if "TOI" in headers else None
+        toi_total_col: int | None = headers.index("TOI") if "TOI" in headers else None
+        toi_per_gp_col: int | None = headers.index("TOI/GP") if "TOI/GP" in headers else None
 
         # Build float stat column index map from the provided (or default) map
         float_col_idx: dict[int, str] = {}
@@ -250,19 +255,28 @@ class NstScraper(BaseScraper):
                     except (ValueError, TypeError):
                         pass
 
-            # TOI (stored as toi_col_name = total_toi / gp)
-            if toi_col_name and toi_col is not None and toi_col < len(cells):
-                raw = cells[toi_col].get_text(strip=True)
-                if raw and raw.lower() not in _MISSING_VALUES:
-                    try:
-                        total_toi = float(raw)
-                        if gp and gp > 0:
-                            row_data[toi_col_name] = total_toi / gp
-                        else:
-                            # No GP available — store raw total as-is
-                            row_data[toi_col_name] = total_toi
-                    except (ValueError, TypeError):
-                        pass
+            # TOI/GP: prefer an explicit per-game column when present (live NST has
+            # used this on situation pages), otherwise derive it from total TOI / GP.
+            if toi_col_name:
+                if toi_per_gp_col is not None and toi_per_gp_col < len(cells):
+                    raw = cells[toi_per_gp_col].get_text(strip=True)
+                    if raw and raw.lower() not in _MISSING_VALUES:
+                        try:
+                            row_data[toi_col_name] = float(raw)
+                        except (ValueError, TypeError):
+                            pass
+                elif toi_total_col is not None and toi_total_col < len(cells):
+                    raw = cells[toi_total_col].get_text(strip=True)
+                    if raw and raw.lower() not in _MISSING_VALUES:
+                        try:
+                            total_toi = float(raw)
+                            if gp and gp > 0:
+                                row_data[toi_col_name] = total_toi / gp
+                            else:
+                                # No GP available — store raw total as-is
+                                row_data[toi_col_name] = total_toi
+                        except (ValueError, TypeError):
+                            pass
 
             # Float stats (cf_pct, xgf_pct, sh_pct, pdo)
             for col_idx, stat_key in float_col_idx.items():

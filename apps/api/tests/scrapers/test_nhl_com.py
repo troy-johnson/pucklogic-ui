@@ -132,8 +132,9 @@ class TestScrape:
         db = _mock_db()
         db.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "p-1"}]
         scraper = NhlComScraper(http=mock_http)
-        count = await scraper.scrape(SEASON, db)
-        assert count == 2
+        summary_count, realtime_count = await scraper.scrape(SEASON, db)
+        assert summary_count == 2
+        assert realtime_count == 0
 
     @pytest.mark.asyncio
     async def test_upserts_source_record(self) -> None:
@@ -211,8 +212,9 @@ class TestScrape:
         db.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "p-1"}]
         scraper = NhlComScraper(http=mock_http)
         with patch("scrapers.base.asyncio.sleep", new_callable=AsyncMock):
-            count = await scraper.scrape(SEASON, db)
-        assert count == PAGE + 1
+            summary_count, realtime_count = await scraper.scrape(SEASON, db)
+        assert summary_count == PAGE + 1
+        assert realtime_count == 0
 
     @pytest.mark.asyncio
     async def test_upserts_goals_and_gp_to_player_stats(self) -> None:
@@ -350,8 +352,8 @@ class TestRealtimeEndpoint:
         assert "'blocks': 12" in upsert_calls
 
     @pytest.mark.asyncio
-    async def test_realtime_skips_player_not_in_summary(self) -> None:
-        """Realtime player whose ID wasn't in the summary pass should be skipped."""
+    async def test_realtime_falls_back_to_db_when_player_not_in_summary(self) -> None:
+        """Realtime player absent from summary should fall back to DB lookup by nhl_id."""
         realtime_unknown = {"playerId": 9999999, "hits": 100, "blockedShots": 50}
         mock_http = AsyncMock()
         mock_http.get.side_effect = [
@@ -363,9 +365,13 @@ class TestRealtimeEndpoint:
         ]
         db = _mock_db()
         scraper = NhlComScraper(http=mock_http)
-        await scraper.scrape(SEASON, db)
+        with patch.object(scraper, "_lookup_player_by_nhl_id", return_value="p-db") as lookup:
+            await scraper.scrape(SEASON, db)
+        lookup.assert_called_once_with(db, "9999999")
         upsert_calls = str(db.table.return_value.upsert.call_args_list)
-        assert "'hits': 100" not in upsert_calls
+        assert "'player_id': 'p-db'" in upsert_calls
+        assert "'hits': 100" in upsert_calls
+        assert "'blocks': 50" in upsert_calls
 
     @pytest.mark.asyncio
     async def test_realtime_skips_when_no_hits_or_blocks(self) -> None:
@@ -384,3 +390,108 @@ class TestRealtimeEndpoint:
         await scraper.scrape(SEASON, db)
         upsert_calls = str(db.table.return_value.upsert.call_args_list)
         assert "'hits'" not in upsert_calls
+
+
+# ---------------------------------------------------------------------------
+# Aggregate URL / traded-player fixes  (Phase 1a)
+# ---------------------------------------------------------------------------
+
+
+class TestAggregateUrl:
+    def test_build_url_uses_aggregate_true(self) -> None:
+        url = NhlComScraper()._build_url(SEASON)
+        assert "isAggregate=true" in url
+
+    def test_build_realtime_url_uses_aggregate_true(self) -> None:
+        url = NhlComScraper()._build_realtime_url(SEASON)
+        assert "isAggregate=true" in url
+
+    def test_traded_player_team_stored_as_last_team(self) -> None:
+        """teamAbbrevs comma list → last team stored in players.team."""
+        traded_player = {
+            "playerId": 8480802,
+            "skaterFullName": "Ryan McLeod",
+            "teamAbbrevs": "TOR,BUF",
+            "positionCode": "C",
+            "gamesPlayed": 73,
+            "goals": 12,
+            "assists": 20,
+            "points": 32,
+            "ppPoints": 5,
+            "shPoints": 0,
+            "shots": 84,
+        }
+        scraper = NhlComScraper()
+        db = _mock_db()
+        scraper._upsert_player(db, traded_player)
+        upsert_calls = str(db.table.return_value.upsert.call_args_list)
+        assert "'team': 'BUF'" in upsert_calls
+        assert "TOR,BUF" not in upsert_calls
+
+    def test_single_team_player_unaffected(self) -> None:
+        """Non-traded player with single teamAbbrevs stored as-is."""
+        scraper = NhlComScraper()
+        db = _mock_db()
+        scraper._upsert_player(db, NHL_PLAYER_1)
+        upsert_calls = str(db.table.return_value.upsert.call_args_list)
+        assert "'team': 'EDM'" in upsert_calls
+
+
+# ---------------------------------------------------------------------------
+# Realtime fallback by nhl_id  (Phase 1b)
+# ---------------------------------------------------------------------------
+
+
+class TestRealtimeFallback:
+    """Realtime pass: players not in nhl_id_map fall back to DB lookup by nhl_id."""
+
+    def _make_db_with_fallback(self, player_id: str = "p-fallback") -> MagicMock:
+        db = MagicMock()
+        db.table.return_value.upsert.return_value.execute.return_value.data = [{"id": player_id}]
+        db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
+            {"id": player_id}
+        ]
+        return db
+
+    def _make_db_no_fallback(self) -> MagicMock:
+        db = MagicMock()
+        db.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "p-1"}]
+        db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []
+        return db
+
+    @pytest.mark.asyncio
+    async def test_realtime_fallback_looks_up_by_nhl_id(self) -> None:
+        """Player not in nhl_id_map is found via DB lookup → hits/blocks written."""
+        defensive_player = {"playerId": 8476441, "hits": 120, "blockedShots": 85}
+        mock_http = AsyncMock()
+        mock_http.get.side_effect = [
+            httpx.Response(
+                200, text="User-agent: *\nAllow: /", request=httpx.Request("GET", "http://x")
+            ),
+            _make_response({"data": [NHL_PLAYER_1], "total": 1}),
+            _make_response({"data": [NHL_REALTIME_PLAYER_1, defensive_player], "total": 2}),
+        ]
+        db = self._make_db_with_fallback(player_id="p-edmundson")
+        scraper = NhlComScraper(http=mock_http)
+        await scraper.scrape(SEASON, db)
+        upsert_calls = str(db.table.return_value.upsert.call_args_list)
+        assert "'hits': 120" in upsert_calls
+        assert "'blocks': 85" in upsert_calls
+
+    @pytest.mark.asyncio
+    async def test_realtime_skips_when_not_in_map_or_db(self) -> None:
+        """Player not in nhl_id_map AND not in DB → skipped cleanly."""
+        truly_unknown = {"playerId": 9999999, "hits": 100, "blockedShots": 50}
+        mock_http = AsyncMock()
+        mock_http.get.side_effect = [
+            httpx.Response(
+                200, text="User-agent: *\nAllow: /", request=httpx.Request("GET", "http://x")
+            ),
+            _make_response({"data": [NHL_PLAYER_1], "total": 1}),
+            _make_response({"data": [truly_unknown], "total": 1}),
+        ]
+        db = self._make_db_no_fallback()
+        scraper = NhlComScraper(http=mock_http)
+        await scraper.scrape(SEASON, db)
+        upsert_calls = str(db.table.return_value.upsert.call_args_list)
+        assert "'hits': 100" not in upsert_calls

@@ -177,6 +177,7 @@ CREATE TABLE player_trends (
 -- player_projections: one row per player per source per season.
 -- Written by projection source scrapers (BaseProjectionScraper subclasses) only.
 -- NHL.com and MoneyPuck write to player_stats, not here.
+-- NHL.com uses aggregate season rows (`isAggregate=true`) so traded players keep one combined season row.
 -- null = source did not project this stat (displayed as —); 0 = projected at zero. Do not conflate.
 -- PPP = PPG + PPA and SHP = SHG + SHA by definition; scoring_configs must not assign non-zero
 -- weights to both PPP and PPG/PPA (or SHP and SHG/SHA) simultaneously — enforced at config creation.
@@ -612,7 +613,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
       - run: pip install -r apps/api/requirements.txt
-      - run: python -m apps.api.scrapers.nhl_api        # → player_stats
+      - run: python -m apps.api.scrapers.nhl_com        # → player_stats
       - run: python -m apps.api.scrapers.moneypuck       # → player_stats
       - run: python -m apps.api.scrapers.nst             # → player_stats
     - if: failure()
@@ -666,8 +667,13 @@ pip install -e ".[dev]"
 
 ```bash
 python -m scrapers.nhl_com
-# Expected output: "NHL.com: upserted N rankings for 2025-26"
+# Expected output: "Upserted N summary rows, M realtime rows."
 ```
+
+Implementation notes:
+- NHL.com summary and realtime endpoints must use `isAggregate=true` so traded players are returned as one combined season row.
+- When `teamAbbrevs` is comma-joined (for example `"TOR,BUF"`), store only the last/current team in `players.team`.
+- Realtime pass resolves players from the summary map first, then falls back to `players.nhl_id` lookup before skipping.
 
 Verify in Supabase SQL editor:
 
@@ -678,7 +684,7 @@ JOIN sources s ON s.id = pr.source_id
 WHERE s.name = 'nhl_com' AND pr.season = '2025-26';
 -- Expect: > 500 rows
 
--- player_stats written (gp, g, a)
+-- player_stats written from summary pass (gp, g, a)
 SELECT p.name, ps.gp, ps.g, ps.a
 FROM player_stats ps
 JOIN players p ON p.id = ps.player_id
@@ -687,9 +693,27 @@ WHERE ps.season = '2025-26'
 ORDER BY ps.g DESC NULLS LAST
 LIMIT 10;
 -- Expect: top scorers with non-null gp, g, a
+
+-- player_stats written from realtime pass (hits, blocks)
+SELECT p.name, ps.hits, ps.blocks
+FROM player_stats ps
+JOIN players p ON p.id = ps.player_id
+WHERE ps.season = '2025-26'
+  AND (ps.hits IS NOT NULL OR ps.blocks IS NOT NULL)
+ORDER BY ps.hits DESC NULLS LAST, ps.blocks DESC NULLS LAST
+LIMIT 10;
+-- Expect: non-null hits/blocks for physical-volume leaders
 ```
 
-**Pass criteria:** `player_rankings` has ≥ 500 rows; `player_stats` rows show non-null `gp`, `g`, `a` for top players.
+**Pass criteria:** `player_rankings` has ≥ 500 rows; summary-driven `player_stats` rows show non-null `gp`, `g`, `a`; realtime-driven rows show non-null `hits`/`blocks` for known leaders.
+
+#### Natural Stat Trick (NST)
+
+Implementation notes:
+- NST header labels have changed over time; parser support must handle both legacy and current names for hits/blocks per-60.
+- Current live NST pages may expose `Hits/60` and `Shots Blocked/60` where older fixtures/pages used `iHF/60` and `iBLK/60`.
+- Situation pages may expose explicit `TOI/GP`; prefer that when present rather than deriving from total `TOI`.
+- `toi_sh` should represent short-handed TOI per game, not all-situations TOI per game.
 
 ---
 

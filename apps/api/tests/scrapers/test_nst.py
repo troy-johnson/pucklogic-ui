@@ -492,3 +492,120 @@ class TestScrapeMultiSituation:
             await scraper.scrape("2025-26", mock_db)
 
         assert mock_get.call_count == 6
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 — parser robustness for current NST headers
+# ---------------------------------------------------------------------------
+
+
+class TestParseHtmlPhase2CurrentHeaders:
+    def test_parses_toi_per_game_from_toi_gp_header_without_total_toi(self) -> None:
+        html = """
+        <html><body><table id='players'>
+          <tr><th>Player</th><th>GP</th><th>TOI/GP</th></tr>
+          <tr><td>Connor McDavid</td><td>82</td><td>0.55</td></tr>
+        </table></body></html>
+        """
+
+        rows = NstScraper._parse_html(html, float_col_map={}, toi_col_name="toi_sh")
+
+        assert rows[0]["toi_sh"] == pytest.approx(0.55)
+
+    def test_parses_hits_and_blocks_per60_from_current_header_names(self) -> None:
+        html = """
+        <html><body><table id='players'>
+          <tr>
+            <th>Player</th><th>GP</th><th>TOI</th><th>Hits/60</th><th>Shots Blocked/60</th>
+          </tr>
+          <tr>
+            <td>Connor McDavid</td><td>82</td><td>1640.5</td><td>3.42</td><td>0.85</td>
+          </tr>
+        </table></body></html>
+        """
+
+        rows = NstScraper._parse_html(html)
+
+        assert rows[0]["hits_per60"] == pytest.approx(3.42)
+        assert rows[0]["blocks_per60"] == pytest.approx(0.85)
+
+
+class TestScrapePhase2CurrentHeaders:
+    def _make_db(self) -> MagicMock:
+        mock_db = MagicMock()
+        players_mock = MagicMock()
+        players_mock.select.return_value.execute.return_value.data = [
+            {"id": "player-uuid", "name": "Connor McDavid"},
+        ]
+        aliases_mock = MagicMock()
+        aliases_mock.select.return_value.execute.return_value.data = []
+        stats_mock = MagicMock()
+        stats_mock.upsert.return_value.execute.return_value.data = [{"id": "stat-uuid"}]
+
+        def table_side(name: str) -> MagicMock:
+            if name == "players":
+                return players_mock
+            if name == "player_aliases":
+                return aliases_mock
+            if name == "player_stats":
+                return stats_mock
+            return MagicMock()
+
+        mock_db.table.side_effect = table_side
+        return mock_db
+
+    @pytest.mark.asyncio
+    async def test_scrape_uses_current_header_variants_for_toi_sh_and_per60(self) -> None:
+        mock_db = self._make_db()
+        scraper = NstScraper()
+
+        all_html = """
+        <html><body><table id='players'>
+          <tr>
+            <th>Player</th><th>GP</th><th>TOI</th><th>Hits/60</th><th>Shots Blocked/60</th>
+          </tr>
+          <tr>
+            <td>Connor McDavid</td><td>82</td><td>1640.5</td><td>3.42</td><td>0.85</td>
+          </tr>
+        </table></body></html>
+        """
+        sh_html = """
+        <html><body><table id='players'>
+          <tr><th>Player</th><th>GP</th><th>TOI/GP</th></tr>
+          <tr><td>Connor McDavid</td><td>82</td><td>0.55</td></tr>
+        </table></body></html>
+        """
+        empty_sit_html = """
+        <html><body><table id='players'>
+          <tr><th>Player</th></tr>
+        </table></body></html>
+        """
+        oi_html = """
+        <html><body><table id='players'>
+          <tr><th>Player</th><th>CF%</th></tr>
+          <tr><td>Connor McDavid</td><td>58.3</td></tr>
+        </table></body></html>
+        """
+
+        def fake_get(url: str) -> MagicMock:
+            if "stdoi=oi" in url:
+                return MagicMock(text=oi_html, status_code=200)
+            if "sit=sh" in url:
+                return MagicMock(text=sh_html, status_code=200)
+            if "sit=5v5" in url or "sit=ev" in url or "sit=pp" in url:
+                return MagicMock(text=empty_sit_html, status_code=200)
+            return MagicMock(text=all_html, status_code=200)
+
+        with (
+            patch.object(scraper, "_check_robots_txt", new=AsyncMock(return_value=True)),
+            patch.object(scraper, "_get_with_retry", new=AsyncMock(side_effect=fake_get)),
+        ):
+            count = await scraper.scrape("2025-26", mock_db)
+
+        assert count == 1
+        stats_mock = mock_db.table("player_stats")
+        payload = stats_mock.upsert.call_args_list[0][0][0]
+        assert payload["hits_per60"] == pytest.approx(3.42)
+        assert payload["blocks_per60"] == pytest.approx(0.85)
+        assert payload["toi_sh"] == pytest.approx(0.55)
+        assert payload["toi_sh"] != pytest.approx(1640.5 / 82, rel=1e-3)
