@@ -13,6 +13,7 @@ _STAT_COLUMNS = (
     "toi_ev, toi_pp, toi_sh, "
     "icf_per60, ixg_per60, xgf_pct_5v5, cf_pct_adj, "
     "scf_per60, scf_pct, p1_per60, "
+    "hits_per60, blocks_per60, "
     "pdo, sh_pct, sh_pct_career_avg, g_minus_ixg, g_per60, "
     "oi_sh_pct, pp_unit, "
     "elc_flag, contract_year_flag, post_extension_flag"

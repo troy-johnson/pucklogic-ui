@@ -20,6 +20,7 @@ from scrapers.base import BaseScraper, RobotsDisallowedError
 logger = logging.getLogger(__name__)
 
 _NHL_STATS_URL = "https://api.nhle.com/stats/rest/en/skater/summary"
+_NHL_REALTIME_URL = "https://api.nhle.com/stats/rest/en/skater/realtime"
 
 
 class NhlComScraper(BaseScraper):
@@ -49,6 +50,15 @@ class NhlComScraper(BaseScraper):
             f"?isAggregate=false&isGame=false"
             f"&sort={sort}"
             f"&start={start}&limit={self.PAGE_SIZE}"
+            f"&cayenneExp={expr}"
+        )
+
+    def _build_realtime_url(self, season: str, start: int = 0) -> str:
+        sort = json.dumps([{"property": "hits", "direction": "DESC"}])
+        expr = f"seasonId={self._season_id(season)} and gameTypeId=2"
+        return (
+            f"{_NHL_REALTIME_URL}?isAggregate=false&isGame=false"
+            f"&sort={sort}&start={start}&limit={self.PAGE_SIZE}"
             f"&cayenneExp={expr}"
         )
 
@@ -90,13 +100,44 @@ class NhlComScraper(BaseScraper):
     def _upsert_player_stats(
         self, db: Any, player_id: str, season: str, player: dict[str, Any]
     ) -> None:
+        # Require gamesPlayed — without it the row is not meaningful.
+        if player.get("gamesPlayed") is None:
+            return
+        int_fields = {
+            "gamesPlayed": "gp",
+            "goals": "g",
+            "assists": "a",
+            "points": "pts",
+            "ppPoints": "ppp",
+            "shPoints": "sh_points",
+            "shots": "sog",
+        }
+        float_fields = {
+            "faceoffWinPct": "fo_pct",
+        }
         stats: dict[str, Any] = {}
-        if (gp := player.get("gamesPlayed")) is not None:
-            stats["gp"] = int(gp)
-        if (goals := player.get("goals")) is not None:
-            stats["g"] = int(goals)
-        if (assists := player.get("assists")) is not None:
-            stats["a"] = int(assists)
+        for api_key, col in int_fields.items():
+            if (val := player.get(api_key)) is not None:
+                stats[col] = int(val)
+        for api_key, col in float_fields.items():
+            if (val := player.get(api_key)) is not None:
+                try:
+                    stats[col] = float(val)
+                except (ValueError, TypeError):
+                    pass
+        db.table("player_stats").upsert(
+            {"player_id": player_id, "season": season, **stats},
+            on_conflict="player_id,season",
+        ).execute()
+
+    def _upsert_realtime_stats(
+        self, db: Any, player_id: str, season: str, player: dict[str, Any]
+    ) -> None:
+        int_fields = {"hits": "hits", "blockedShots": "blocks"}
+        stats: dict[str, Any] = {}
+        for api_key, col in int_fields.items():
+            if (val := player.get(api_key)) is not None:
+                stats[col] = int(val)
         if not stats:
             return
         db.table("player_stats").upsert(
@@ -128,6 +169,7 @@ class NhlComScraper(BaseScraper):
         source_id = self._upsert_source(db)
         rows_upserted = 0
         start = 0
+        nhl_id_map: dict[str, str] = {}  # nhl_id (str) → internal player_id (uuid)
 
         while True:
             url = self._build_url(season, start)
@@ -140,9 +182,33 @@ class NhlComScraper(BaseScraper):
             for offset, player in enumerate(players):
                 rank = start + offset + 1
                 player_id = self._upsert_player(db, player)
+                nhl_id_map[str(player["playerId"])] = player_id
                 self._upsert_ranking(db, player_id, source_id, rank, season)
                 self._upsert_player_stats(db, player_id, season, player)
                 rows_upserted += 1
+
+            if len(players) < self.PAGE_SIZE:
+                break
+
+            start += self.PAGE_SIZE
+            await asyncio.sleep(self.MIN_DELAY_SECONDS)
+
+        # Realtime pass — hits + blocked shots
+        start = 0
+        while True:
+            url = self._build_realtime_url(season, start)
+            response = await self._get_with_retry(url)
+            players = response.json().get("data", [])
+
+            if not players:
+                break
+
+            for player in players:
+                nhl_id = str(player["playerId"])
+                player_id = nhl_id_map.get(nhl_id)
+                if player_id is None:
+                    continue
+                self._upsert_realtime_stats(db, player_id, season, player)
 
             if len(players) < self.PAGE_SIZE:
                 break
@@ -159,16 +225,58 @@ class NhlComScraper(BaseScraper):
 # ------------------------------------------------------------------
 
 
+def _iter_seasons(start: str, end: str) -> list[str]:
+    """Return season strings from start to end inclusive.
+
+    "2008-09", "2025-26" → ["2008-09", "2009-10", ..., "2025-26"]
+    """
+    start_year = int(start.split("-")[0])
+    end_year = int(end.split("-")[0])
+    seasons = []
+    for y in range(start_year, end_year + 1):
+        short = str(y + 1)[-2:]
+        seasons.append(f"{y}-{short}")
+    return seasons
+
+
 async def _main() -> None:
+    import argparse
+
+    from supabase import create_client
+
     from core.config import settings
 
     if TYPE_CHECKING:
         pass
-    from supabase import create_client
+
+    parser = argparse.ArgumentParser(description="NHL.com scraper")
+    parser.add_argument(
+        "--history",
+        action="store_true",
+        help=(
+            "Backfill all seasons from 2005-06 to current_season. "
+            "Run before the first training run."
+        ),
+    )
+    args = parser.parse_args()
 
     db = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    count = await NhlComScraper().scrape(settings.current_season, db)
-    print(f"Upserted {count} rows.")
+    scraper = NhlComScraper()
+
+    if args.history:
+        seasons = _iter_seasons("2005-06", settings.current_season)
+        total = 0
+        for season in seasons:
+            try:
+                count = await scraper.scrape(season, db)
+                total += count
+                print(f"NHL.com {season}: {count} rows")
+            except Exception as exc:
+                logger.warning("NHL.com %s: skipped — %s", season, exc)
+        print(f"NHL.com history: {total} total rows upserted")
+    else:
+        count = await scraper.scrape(settings.current_season, db)
+        print(f"Upserted {count} rows.")
 
 
 if __name__ == "__main__":

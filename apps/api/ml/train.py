@@ -33,7 +33,7 @@ from services.feature_engineering import build_feature_matrix
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Model feature set (21 columns, all numeric)
+# Model feature set (23 columns, all numeric)
 # See spec § Model Features for inclusion/exclusion rationale.
 # ---------------------------------------------------------------------------
 
@@ -59,6 +59,8 @@ FEATURE_NAMES: list[str] = [
     "post_extension_flag",
     "age",
     "icf_per60_delta",
+    "hits_per60",  # Marcel-weighted physical rate (Tier 3)
+    "blocks_per60",  # Marcel-weighted physical rate (Tier 3)
 ]
 
 # Seasons whose labeled rows are held out from ALL CV folds.

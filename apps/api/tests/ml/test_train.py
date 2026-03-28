@@ -23,6 +23,8 @@ def _make_row(player_id: str, season: int, p1_per60: float, toi_ev: float = 6.0)
         "cf_pct_adj": 51.0,
         "scf_per60": 16.0,
         "scf_pct": 51.0,
+        "hits_per60": 3.0,
+        "blocks_per60": 1.5,
         "toi_pp": 2.5,
         "toi_sh": 0.1,
         "g_per60": 2.0,
@@ -195,8 +197,8 @@ class TestBuildLabeledDataset:
 
 
 class TestFeatureNames:
-    def test_has_21_features(self):
-        assert len(FEATURE_NAMES) == 21
+    def test_has_23_features(self):
+        assert len(FEATURE_NAMES) == 23
 
     def test_no_duplicates(self):
         assert len(FEATURE_NAMES) == len(set(FEATURE_NAMES))

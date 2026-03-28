@@ -221,14 +221,56 @@ class MoneyPuckScraper(BaseScraper):
 # ------------------------------------------------------------------
 
 
+def _iter_seasons(start: str, end: str) -> list[str]:
+    """Return season strings from start to end inclusive.
+
+    "2008-09", "2025-26" → ["2008-09", "2009-10", ..., "2025-26"]
+    """
+    start_year = int(start.split("-")[0])
+    end_year = int(end.split("-")[0])
+    seasons = []
+    for y in range(start_year, end_year + 1):
+        short = str(y + 1)[-2:]
+        seasons.append(f"{y}-{short}")
+    return seasons
+
+
 async def _main() -> None:
+    import argparse
+
     from supabase import create_client
 
     from core.config import settings
 
+    parser = argparse.ArgumentParser(description="MoneyPuck scraper")
+    parser.add_argument(
+        "--history",
+        action="store_true",
+        help=(
+            "Backfill all seasons from 2005-06 to current_season. "
+            "MoneyPuck data is available from 2009-10; earlier seasons return 404 "
+            "and are skipped gracefully. Run before the first training run."
+        ),
+    )
+    args = parser.parse_args()
+
     db = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    count = await MoneyPuckScraper().scrape(settings.current_season, db)
-    print(f"Upserted {count} rows.")
+    scraper = MoneyPuckScraper()
+
+    if args.history:
+        seasons = _iter_seasons("2005-06", settings.current_season)
+        total = 0
+        for season in seasons:
+            try:
+                count = await scraper.scrape(season, db)
+                total += count
+                print(f"MoneyPuck {season}: {count} rows")
+            except Exception as exc:
+                logger.warning("MoneyPuck %s: skipped — %s", season, exc)
+        print(f"MoneyPuck history: {total} total rows upserted")
+    else:
+        count = await scraper.scrape(settings.current_season, db)
+        print(f"Upserted {count} rows.")
 
 
 if __name__ == "__main__":

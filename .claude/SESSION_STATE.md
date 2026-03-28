@@ -6,15 +6,15 @@
 | Active Branch | main |
 | Open PR | None |
 | Current Focus | Phase 3d closed (PR #28 merged 2026-03-24); Phase 3e manual execution checklist is next |
-| Last Action | Post-merge cleanup: updated apps/api/CLAUDE.md Phase 3d rows to ✅ Complete; added PR #28 to Notion card Context & Notes |
+| Last Action | Cleaned up stale worktrees, gitignored local Claude dirs (.claude/feature-dev, .claude/skills), committed plans + scripts |
 | Session Tier | — |
 | Next Steps | 1. Phase 3e: run checklist below (manual ops — no code) |
 
 ## Phase 3e — First Real Training Run (execution gate, not implementation) Checklist
 
 Prerequisites (manual, before any code):
-- [ ] PR #28 merged
-- [ ] `ml-artifacts` Storage bucket created in Supabase dashboard (public: false)
+- [x] PR #28 merged
+- [x] `ml-artifacts` Storage bucket created in Supabase dashboard (public: false)
 - [ ] `.env` confirmed with real `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `CURRENT_SEASON=2026-27`
 
 Steps:
@@ -39,7 +39,4 @@ Gate for Phase 3f: `player_trends` must be non-empty before the inference API is
 - Annual retrain workflow: `python -m scrapers.hockey_reference --history` then `python -m ml.train --season "$CURRENT_SEASON"`
 - LightGBM challenger only — no artifact uploaded; WARNING if LGB AUC > XGB AUC by >0.02
 
-## Phase 3d Post-Merge TODOs
 
-- Update `apps/api/CLAUDE.md` Phase 3d status rows to ✅ Complete
-- Close Phase 3d Notion card
