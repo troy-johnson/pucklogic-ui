@@ -55,6 +55,8 @@ def _make_db_row(
         "scf_per60": 18.0,
         "scf_pct": 53.0,
         "p1_per60": 3.5,
+        "hits_per60": 3.2,
+        "blocks_per60": 1.8,
         "pdo": 1.010,
         "sh_pct": 0.115,
         "sh_pct_career_avg": 0.110,
@@ -174,6 +176,18 @@ class TestGetSeasonsGrouped:
         _configure_db(mock_db, [])
         result = repo.get_seasons_grouped(season=2025)
         assert result == {}
+
+    def test_hits_per60_and_blocks_per60_present_in_row(
+        self, repo: PlayerStatsRepository, mock_db: MagicMock
+    ) -> None:
+        """hits_per60 and blocks_per60 must be selected and returned by the repository."""
+        _configure_db(mock_db, [_make_db_row(player_id="p-mcdavid", season=2025)])
+        result = repo.get_seasons_grouped(season=2025)
+        row = result["p-mcdavid"][0]
+        assert "hits_per60" in row, "hits_per60 missing from repository row"
+        assert "blocks_per60" in row, "blocks_per60 missing from repository row"
+        assert row["hits_per60"] == 3.2
+        assert row["blocks_per60"] == 1.8
 
 
 class TestGetAllSeasonsGrouped:

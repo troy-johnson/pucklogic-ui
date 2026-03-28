@@ -28,6 +28,8 @@ _RATE_STATS = [
     "toi_ev",
     "toi_pp",
     "toi_sh",
+    "hits_per60",
+    "blocks_per60",
 ]
 
 
@@ -43,6 +45,8 @@ def _make_row(
     p1_per60: float | None = 3.5,
     toi_pp: float = 3.5,
     toi_sh: float = 0.2,
+    hits_per60: float | None = 3.2,
+    blocks_per60: float | None = 1.8,
     # aliases / pass-through fields
     sh_pct: float | None = 0.115,
     sh_pct_career_avg: float | None = 0.110,
@@ -70,6 +74,8 @@ def _make_row(
         "scf_per60": scf_per60,
         "scf_pct": scf_pct,
         "p1_per60": p1_per60,
+        "hits_per60": hits_per60,
+        "blocks_per60": blocks_per60,
         "sh_pct": sh_pct,
         "sh_pct_career_avg": sh_pct_career_avg,
         "g_minus_ixg": g_minus_ixg,
@@ -776,6 +782,23 @@ class TestBuildFeatureMatrix:
         }
         missing = required_keys - set(player.keys())
         assert not missing, f"Missing keys: {missing}"
+
+    def test_hits_per60_and_blocks_per60_non_null_when_present_in_db(self) -> None:
+        """hits_per60 and blocks_per60 must flow from DB rows through to the feature matrix."""
+        row = _make_row(season=2025, toi_ev=21.0, hits_per60=4.5, blocks_per60=2.1)
+        row["player_id"] = "p-hitter"
+        result = build_feature_matrix({"p-hitter": [row]}, season=2025)
+        assert len(result) == 1
+        assert result[0]["hits_per60"] == pytest.approx(4.5)
+        assert result[0]["blocks_per60"] == pytest.approx(2.1)
+
+    def test_hits_per60_none_when_missing_from_db(self) -> None:
+        """hits_per60 gracefully returns None when DB column is null."""
+        row = _make_row(season=2025, toi_ev=21.0, hits_per60=None, blocks_per60=None)
+        row["player_id"] = "p-no-physical"
+        result = build_feature_matrix({"p-no-physical": [row]}, season=2025)
+        assert result[0]["hits_per60"] is None
+        assert result[0]["blocks_per60"] is None
 
 
 # ---------------------------------------------------------------------------
