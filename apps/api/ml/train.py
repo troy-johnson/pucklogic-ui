@@ -101,16 +101,24 @@ def _normalize_all_rows_seasons(
     Rows with unparseable season values are skipped.
     """
     normalized: dict[str, list[dict[str, Any]]] = {}
+    dropped_rows = 0
     for player_id, rows in all_rows.items():
         normalized_rows: list[dict[str, Any]] = []
         for row in rows:
             season_int = _season_to_year_int(row.get("season"))
             if season_int is None:
+                dropped_rows += 1
                 continue
             normalized_rows.append({**row, "season": season_int})
         if normalized_rows:
             normalized_rows.sort(key=lambda r: r["season"], reverse=True)
             normalized[player_id] = normalized_rows
+
+    if dropped_rows:
+        logger.warning(
+            "Dropped %d player_stats rows due to unparseable season values",
+            dropped_rows,
+        )
     return normalized
 
 

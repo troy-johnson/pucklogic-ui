@@ -79,6 +79,7 @@ class PlayerStatsRepository:
                 self._db.table("player_stats")
                 .select(f"{_STAT_COLUMNS}, players(date_of_birth, position)")
                 .order("season", desc=True)
+                .order("player_id", desc=False)
                 .range(offset, offset + page_size - 1)
                 .execute()
             )

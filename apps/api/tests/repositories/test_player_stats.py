@@ -194,9 +194,9 @@ class TestGetAllSeasonsGrouped:
     """get_all_seasons_grouped returns all seasons, no window cap, LEFT JOIN on players."""
 
     def _configure_db_all(self, mock_db: MagicMock, rows: list[dict]) -> None:
-        """Wire mock for paged .table().select().order().range().execute()."""
+        """Wire mock for paged .table().select().order().order().range().execute()."""
         (
-            mock_db.table.return_value.select.return_value.order.return_value.range.return_value.execute.return_value
+            mock_db.table.return_value.select.return_value.order.return_value.order.return_value.range.return_value.execute.return_value
         ).data = rows
 
     def test_returns_all_rows_grouped_by_player(self, repo, mock_db):
@@ -241,7 +241,7 @@ class TestGetAllSeasonsGrouped:
         first_page = [_make_db_row("p-a", season=2025)] * 1000
         second_page = [_make_db_row("p-a", season=2024)] * 10
         exec_mock = mock_db.table.return_value.select.return_value.order.return_value
-        exec_mock = exec_mock.range.return_value.execute
+        exec_mock = exec_mock.order.return_value.range.return_value.execute
         exec_mock.side_effect = [
             MagicMock(data=first_page),
             MagicMock(data=second_page),
@@ -252,3 +252,5 @@ class TestGetAllSeasonsGrouped:
         assert "p-a" in result
         assert len(result["p-a"]) == 1010
         assert exec_mock.call_count == 2
+        order_chain = mock_db.table.return_value.select.return_value.order.return_value
+        order_chain.order.assert_called_with("player_id", desc=False)

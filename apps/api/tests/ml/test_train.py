@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 
 from ml.train import (
@@ -210,6 +212,21 @@ class TestBuildLabeledDataset:
         normalized = _normalize_all_rows_seasons(all_rows_str)
         dataset = build_labeled_dataset(normalized, train_seasons=range(2009, 2011))
         assert len(dataset) > 0
+
+    def test_normalize_logs_dropped_unparseable_seasons(self, caplog):
+        all_rows = {
+            "p1": [
+                _make_row("p1", 2010, p1_per60=3.0),
+                {**_make_row("p1", 2009, p1_per60=2.8), "season": "bad-season"},
+            ]
+        }
+
+        with caplog.at_level(logging.WARNING):
+            normalized = _normalize_all_rows_seasons(all_rows)
+
+        assert "p1" in normalized
+        assert len(normalized["p1"]) == 1
+        assert "Dropped 1 player_stats rows" in caplog.text
 
 
 # ---------------------------------------------------------------------------

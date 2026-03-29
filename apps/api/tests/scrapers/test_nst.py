@@ -139,6 +139,7 @@ class TestFetchAllRows:
         db = MagicMock()
         table_mock = MagicMock()
         select_mock = MagicMock()
+        order_mock = MagicMock()
         range_mock = MagicMock()
 
         page1 = MagicMock()
@@ -148,16 +149,18 @@ class TestFetchAllRows:
 
         db.table.return_value = table_mock
         table_mock.select.return_value = select_mock
-        select_mock.range.return_value = range_mock
+        select_mock.order.return_value = order_mock
+        order_mock.range.return_value = range_mock
         range_mock.execute.side_effect = [page1, page2]
 
-        rows = scraper._fetch_all_rows(db, "players", "id,name")
+        rows = scraper._fetch_all_rows(db, "players", "id,name", order_by="id")
 
         assert len(rows) == 1001
         assert db.table.call_count == 2
         assert table_mock.select.call_count == 2
-        select_mock.range.assert_any_call(0, 999)
-        select_mock.range.assert_any_call(1000, 1999)
+        select_mock.order.assert_any_call("id", desc=False)
+        order_mock.range.assert_any_call(0, 999)
+        order_mock.range.assert_any_call(1000, 1999)
 
     def test_fetch_players_uses_pagination_helper(self) -> None:
         scraper = NstScraper()
@@ -168,7 +171,7 @@ class TestFetchAllRows:
             rows = scraper._fetch_players(db)
 
         assert rows == expected
-        fetch_all_rows.assert_called_once_with(db, "players", "id,name")
+        fetch_all_rows.assert_called_once_with(db, "players", "id,name", order_by="id")
 
     def test_fetch_aliases_uses_pagination_helper(self) -> None:
         scraper = NstScraper()
@@ -179,7 +182,12 @@ class TestFetchAllRows:
             rows = scraper._fetch_aliases(db)
 
         assert rows == expected
-        fetch_all_rows.assert_called_once_with(db, "player_aliases", "alias_name,player_id,source")
+        fetch_all_rows.assert_called_once_with(
+            db,
+            "player_aliases",
+            "alias_name,player_id,source",
+            order_by="alias_name",
+        )
 
 
 class TestUpsertPlayerStats:
@@ -255,14 +263,16 @@ class TestScrape:
             {"id": "player-uuid2", "name": "Leon Draisaitl"},
             {"id": "player-uuid3", "name": "Nathan MacKinnon"},
         ]
-        players_mock.select.return_value.range.return_value.execute.return_value.data = [
+        players_order_chain = players_mock.select.return_value.order.return_value
+        players_order_chain.range.return_value.execute.return_value.data = [
             {"id": "player-uuid", "name": "Connor McDavid"},
             {"id": "player-uuid2", "name": "Leon Draisaitl"},
             {"id": "player-uuid3", "name": "Nathan MacKinnon"},
         ]
         aliases_mock = MagicMock()
         aliases_mock.select.return_value.execute.return_value.data = []
-        aliases_mock.select.return_value.range.return_value.execute.return_value.data = []
+        aliases_order_chain = aliases_mock.select.return_value.order.return_value
+        aliases_order_chain.range.return_value.execute.return_value.data = []
 
         stats_mock = MagicMock()
         stats_mock.upsert.return_value.execute.return_value.data = [{"id": "stat-uuid"}]
@@ -499,14 +509,16 @@ class TestScrapeMultiSituation:
             {"id": "player-uuid2", "name": "Leon Draisaitl"},
             {"id": "player-uuid3", "name": "Nathan MacKinnon"},
         ]
-        players_mock.select.return_value.range.return_value.execute.return_value.data = [
+        players_order_chain = players_mock.select.return_value.order.return_value
+        players_order_chain.range.return_value.execute.return_value.data = [
             {"id": "player-uuid", "name": "Connor McDavid"},
             {"id": "player-uuid2", "name": "Leon Draisaitl"},
             {"id": "player-uuid3", "name": "Nathan MacKinnon"},
         ]
         aliases_mock = MagicMock()
         aliases_mock.select.return_value.execute.return_value.data = []
-        aliases_mock.select.return_value.range.return_value.execute.return_value.data = []
+        aliases_order_chain = aliases_mock.select.return_value.order.return_value
+        aliases_order_chain.range.return_value.execute.return_value.data = []
         stats_mock = MagicMock()
         stats_mock.upsert.return_value.execute.return_value.data = [{"id": "stat-uuid"}]
 
@@ -632,12 +644,14 @@ class TestScrapePhase2CurrentHeaders:
         players_mock.select.return_value.execute.return_value.data = [
             {"id": "player-uuid", "name": "Connor McDavid"},
         ]
-        players_mock.select.return_value.range.return_value.execute.return_value.data = [
+        players_order_chain = players_mock.select.return_value.order.return_value
+        players_order_chain.range.return_value.execute.return_value.data = [
             {"id": "player-uuid", "name": "Connor McDavid"},
         ]
         aliases_mock = MagicMock()
         aliases_mock.select.return_value.execute.return_value.data = []
-        aliases_mock.select.return_value.range.return_value.execute.return_value.data = []
+        aliases_order_chain = aliases_mock.select.return_value.order.return_value
+        aliases_order_chain.range.return_value.execute.return_value.data = []
         stats_mock = MagicMock()
         stats_mock.upsert.return_value.execute.return_value.data = [{"id": "stat-uuid"}]
 

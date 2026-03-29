@@ -330,13 +330,27 @@ class NstScraper(BaseScraper):
     # DB helpers
     # ------------------------------------------------------------------
 
-    def _fetch_all_rows(self, db: Any, table: str, fields: str) -> list[dict[str, Any]]:
+    def _fetch_all_rows(
+        self,
+        db: Any,
+        table: str,
+        fields: str,
+        *,
+        order_by: str,
+        desc: bool = False,
+    ) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         start = 0
         page_size = 1000
 
         while True:
-            result = db.table(table).select(fields).range(start, start + page_size - 1).execute()
+            result = (
+                db.table(table)
+                .select(fields)
+                .order(order_by, desc=desc)
+                .range(start, start + page_size - 1)
+                .execute()
+            )
             batch = result.data or []
             rows.extend(batch)
             if len(batch) < page_size:
@@ -346,10 +360,15 @@ class NstScraper(BaseScraper):
         return rows
 
     def _fetch_players(self, db: Any) -> list[dict[str, Any]]:
-        return self._fetch_all_rows(db, "players", "id,name")
+        return self._fetch_all_rows(db, "players", "id,name", order_by="id")
 
     def _fetch_aliases(self, db: Any) -> list[dict[str, Any]]:
-        return self._fetch_all_rows(db, "player_aliases", "alias_name,player_id,source")
+        return self._fetch_all_rows(
+            db,
+            "player_aliases",
+            "alias_name,player_id,source",
+            order_by="alias_name",
+        )
 
     def _upsert_player_stats(
         self,
