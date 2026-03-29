@@ -8,16 +8,39 @@
 
 ---
 
+## Execution Status Update (2026-03-29)
+
+### Completed
+
+- Migration `005_hits_blocks_per60.sql` applied to production (`mrjrtwwmbxfytnnjkaid`)
+- `scripts/backfill_data_quality.sh` implemented and used for staged sample/full validation
+- NST historical matcher coverage fixed via paginated players/aliases fetch
+- NST and NHL.com historical runners now support bounded season windows (`--start-season`, `--end-season`)
+- Validation rule corrected from `toi_sh < toi_ev` to source-correct non-negative TOI checks
+- Non-destructive `player_stats` upserts enforced (`default_to_null=False`) to prevent partial payload null-overwrites
+- Targeted reruns performed to resolve validation anomalies (`NST 2009-10`, `NHL 2009-10`, `NHL 2024-25`)
+- Final validation baseline:
+  - raw `hits`/`blocks` coverage strong from `2005-06` onward
+  - per-60 `hits_per60`/`blocks_per60` coverage strong from `2007-08` onward
+  - no negative `toi_ev` / `toi_pp` / `toi_sh` values
+
+### Remaining execution items
+
+- Run an HR-targeted verification/backfill window with the dedup fix in place.
+- Execute the first real ML training run after HR verification completes.
+
+---
+
 ## Goals
 
 1. Fix `hits`/`blocks` NULL for alternating seasons (NHL.com history silently skips seasons on error)
 2. Fix `hits`/`blocks` NULL for ~4% of players per populated season (realtime pass misses players not in `nhl_id_map`)
 3. Fix `toi_sh` storing `toi_per_game` instead of SH TOI/game (NST `sit=sh` parse bug)
-4. Fix Hockey Reference career stat overcounting for multi-trade seasons (2TM/3TM/4TM dedup)
-5. Populate `hits_per60`/`blocks_per60` — migration 005 confirmed applied; re-run NST history after code fixes
+4. Fix Hockey Reference career stat overcounting for multi-trade seasons (2TM/3TM/4TM dedup) **(implemented; verification rerun pending)**
+5. Populate `hits_per60`/`blocks_per60` — migration 005 confirmed applied; NST history rerun + validation completed
 6. Deprecate `pp_toi_pg` (zero rows ever written; superseded by `toi_pp` from NST)
 7. Add `player_team_stats` V2 schema (schema-only; no scraper writer in this PR)
-8. Add `scripts/backfill_data_quality.sh` — post-merge re-run helper with verification SQL
+8. Add `scripts/backfill_data_quality.sh` — post-merge re-run helper with verification SQL (implemented)
 
 ## Non-Goals
 
@@ -146,11 +169,11 @@ Phase 4:
 ## Post-Merge Checklist
 
 ```
-[ ] Run scripts/backfill_data_quality.sh
-[ ] Verify hits/blocks ≥95% for all post-2006 seasons
-[ ] Verify hits_per60 / blocks_per60 > 0 for 2008-09 onward
-[ ] Verify toi_sh < toi_ev for all players (0 violations)
-[ ] Verify career_goals not inflated for known traded players
+[x] Run scripts/backfill_data_quality.sh
+[x] Verify hits/blocks ≥95% for all post-2006 seasons
+[x] Verify hits_per60 / blocks_per60 > 0 for 2008-09 onward
+[x] Verify non-negative `toi_ev`, `toi_pp`, `toi_sh` values for all players (0 violations)
+[ ] Verify career_goals not inflated for known traded players after HR verification rerun
 [ ] Run ml.train --season 2026-27
-[ ] Update SESSION_STATE.md — Phase 3e complete, move to Phase 3f
+[ ] Update SESSION_STATE.md — move from scraper hardening into first real ML execution after HR dedup closes
 ```

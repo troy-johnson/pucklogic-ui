@@ -58,6 +58,11 @@ class HockeyReferenceScraper(BaseScraper):
 
         Returns list of dicts: player_name, gp, goals, shots, sh_pct (None if shots==0).
         Skips rows with class "thead" (mid-table repeat headers).
+
+        Hockey Reference includes multiple rows for traded players in a season
+        (e.g. ``2TM`` + team rows). For season-level career accumulation, keep a
+        single row per player by selecting the row with the highest GP, which is
+        the aggregate row in normal HR tables.
         """
         soup = BeautifulSoup(html, "lxml")
         table = soup.find("table", {"id": "player_stats"})
@@ -98,7 +103,14 @@ class HockeyReferenceScraper(BaseScraper):
                 }
             )
 
-        return rows
+        # Deduplicate traded-player multi-row seasons by keeping highest-GP row.
+        deduped: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            existing = deduped.get(row["player_name"])
+            if existing is None or row["gp"] > existing["gp"]:
+                deduped[row["player_name"]] = row
+
+        return list(deduped.values())
 
     @staticmethod
     def _compute_career_stats(

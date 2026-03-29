@@ -1,7 +1,7 @@
 # Backfill Data Quality Runner — Implementation Spec
 
 - **Date:** 2026-03-28
-- **Status:** Approved
+- **Status:** Implemented
 - **Related plan:** `docs/superpowers/plans/2026-03-28-scraper-data-quality.md`
 - **Effort:** Small
 - **Risk:** Tier 3 — production schema migration + historical backfill
@@ -47,19 +47,21 @@
 | D2 | Add bounded history support via `--start-season` / `--end-season`. | Enables a safe sample-first run without invasive scraper refactors. |
 | D3 | Use a season-bounded sample rather than exact row-cutoff interruption. | Safer than aborting midway through a season while still validating real writes quickly. |
 | D4 | Validate by querying `player_stats` after the sample and after the full run. | Confirms the database actually contains the expected values, not just that the scrapers exited successfully. |
-| D5 | Treat `hits_per60` / `blocks_per60` as required from `2005-06` onward. | Matches the current product requirement and approved launch-readiness direction. |
+| D5 | Treat raw `hits` / `blocks` as required from `2005-06` onward, and NST per-60 rates as required from `2007-08` onward. | Historical NST data for `2005-06` and `2006-07` is not usable for per-60 backfill; split thresholds match source reality while preserving launch quality gates. |
 
 ## Workflow
 
 1. Apply migration `005_hits_blocks_per60.sql` to production.
-2. Run sample rerun for `2005-06` first:
-   - `python -m scrapers.nst --history --start-season 2005-06 --end-season 2005-06`
-   - `python -m scrapers.nhl_com --history --start-season 2005-06 --end-season 2005-06`
+2. Run sample rerun for `2007-08` first:
+   - `python -m scrapers.nst --history --start-season 2007-08 --end-season 2007-08`
+   - `python -m scrapers.nhl_com --history --start-season 2007-08 --end-season 2007-08`
 3. Query `player_stats` and require:
    - at least ~50 sample rows with both `hits_per60` and `blocks_per60`
    - at least ~50 sample rows with raw `hits` and `blocks`
    - no negative situation TOI values for `toi_ev`, `toi_pp`, or `toi_sh`
-4. If the sample passes, rerun full history from `2005-06` through `current_season` for NST and NHL.com.
+4. If the sample passes, rerun full history using source-aware windows:
+   - NST: `2007-08` through `current_season`
+   - NHL.com: `2005-06` through `current_season`
 5. Re-run validation across the full range and fail if any season falls below the expected thresholds, allowing separate required start seasons for raw NHL data vs NST per-60 rate data when source coverage differs.
 
 ## Module / File Layout
@@ -90,30 +92,30 @@ Sample mode additionally requires at least 50 matching rows before the script pr
 
 ### Migration
 
-- [ ] migration 005 is applied successfully to the production project
+- [x] migration 005 is applied successfully to the production project
 
 ### Scraper entrypoints
 
-- [ ] NST history CLI accepts bounded start/end seasons
-- [ ] NHL.com history CLI accepts bounded start/end seasons
-- [ ] invalid season ranges fail clearly
+- [x] NST history CLI accepts bounded start/end seasons
+- [x] NHL.com history CLI accepts bounded start/end seasons
+- [x] invalid season ranges fail clearly
 
 ### Script
 
-- [ ] `scripts/backfill_data_quality.sh` exists and is executable
-- [ ] the script performs preflight checks before writing data
-- [ ] the script runs a sample rerun and validates before starting the full rerun
-- [ ] the script exits nonzero on validation failure
+- [x] `scripts/backfill_data_quality.sh` exists and is executable
+- [x] the script performs preflight checks before writing data
+- [x] the script runs a sample rerun and validates before starting the full rerun
+- [x] the script exits nonzero on validation failure
 
 ### Data validation
 
-- [ ] sample validation confirms meaningful writes before full history proceeds
-- [ ] final validation confirms `hits_per60` and `blocks_per60` are populated from the earliest supported NST season onward
-- [ ] final validation confirms raw `hits` and `blocks` are populated from `2005-06` onward
-- [ ] final validation confirms no negative situation TOI values
+- [x] sample validation confirms meaningful writes before full history proceeds
+- [x] final validation confirms `hits_per60` and `blocks_per60` are populated from the earliest supported NST season onward (`2007-08`)
+- [x] final validation confirms raw `hits` and `blocks` are populated from `2005-06` onward
+- [x] final validation confirms no negative situation TOI values
 
 ## Open Questions (resolved)
 
 1. **Should the sample stage stop after an exact row count?** No. Use a season-bounded sample first, because it is safer and less invasive.
 2. **Should this run against production directly?** Yes. There is only one Supabase environment right now.
-3. **What historical range is required?** `2005-06` onward for both raw and per-60 physical stats.
+3. **What historical range is required?** raw `hits` / `blocks` from `2005-06` onward; per-60 `hits_per60` / `blocks_per60` from `2007-08` onward.

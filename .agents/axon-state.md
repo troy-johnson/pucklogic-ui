@@ -3,11 +3,11 @@
 | Active Phase | Scraper data quality hardening and historical backfill verification completed for production-ready coverage targets; next execution track is Hockey Reference dedup closure + first real ML run |
 | Active Branch | feat/scraper-data-quality |
 | Open PR | None |
-| Current Focus | Close remaining Hockey Reference traded-player/career dedup gap, then execute the first real ML run using corrected historical NST/NHL data |
-| Last Action | Applied migration 005 in production, implemented staged backfill runner, fixed NST pagination + upsert null-overwrite behavior, reran targeted seasons, and validated season coverage in Supabase |
+| Current Focus | Execute first real ML run using corrected historical NST/NHL data now that Hockey Reference traded-player/career dedup logic is implemented and tested |
+| Last Action | Attempted HR verification backfill + first real ML run; HR verification hit source-side 403 and ML run is blocked locally by Python 3.14 incompatibility with SHAP/numba (training runtime expects Python 3.11–3.13) |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
 | Current Hypothesis | With corrected historical backfills (NHL raw from 2005-06 onward, NST per-60 from 2007-08 onward), the first real ML execution run can proceed once Hockey Reference dedup is closed |
-| Next Steps | 1. Finish Hockey Reference multi-team/career dedup 2. Run targeted scraper tests (incl. HR) 3. Re-run any needed HR-targeted backfill window 4. Execute first real ML run + sanity review 5. Lock draft kit workflow/UI scope |
+| Next Steps | 1. Re-run HR-targeted backfill verification window 2. Execute first real ML run + sanity review 3. Lock draft kit workflow/UI scope |
 
 ## Backfill/data quality completion status (current)
 
@@ -44,3 +44,8 @@
 - Web draft kit remains primary launch target; extension remains secondary and non-blocking for web launch
 - Auth + saved kits remain required launch scope for the web product
 - First real ML run should happen immediately after remaining scraper hardening (Hockey Reference dedup) closes
+
+## Current execution blockers
+
+- Hockey Reference verification rerun currently blocked by source-side `403 Forbidden` on season pages in this runtime environment.
+- `python -m ml.train --season 2026-27` is blocked locally because `shap` pulls `numba` which does not support Python 3.14; run training in a Python 3.11–3.13 environment.

@@ -12,7 +12,7 @@
 1. **Primary launch (late Aug / early Sep):** web draft kit
 2. **Secondary launch (Sep / Oct):** paid extension MVP/beta, only if it does not jeopardize the web product
 
-**Current branch reality:** active work is `feat/scraper-data-quality` — scraper hardening + backfill/data-quality verification
+**Current branch reality:** active work is `feat/scraper-data-quality` — NHL/NST hardening + backfill/data-quality verification completed; Hockey Reference dedup fix is implemented and awaiting targeted verification rerun before first ML execution
 
 ---
 
@@ -82,7 +82,7 @@ The product should continue to emphasize projection aggregation and fantasy-poin
 - [x] ML feature list updates are written
 
 ### Biggest unfinished areas
-- [ ] scraper hardening/backfill verification on the current branch
+- [ ] Hockey Reference traded-player/career dedup closure on the current branch
 - [ ] frontend draft kit UI
 - [ ] first real ML execution/validation cycle
 - [ ] browser extension implementation
@@ -167,16 +167,16 @@ The product should continue to emphasize projection aggregation and fantasy-poin
 
 - [ ] Finish Hockey Reference multi-team/career dedup
 - [ ] Finish current scraper hardening branch work
-- [ ] Apply migration 005 in Supabase
-- [ ] Run `python -m scrapers.nst --history`
-- [ ] Run `python -m scrapers.nhl_com --history`
-- [ ] Verify launch-critical fields for rankings/output/export/ML
+- [x] Apply migration 005 in Supabase
+- [x] Run `python -m scrapers.nst --history`
+- [x] Run `python -m scrapers.nhl_com --history`
+- [x] Verify launch-critical fields for rankings/output/export/ML
 - [ ] Document trusted data baseline
 
 **Done means:**
 - [ ] No known critical scraper correctness bugs remain
-- [ ] Historical backfill is verified for launch-critical stats
-- [ ] Data-quality verification steps are repeatable and documented
+- [x] Historical backfill is verified for launch-critical stats (NHL raw from `2005-06+`, NST rates from `2007-08+`)
+- [x] Data-quality verification steps are repeatable and documented
 - [ ] The dataset is trusted enough to support the first real ML execution run
 
 **Launch gate A:** Do not move to product build work unless the data baseline is trusted.

@@ -73,6 +73,47 @@ _HOLDOUT_SEASONS = {2023, 2024}
 _MIN_TOI = 5.0  # min/game
 
 
+def _season_to_year_int(season: Any) -> int | None:
+    """Normalize season values to integer end-year.
+
+    Supports:
+    - int season years (e.g. 2025)
+    - season labels (e.g. "2024-25" -> 2025)
+    Returns None when parsing fails.
+    """
+    if isinstance(season, int):
+        return season
+    if isinstance(season, str):
+        if "-" in season:
+            head = season.split("-")[0]
+            if head.isdigit():
+                return int(head) + 1
+        if season.isdigit():
+            return int(season)
+    return None
+
+
+def _normalize_all_rows_seasons(
+    all_rows: dict[str, list[dict[str, Any]]],
+) -> dict[str, list[dict[str, Any]]]:
+    """Return all_rows with row['season'] normalized to integer end-year.
+
+    Rows with unparseable season values are skipped.
+    """
+    normalized: dict[str, list[dict[str, Any]]] = {}
+    for player_id, rows in all_rows.items():
+        normalized_rows: list[dict[str, Any]] = []
+        for row in rows:
+            season_int = _season_to_year_int(row.get("season"))
+            if season_int is None:
+                continue
+            normalized_rows.append({**row, "season": season_int})
+        if normalized_rows:
+            normalized_rows.sort(key=lambda r: r["season"], reverse=True)
+            normalized[player_id] = normalized_rows
+    return normalized
+
+
 # ---------------------------------------------------------------------------
 # Label computation
 # ---------------------------------------------------------------------------
@@ -450,7 +491,7 @@ def main() -> None:
 
     # 1. Load all historical player_stats
     repo = PlayerStatsRepository(db)
-    all_rows = repo.get_all_seasons_grouped()
+    all_rows = _normalize_all_rows_seasons(repo.get_all_seasons_grouped())
     logger.info("Loaded %d players from DB", len(all_rows))
 
     # 2. Build labeled dataset (2008–2024)
