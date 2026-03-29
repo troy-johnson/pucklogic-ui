@@ -12,7 +12,7 @@
 1. **Primary launch (late Aug / early Sep):** web draft kit
 2. **Secondary launch (Sep / Oct):** paid extension MVP/beta, only if it does not jeopardize the web product
 
-**Current branch reality:** active work is `feat/scraper-data-quality` — NHL/NST hardening + backfill/data-quality verification completed; Hockey Reference dedup fix is implemented and awaiting targeted verification rerun before first ML execution
+**Current branch reality:** active work is `feat/scraper-data-quality` — NHL/NST hardening, HR dedup, first ML execution, and trends API hardening are complete; PR #30 is open and awaiting review.
 
 ---
 
@@ -81,10 +81,9 @@ The product should continue to emphasize projection aggregation and fantasy-poin
 - [x] Feature engineering updates are written
 - [x] ML feature list updates are written
 
-### Biggest unfinished areas
-- [ ] Hockey Reference traded-player/career dedup closure on the current branch
+### Biggest unfinished areas (post-PR30)
+- [ ] Review/merge PR #30 on the current branch
 - [ ] frontend draft kit UI
-- [ ] first real ML execution/validation cycle
 - [ ] browser extension implementation
 - [ ] legal/commercial review of third-party data usage at monetized draft-time surfaces
 

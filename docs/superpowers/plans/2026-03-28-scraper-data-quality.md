@@ -19,6 +19,9 @@
 - Validation rule corrected from `toi_sh < toi_ev` to source-correct non-negative TOI checks
 - Non-destructive `player_stats` upserts enforced (`default_to_null=False`) to prevent partial payload null-overwrites
 - Targeted reruns performed to resolve validation anomalies (`NST 2009-10`, `NHL 2009-10`, `NHL 2024-25`)
+- Hockey Reference targeted verification backfill rerun completed (`2009-10..2010-11`, 336 rows)
+- First real ML run completed for `2026-27` (artifacts uploaded, `player_trends` written)
+- Trends API hardened for legacy positions (`L/R`) and Supabase pagination limits
 - Final validation baseline:
   - raw `hits`/`blocks` coverage strong from `2005-06` onward
   - per-60 `hits_per60`/`blocks_per60` coverage strong from `2007-08` onward
@@ -26,8 +29,8 @@
 
 ### Remaining execution items
 
-- Run an HR-targeted verification/backfill window with the dedup fix in place.
-- Execute the first real ML training run after HR verification completes.
+- Await PR review/merge for branch `feat/scraper-data-quality` (PR #30).
+- Address any review feedback, then proceed to draft-kit UI workflow lock.
 
 ---
 
@@ -174,6 +177,6 @@ Phase 4:
 [x] Verify hits_per60 / blocks_per60 > 0 for 2008-09 onward
 [x] Verify non-negative `toi_ev`, `toi_pp`, `toi_sh` values for all players (0 violations)
 [ ] Verify career_goals not inflated for known traded players after HR verification rerun
-[ ] Run ml.train --season 2026-27
-[ ] Update SESSION_STATE.md — move from scraper hardening into first real ML execution after HR dedup closes
+[x] Run ml.train --season 2026-27
+[ ] Update SESSION_STATE.md / active state after PR #30 review+merge to transition into draft-kit workflow lock
 ```
