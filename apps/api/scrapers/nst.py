@@ -330,13 +330,26 @@ class NstScraper(BaseScraper):
     # DB helpers
     # ------------------------------------------------------------------
 
+    def _fetch_all_rows(self, db: Any, table: str, fields: str) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        start = 0
+        page_size = 1000
+
+        while True:
+            result = db.table(table).select(fields).range(start, start + page_size - 1).execute()
+            batch = result.data or []
+            rows.extend(batch)
+            if len(batch) < page_size:
+                break
+            start += page_size
+
+        return rows
+
     def _fetch_players(self, db: Any) -> list[dict[str, Any]]:
-        result = db.table("players").select("id,name").execute()
-        return result.data or []
+        return self._fetch_all_rows(db, "players", "id,name")
 
     def _fetch_aliases(self, db: Any) -> list[dict[str, Any]]:
-        result = db.table("player_aliases").select("alias_name,player_id,source").execute()
-        return result.data or []
+        return self._fetch_all_rows(db, "player_aliases", "alias_name,player_id,source")
 
     def _upsert_player_stats(
         self,
@@ -353,6 +366,7 @@ class NstScraper(BaseScraper):
         db.table("player_stats").upsert(
             payload,
             on_conflict="player_id,season",
+            default_to_null=False,
         ).execute()
 
     # ------------------------------------------------------------------
@@ -504,6 +518,8 @@ def _iter_seasons(start: str, end: str) -> list[str]:
     """
     start_year = int(start.split("-")[0])
     end_year = int(end.split("-")[0])
+    if start_year > end_year:
+        raise ValueError(f"start season {start} is after end season {end}")
     seasons = []
     for y in range(start_year, end_year + 1):
         short = str(y + 1)[-2:]
@@ -528,13 +544,24 @@ async def _main() -> None:
             "are skipped gracefully. Run before the first training run."
         ),
     )
+    parser.add_argument(
+        "--start-season",
+        default="2005-06",
+        help="History mode only: first season to backfill (default: 2005-06).",
+    )
+    parser.add_argument(
+        "--end-season",
+        default=None,
+        help="History mode only: last season to backfill (default: current season).",
+    )
     args = parser.parse_args()
 
     db = create_client(settings.supabase_url, settings.supabase_service_role_key)
     scraper = NstScraper()
 
     if args.history:
-        seasons = _iter_seasons("2005-06", settings.current_season)
+        end_season = args.end_season or settings.current_season
+        seasons = _iter_seasons(args.start_season, end_season)
         total = 0
         for season in seasons:
             try:
@@ -543,7 +570,7 @@ async def _main() -> None:
                 print(f"NST {season}: {count} rows")
             except Exception as exc:
                 logger.warning("NST %s: skipped — %s", season, exc)
-        print(f"NST history: {total} total rows upserted")
+        print(f"NST history {args.start_season}..{end_season}: {total} total rows upserted")
     else:
         count = await scraper.scrape(settings.current_season, db)
         print(f"Upserted {count} rows.")

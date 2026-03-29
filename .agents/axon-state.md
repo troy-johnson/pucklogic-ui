@@ -1,40 +1,46 @@
 | Field | Value |
 |---|---|
-| Active Phase | Draft season readiness plan approved; scraper data quality hardening + backfill verification remains the active execution track |
+| Active Phase | Scraper data quality hardening and historical backfill verification completed for production-ready coverage targets; next execution track is Hockey Reference dedup closure + first real ML run |
 | Active Branch | feat/scraper-data-quality |
 | Open PR | None |
-| Current Focus | Main readiness plan updated from rev3; current engineering work remains NHL.com, NST, and Hockey Reference scraper fixes plus backfill/data-quality verification before the first real ML execution run |
-| Last Action | Promoted the approved draft season readiness plan to `docs/superpowers/plans/2026-03-28-draft-season-readiness.md`, archived prior drafts, and synced planning/state docs toward `.agents/axon-state.md` |
+| Current Focus | Close remaining Hockey Reference traded-player/career dedup gap, then execute the first real ML run using corrected historical NST/NHL data |
+| Last Action | Applied migration 005 in production, implemented staged backfill runner, fixed NST pagination + upsert null-overwrite behavior, reran targeted seasons, and validated season coverage in Supabase |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
-| Current Hypothesis | Once Hockey Reference dedup, migration 005, and history backfills are complete, the project can run the first real ML execution cycle in April and then shift to locking the draft kit UI scope |
-| Next Steps | 1. Finish Hockey Reference multi-team/career dedup 2. Run targeted scraper tests 3. Apply migration 005 and run NST/NHL.com history backfills 4. Execute the first real ML run 5. Lock draft kit workflow/UI scope |
+| Current Hypothesis | With corrected historical backfills (NHL raw from 2005-06 onward, NST per-60 from 2007-08 onward), the first real ML execution run can proceed once Hockey Reference dedup is closed |
+| Next Steps | 1. Finish Hockey Reference multi-team/career dedup 2. Run targeted scraper tests (incl. HR) 3. Re-run any needed HR-targeted backfill window 4. Execute first real ML run + sanity review 5. Lock draft kit workflow/UI scope |
 
-## Scraper data quality status
+## Backfill/data quality completion status (current)
 
-- Phase 1 (NHL.com) complete on `feat/scraper-data-quality`
-- Verified with `pytest tests/scrapers/test_nhl_com.py -v` → 29 passed
-- Smoke fixture updated for `NhlComScraper.scrape()` returning `(summary_count, realtime_count)`
-- `psycopg2-binary` installed locally so `tests/smoke/conftest.py` imports cleanly in this environment
-- Phase 2 (NST) complete on `feat/scraper-data-quality`
-- Verified with `pytest tests/scrapers/test_nst.py -v` → 46 passed
+- Migration `005_hits_blocks_per60` applied to production Supabase project `mrjrtwwmbxfytnnjkaid`
+- `scripts/backfill_data_quality.sh` added with staged flow:
+  - sample run
+  - validation gate
+  - full run
+  - final validation
+- Split historical coverage now enforced operationally:
+  - NHL.com raw hits/blocks: `2005-06` onward
+  - NST `hits_per60` / `blocks_per60`: `2007-08` onward (NST has no usable rows in `2005-06` and `2006-07`)
+- Validation rules now use source-correct TOI checks (non-negative situation TOI values), not `toi_sh < toi_ev`
+- Upserts to `player_stats` now use `default_to_null=False` to avoid partial payloads nulling existing columns
 
-## Phase 1 decisions now in force
+## Verified outcomes
 
-- NHL.com summary and realtime URLs use `isAggregate=true`
-- For traded players, `players.team` stores the last team from comma-joined `teamAbbrevs`
-- NHL.com realtime pass falls back to `players.nhl_id` lookup before skipping missing summary-map players
-- NHL.com realtime logging reports separate summary and realtime counts
-- `realtime_count` only increments when hits/blocks were actually written
+- Targeted scraper tests passing after fixes:
+  - `pytest tests/scrapers/test_nst.py tests/scrapers/test_nhl_com.py` → 85 passed
+- Targeted season reruns completed after upsert fix:
+  - NST `2009-10..2009-10`
+  - NHL.com `2009-10..2009-10`
+  - NHL.com `2024-25..2024-25`
+- Season-level DB validation now shows:
+  - Raw coverage strong from `2005-06` onward
+  - Rate coverage strong from `2007-08` onward, including corrected `2009-10`
+  - No negative `toi_ev` / `toi_pp` / `toi_sh` values
+  - `2026-27` empty is acceptable because season not started
 
-## Phase 2 decisions now in force
+## Decisions now in force
 
-- NST parser supports both legacy and current hits/blocks per-60 headers (`iHF/60` / `Hits/60`, `iBLK/60` / `Shots Blocked/60`)
-- NST TOI parsing prefers explicit `TOI/GP` when present, otherwise derives per-game TOI from total `TOI / GP`
-- `toi_sh` should now reflect actual short-handed TOI/game instead of inheriting all-situations TOI/game
-
-## Approved planning direction now in force
-
-- The web draft kit is the primary launch target for draft season; the extension remains a secondary launch that must not block the web product
-- Auth + saved kits are required launch scope for the web product
-- The first real ML run should happen immediately after data hardening/backfill work is complete
-- ESPN-first is the acceptable fallback for extension MVP scope if both ESPN and Yahoo do not fit
+- NHL.com summary/realtime backfills remain `isAggregate=true`
+- NST per-60 historical floor is operationally `2007-08`
+- Web draft kit remains primary launch target; extension remains secondary and non-blocking for web launch
+- Auth + saved kits remain required launch scope for the web product
+- First real ML run should happen immediately after remaining scraper hardening (Hockey Reference dedup) closes

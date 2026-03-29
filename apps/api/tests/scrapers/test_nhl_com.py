@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from scrapers.nhl_com import NhlComScraper
+from scrapers.nhl_com import NhlComScraper, _iter_seasons
 
 SEASON = "2025-26"
 
@@ -52,6 +52,58 @@ class TestSeasonId:
     def test_century_preserved_for_2099_00(self) -> None:
         # Edge: century boundary
         assert NhlComScraper._season_id("2099-00") == "20992000"
+
+
+class TestIterSeasons:
+    def test_returns_inclusive_history_range(self) -> None:
+        assert _iter_seasons("2005-06", "2007-08") == ["2005-06", "2006-07", "2007-08"]
+
+    def test_raises_when_start_is_after_end(self) -> None:
+        with pytest.raises(ValueError, match="start season"):
+            _iter_seasons("2007-08", "2005-06")
+
+
+class TestPlayerStatsUpsertBehavior:
+    def test_summary_upsert_uses_default_to_null_false(self) -> None:
+        scraper = NhlComScraper()
+        db = MagicMock()
+
+        scraper._upsert_player_stats(
+            db,
+            player_id="player-1",
+            season="2009-10",
+            player={
+                "gamesPlayed": 82,
+                "goals": 30,
+                "assists": 50,
+                "points": 80,
+                "ppPoints": 20,
+                "shPoints": 2,
+                "shots": 250,
+                "faceoffWinPct": 52.4,
+            },
+        )
+
+        db.table.assert_called_once_with("player_stats")
+        _, kwargs = db.table.return_value.upsert.call_args
+        assert kwargs["on_conflict"] == "player_id,season"
+        assert kwargs["default_to_null"] is False
+
+    def test_realtime_upsert_uses_default_to_null_false(self) -> None:
+        scraper = NhlComScraper()
+        db = MagicMock()
+
+        did_upsert = scraper._upsert_realtime_stats(
+            db,
+            player_id="player-1",
+            season="2024-25",
+            player={"hits": 120, "blockedShots": 65},
+        )
+
+        assert did_upsert is True
+        _, kwargs = db.table.return_value.upsert.call_args
+        assert kwargs["on_conflict"] == "player_id,season"
+        assert kwargs["default_to_null"] is False
 
 
 # ---------------------------------------------------------------------------

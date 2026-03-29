@@ -158,6 +158,7 @@ class NhlComScraper(BaseScraper):
         db.table("player_stats").upsert(
             {"player_id": player_id, "season": season, **stats},
             on_conflict="player_id,season",
+            default_to_null=False,
         ).execute()
 
     def _upsert_realtime_stats(
@@ -173,6 +174,7 @@ class NhlComScraper(BaseScraper):
         db.table("player_stats").upsert(
             {"player_id": player_id, "season": season, **stats},
             on_conflict="player_id,season",
+            default_to_null=False,
         ).execute()
         return True
 
@@ -285,6 +287,8 @@ def _iter_seasons(start: str, end: str) -> list[str]:
     """
     start_year = int(start.split("-")[0])
     end_year = int(end.split("-")[0])
+    if start_year > end_year:
+        raise ValueError(f"start season {start} is after end season {end}")
     seasons = []
     for y in range(start_year, end_year + 1):
         short = str(y + 1)[-2:]
@@ -308,13 +312,24 @@ async def _main() -> None:
             "Run before the first training run."
         ),
     )
+    parser.add_argument(
+        "--start-season",
+        default="2005-06",
+        help="History mode only: first season to backfill (default: 2005-06).",
+    )
+    parser.add_argument(
+        "--end-season",
+        default=None,
+        help="History mode only: last season to backfill (default: current season).",
+    )
     args = parser.parse_args()
 
     db = create_client(settings.supabase_url, settings.supabase_service_role_key)
     scraper = NhlComScraper()
 
     if args.history:
-        seasons = _iter_seasons("2005-06", settings.current_season)
+        end_season = args.end_season or settings.current_season
+        seasons = _iter_seasons(args.start_season, end_season)
         total_summary = 0
         total_realtime = 0
         for season in seasons:
@@ -326,7 +341,7 @@ async def _main() -> None:
             except Exception as exc:
                 logger.warning("NHL.com %s: skipped - %s", season, exc)
         print(
-            f"NHL.com history: {total_summary} summary rows, "
+            f"NHL.com history {args.start_season}..{end_season}: {total_summary} summary rows, "
             f"{total_realtime} realtime rows upserted"
         )
     else:
