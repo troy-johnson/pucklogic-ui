@@ -64,9 +64,10 @@ class HockeyReferenceScraper(BaseScraper):
         single row per player by selecting the row with the highest GP, which is
         the aggregate row in normal HR tables.
 
-        Note: dedupe currently keys by player_name because the table payload here
-        does not provide a stable cross-row identifier in our parse path.
-        This can theoretically collide for same-name players in a single season.
+        Dedupe key preference:
+          1) stable player identifier from link href (e.g. ``mcdavid01``)
+          2) ``data-append-csv`` when present
+          3) player_name fallback
         """
         soup = BeautifulSoup(html, "lxml")
         table = soup.find("table", {"id": "player_stats"})
@@ -88,6 +89,16 @@ class HockeyReferenceScraper(BaseScraper):
             if not player_name:
                 continue
 
+            player_key: str | None = None
+            link = td.find("a", href=True)
+            if link is not None:
+                href = str(link.get("href", ""))
+                if href.endswith(".html") and "/players/" in href:
+                    player_key = href.rsplit("/", 1)[-1].replace(".html", "")
+            if not player_key:
+                append_csv = td.get("data-append-csv")
+                player_key = str(append_csv).strip() if append_csv else player_name
+
             def _int(stat: str, _tr: Any = tr) -> int:
                 cell = _tr.find("td", {"data-stat": stat})
                 txt = cell.get_text(strip=True) if cell else ""
@@ -100,6 +111,7 @@ class HockeyReferenceScraper(BaseScraper):
             rows.append(
                 {
                     "player_name": player_name,
+                    "player_key": player_key,
                     "gp": gp,
                     "goals": goals,
                     "shots": shots,
@@ -108,12 +120,12 @@ class HockeyReferenceScraper(BaseScraper):
             )
 
         # Deduplicate traded-player multi-row seasons by keeping highest-GP row.
-        # Known limitation: keyed by player_name; same-name collisions are possible.
         deduped: dict[str, dict[str, Any]] = {}
         for row in rows:
-            existing = deduped.get(row["player_name"])
+            dedupe_key = row["player_key"]
+            existing = deduped.get(dedupe_key)
             if existing is None or row["gp"] > existing["gp"]:
-                deduped[row["player_name"]] = row
+                deduped[dedupe_key] = row
 
         return list(deduped.values())
 

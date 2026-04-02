@@ -23,7 +23,7 @@ docs/                architecture and domain reference docs
 If you are new to the repo, read these in order:
 
 1. `AGENTS.md` - agent-neutral repo orientation and doc precedence
-2. `.claude/SESSION_STATE.md` - current phase, active focus, and next steps
+2. `.agents/axon-state.md` - current phase, active focus, and next steps
 3. `docs/pucklogic-architecture.md` - system overview and canonical product architecture
 4. One or more domain references, depending on the task:
    - `docs/backend-reference.md`
@@ -74,7 +74,7 @@ pnpm test
 
 ## Workflow Notes
 
-- Current task and phase tracking lives in `.claude/SESSION_STATE.md`.
+- Current task and phase tracking lives in `.agents/axon-state.md`.
 - `CLAUDE.md` contains Claude-specific workflow guidance.
 - `AGENTS.md` is the neutral entrypoint for Codex and other coding agents.
 - Keep docs and task tracking in sync when a milestone closes.

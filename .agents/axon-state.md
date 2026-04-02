@@ -1,13 +1,13 @@
 | Field | Value |
 |---|---|
-| Active Phase | Scraper data quality hardening and historical backfill verification completed for production-ready coverage targets; next execution track is Hockey Reference dedup closure + first real ML run |
+| Active Phase | Scraper data quality hardening closeout on `feat/scraper-data-quality`; Hockey Reference dedup fix landed locally and verification is complete |
 | Active Branch | feat/scraper-data-quality |
-| Open PR | #30 — https://github.com/troy-johnson/pucklogic-ui/pull/30 |
-| Current Focus | Await PR #30 review/merge after completing scraper hardening, HR dedup, first real ML run, and trends API stability fixes |
-| Last Action | Completed HR verification backfill, executed first real ML run (artifacts + player_trends writes), fixed trends position validation + pagination, and opened PR #30 |
+| Open PR | None |
+| Current Focus | Keep axon-state and Notion aligned as canonical status sources, then move to draft-kit workflow/UI scope lock |
+| Last Action | Merged PR #30 after syncing Notion readiness/status pages to the post-ML-run state and verifying Hockey Reference dedup hardening, scraper tests, and 2024-25 data-quality coverage |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
-| Current Hypothesis | With corrected historical backfills (NHL raw from 2005-06 onward, NST per-60 from 2007-08 onward), the first real ML execution run can proceed once Hockey Reference dedup is closed |
-| Next Steps | 1. Address PR #30 review feedback 2. Merge scraper hardening/ML closeout branch 3. Move to draft kit workflow/UI lock |
+| Current Hypothesis | HR multi-team/career dedup risk is now mitigated by stable player-key parsing, so remaining risk is review/merge coordination rather than scraper correctness |
+| Next Steps | 1. Lock draft-kit workflow/UI scope 2. Start backend integration verification for the launch flow 3. Keep Notion and axon-state synced during product build |
 
 ## Backfill/data quality completion status (current)
 
@@ -50,3 +50,19 @@
 - HR targeted verification backfill succeeded (`2009-10..2010-11`, 336 rows).
 - First real ML run succeeded for `2026-27` (dataset 11229, artifacts uploaded, `player_trends` 901 rows).
 - Trends endpoint now returns stable populated responses with normalization + pagination fixes.
+
+## Execution outcomes (2026-04-01)
+
+- Hockey Reference parser dedup now prefers stable key sources in order: player href id (e.g. `mcdavid01`) → `data-append-csv` → name fallback.
+- Added regression test to ensure same-name players with distinct HR ids are not incorrectly deduped in a single season.
+- Targeted tests passed:
+  - `pytest tests/scrapers/test_hockey_reference.py -v` → 31 passed
+  - `pytest tests/scrapers/test_nhl_com.py tests/scrapers/test_nst.py -v` → 85 passed
+- One-season data-quality verification passed (`2024-25`):
+  - `total=925`, `gp_rows=924`, `rate_rows=914` (`98.9%`), `raw_rows=920` (`99.6%`)
+  - No validation failures; TOI non-negativity check passed.
+
+## Merge outcome (2026-04-01)
+
+- PR #30 merged successfully into `main`.
+- Canonical status now advances from scraper/backfill closeout into draft-kit workflow/UI scope lock.
