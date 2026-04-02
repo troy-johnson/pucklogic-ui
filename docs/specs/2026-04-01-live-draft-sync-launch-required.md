@@ -1,164 +1,125 @@
-# Launch-Required Live Draft Sync
+# 2026-04-01 — Live Draft Sync Launch Requirement
 
 **Status:** Draft for approval  
-**Date:** 2026-04-01  
-**Milestone:** Milestone B — Lock the draft kit workflow / UI scope
+**Milestone:** B — Lock the draft kit workflow / UI scope  
+**Priority:** Launch gate  
+**Risk:** High  
+**Branch:** `feat/live-draft-sync-spec`
 
-## Summary
+## Architecture References
 
-PuckLogic v1 must support a live, in-draft experience where a user can keep rankings and suggestions synchronized with the actual draft state. Live draft sync is a launch gate, not a stretch feature. The launch experience must remain usable even when automatic draft-room detection is degraded, so manual pick entry and reconnectable session recovery are also required.
+- `docs/pucklogic-architecture.md`
+- `docs/backend-reference.md`
+- `docs/extension-reference.md`
+- `docs/superpowers/plans/2026-03-28-draft-season-readiness.md`
+- `.agents/axon-state.md`
+
+## Why this spec exists
+
+The current readiness plan treats the extension and live draft sync as secondary unless they can be shipped safely. Product direction has now changed: **live draft sync is required for launch**. That changes launch scope, risk allocation, and implementation order.
+
+This spec defines the launch bar for live draft sync, the minimum supported workflow, the required recovery/manual fallback behavior, and the constraints needed to keep the scope buildable.
 
 ## Goals
 
 - Make live draft sync a required launch capability.
-- Let a user start or join a draft session and keep PuckLogic synchronized with real draft picks.
-- Recompute or refresh rankings/suggestions against current draft state during the draft.
-- Preserve a usable draft workflow when automatic sync fails through manual pick entry.
-- Recover session state after refresh, reconnect, or extension/browser interruption.
+- Let a user start or resume a draft session and keep PuckLogic synchronized with real draft picks.
+- Refresh rankings/suggestions from current draft state during an active draft.
+- Preserve draft usability via manual pick entry when automatic sync degrades.
+- Recover draft-session state after refresh, reconnect, or extension/browser interruption.
 
-## Non-goals
+## Non-Goals
 
 - Full cross-platform parity if it jeopardizes launch.
 - Collaboration or multi-user war-room workflows.
-- Advanced commissioner tools or league-history import.
+- Advanced commissioner tools or league-history imports.
 - Mobile-first in-draft UX.
-- Perfect automation with no fallback path.
+- Perfect automation with no manual fallback path.
 
-## Launch definition
+## Launch Workflow
 
-PuckLogic is not launch-ready unless all of the following are true:
+The launch-required in-draft workflow is:
 
-1. A real user can start or resume a live draft session.
-2. Picks can be captured and reflected in session state in near real time.
-3. Rankings/suggestions update from current draft state.
-4. The user can continue via manual pick entry if automatic sync fails.
-5. Session state survives reconnects and reloads well enough to continue a real draft.
-6. Sync health is visible enough that users know whether the product is still trustworthy mid-draft.
+1. Authenticated user starts a live draft session from the web app.
+2. User connects extension-backed sync for a supported draft room.
+3. Picks flow into the authoritative backend session state in near real time.
+4. Rankings/suggestions refresh after accepted picks.
+5. If sync becomes unreliable, the user switches to manual pick entry without losing session continuity.
+6. If the browser/extension disconnects, the user can resume the session and reconcile state.
 
-## User stories
+PuckLogic is not launch-ready unless this workflow is reliable enough for a real draft.
 
-- As a drafter, I can connect PuckLogic to my live draft so I do not have to manually track every pick.
-- As a drafter, I can see updated rankings/suggestions after each pick.
-- As a drafter, I can resume my draft session if my browser reloads or disconnects.
-- As a drafter, I can continue drafting with manual entry if automatic sync stops working.
-- As a drafter, I can tell when sync is healthy versus degraded.
+## Design Decisions
 
-## Design decisions
+### D1. Live draft sync is a launch gate
 
-### 1. Live draft sync is launch-critical
+Live draft sync is required launch scope, not a stretch feature or post-launch enhancement.
 
-Live draft sync moves from secondary/stretch scope to required launch scope.
+**Rationale:** Product direction now treats the in-draft experience as part of the core launch promise.
 
-### 2. Manual fallback is also launch-critical
+### D2. Manual fallback is also launch-required
 
-Automatic detection is not enough. If DOM parsing, extension sync, or background worker lifecycle causes issues, the user must still be able to continue the draft via manual pick entry.
+Manual pick entry must be available whenever automatic detection is missing, degraded, or unreliable.
 
-### 3. Session-based architecture
+**Rationale:** ESPN/Yahoo DOM volatility and MV3 lifecycle behavior make a no-fallback design too risky for real draft usage.
 
-Live draft sync is modeled as a persisted `draft_session` with:
+### D3. Backend session state is authoritative
 
-- session identity
-- user ownership
-- platform context
-- linked league/profile context where applicable
-- current draft state
-- drafted players / picks
-- sync-health and reconnect metadata
+Draft state must be persisted in a backend-owned `draft_session`; extension and web UI are clients of that state, not alternate sources of truth.
 
-### 4. Realtime transport uses WebSocket state sync
+**Rationale:** Reconnect, dedupe, recovery, and multi-surface consistency all depend on a single authority.
 
-The product uses a WebSocket session model for live updates between extension/client and backend. The backend remains the authoritative source of draft-session state.
+### D4. Reconnect and sync recovery are part of the core feature
 
-### 5. Recovery-first behavior is mandatory
+Reconnect behavior, `sync_state` reconciliation, and visible sync-health status are required launch behaviors.
 
-Reconnect and state restoration are required launch behavior because extension and browser lifecycle interruptions are expected.
+**Rationale:** Extension/service-worker interruptions are expected, not exceptional.
 
-### 6. Scope must tighten elsewhere
+### D5. ESPN is the launch-critical platform target
 
-Because live draft sync is now launch-critical, other v1 surfaces must stay constrained:
+ESPN live draft sync is the minimum required platform for launch approval. Yahoo may ship at launch only if it does not jeopardize ESPN stability or recovery quality.
 
-- keeper support remains lightweight
-- advanced league workflows remain bounded
-- extension polish beyond the required sync path is secondary
+**Rationale:** Existing repo docs and risk notes indicate ESPN is the safest primary target.
 
-## Scope
+### D6. Auth is required for live draft sync
 
-### In scope
+Live draft sync requires authenticated access. If paid entitlement is enforced at launch, entitlement checks occur before session start and on reconnect.
 
-- create draft session
-- join or resume active draft session
-- ingest picks from extension
-- manual pick entry fallback
-- websocket state update flow
-- reconnect and `sync_state` recovery
-- rankings/suggestions refresh from current draft state
-- visible sync state in UI (`connected`, `reconnecting`, `out_of_sync`, `manual_mode`)
+**Rationale:** Draft sessions are persistent, user-owned state and must be protected server-side.
 
-### Out of scope
+## Implementation Surface
 
-- collaboration or shared draft-room coordination
-- auction-draft-specific workflows unless trivial to support
-- deep post-draft analytics
-- removing manual fallback
-- full parity for every platform edge case at launch
+The implementation implied by this spec will touch at least these surfaces:
 
-## Platform support at launch
+- **Backend API**
+  - draft session creation/resume endpoints
+  - websocket draft-session transport
+  - pick validation, dedupe, persistence, and state broadcast
+- **Web app**
+  - draft session entry/start UI
+  - sync-health UI states
+  - manual pick entry controls
+  - in-draft rankings/suggestions refresh path
+- **Extension**
+  - draft-room detection
+  - pick extraction + event emission
+  - reconnect/backoff + `sync_state` handling
+  - manual fallback affordance when selectors fail
 
-### Recommended launch stance
+This spec intentionally does **not** define exact files yet; that belongs in the plan after approval.
 
-- **Required:** ESPN live draft sync
-- **Best effort / conditional:** Yahoo live draft sync
-- **Not required:** parity across all supported platforms
+## Session and Event Model
 
-### Rationale
+### Draft session state must include
 
-Current architecture and risk notes indicate ESPN is the safer launch-critical target. Requiring both ESPN and Yahoo at equal launch quality materially increases schedule risk.
-
-## Functional requirements
-
-### A. Session lifecycle
-
-- User can create a draft session from the web app.
-- User can resume an active session after reconnect/reload.
-- Session stores enough authoritative state to reconstruct draft progress.
-- Session can be explicitly ended or expire safely after inactivity.
-
-### B. Live pick sync
-
-- Extension detects picks from supported draft-room DOM selectors.
-- Pick events are sent to the backend session stream.
-- Backend validates, deduplicates, and persists accepted picks.
-- Connected clients receive updated session state.
-
-### C. Rankings / suggestions refresh
-
-- After each accepted pick, draft state updates.
-- PuckLogic refreshes available-player context and recommendations.
-- User sees updated rankings/suggestions without losing draft continuity.
-
-### D. Manual fallback
-
-- User can enter picks manually at any time.
-- Manual entry is available when:
-  - extension is unavailable
-  - platform detection fails
-  - sync becomes unreliable
-- Manual entry writes to the same draft-session state model as automatic pick ingestion.
-
-### E. Recovery / reconnect
-
-- On reconnect, the client or extension requests authoritative server state.
-- Backend returns `sync_state` for reconciliation.
-- Product can reconcile local UI state against authoritative session state.
-- Sync-health state is surfaced clearly to the user.
-
-### F. Auth / entitlement
-
-- Live draft sync requires authenticated access.
-- Draft-session ownership and authorization are enforced server-side.
-- If paid entitlement is required at launch, entitlement is checked before session start and during reconnect recovery.
-
-## Event and state model
+- `session_id`
+- `user_id`
+- `platform`
+- `status`
+- drafted picks / drafted players
+- current turn or last processed pick
+- sync-health state
+- reconnect / resume token or equivalent resume identifier
 
 ### Required event types
 
@@ -169,17 +130,6 @@ Current architecture and risk notes indicate ESPN is the safer launch-critical t
 - `state_update`
 - `error`
 
-### Required session-state concepts
-
-- session id
-- user id
-- platform
-- draft status
-- drafted picks / players
-- current turn or last processed pick
-- sync-health state
-- resume or reconnect identifier as needed
-
 ### Pick event minimum fields
 
 - player identifier
@@ -189,9 +139,44 @@ Current architecture and risk notes indicate ESPN is the safer launch-critical t
 - ingestion mode (`auto` or `manual`)
 - optional roster/team context when available
 
-## UX requirements
+## Required Behavior
 
-### Draft sync states
+### Session lifecycle
+
+- User can create a draft session from the web app.
+- User can resume an active session after reconnect/reload.
+- Session stores enough authoritative state to reconstruct draft progress.
+- Session can be explicitly ended or expire safely after inactivity.
+
+### Live pick sync
+
+- Extension detects picks from supported draft-room selectors.
+- Pick events are sent to the backend session stream.
+- Backend validates, deduplicates, and persists accepted picks.
+- Connected clients receive updated state.
+
+### Rankings and suggestions refresh
+
+- After each accepted pick, draft state updates.
+- PuckLogic refreshes available-player context and recommendations.
+- User sees updated rankings/suggestions without losing draft continuity.
+
+### Manual fallback
+
+- User can enter picks manually at any time.
+- Manual entry is available when:
+  - extension is unavailable
+  - platform detection fails
+  - sync becomes unreliable
+- Manual entry writes to the same session-state model as automatic ingestion.
+
+### Recovery and reconnect
+
+- On reconnect, client or extension requests authoritative session state.
+- Backend returns `sync_state` for reconciliation.
+- Product surfaces sync health clearly enough for user trust decisions.
+
+## UX States
 
 The UI must clearly represent:
 
@@ -201,71 +186,74 @@ The UI must clearly represent:
 - out of sync
 - manual fallback active
 
-### User controls
-
 The user must be able to:
 
 - start live sync
-- reconnect or resume a session
+- resume/reconnect a session
 - switch to manual mode
 - enter a missed pick manually
-- review sync health
+- inspect current sync health
 
-### Failure handling
+## Acceptance Criteria
 
-If automatic sync confidence drops:
-
-- warn the user
-- preserve session continuity
-- offer manual pick entry immediately
-- avoid silently continuing in a misleading state
-
-## Acceptance criteria
-
-### Launch gate acceptance
+### Product acceptance
 
 - [ ] A real user can start a live draft session and use it during a real draft.
-- [ ] Picks can be captured and reflected in session state in near real time.
+- [ ] Picks are captured and reflected in session state in near real time.
 - [ ] Rankings/suggestions update after accepted picks.
-- [ ] Refresh/reconnect does not destroy usable draft continuity.
+- [ ] Refresh/reconnect preserves usable draft continuity.
 - [ ] User can continue via manual fallback if automatic sync fails.
 - [ ] Sync health is visible in the UI.
-- [ ] Server-side auth and ownership checks are enforced.
-- [ ] Live draft sync is treated as required launch scope in product planning and implementation.
+- [ ] Live draft sync is treated as required launch scope in downstream planning.
 
-### Reliability acceptance
+### Backend / session acceptance
 
-- [ ] Reconnect restores authoritative state well enough to continue the draft.
-- [ ] Duplicate and missed pick handling are defined and tested.
-- [ ] Manual and automatic pick ingestion converge into one consistent session model.
-- [ ] DOM volatility or extension interruption does not fully block draft use because fallback exists.
+- [ ] Draft-session ownership and auth checks are enforced server-side.
+- [ ] Reconnect restores authoritative session state well enough to continue drafting.
+- [ ] Duplicate and missed pick handling are defined.
+- [ ] Manual and automatic pick ingestion converge into one session model.
 
-## Risks
+### Extension / platform acceptance
 
-- ESPN and Yahoo draft-room DOM churn
-- MV3 service worker termination and reconnect timing
-- session desync between extension, UI, and backend
-- auth/entitlement issues blocking launch-critical flow
-- scope blow-up if ESPN and Yahoo are both treated as equal hard requirements immediately
+- [ ] ESPN live draft sync is launch-ready.
+- [ ] Selector failures do not fully block draft use because manual fallback exists.
+- [ ] Extension interruption does not permanently strand the session.
 
-## Resolved questions
+### Verification acceptance
+
+- [ ] Automated tests cover draft-session lifecycle and pick-state reconciliation.
+- [ ] Automated tests cover duplicate/missed pick handling.
+- [ ] Automated tests cover manual pick ingestion.
+- [ ] Automated tests cover reconnect or `sync_state` recovery semantics.
+- [ ] Manual verification proves the end-to-end workflow is usable in a real draft-like session.
+
+## Risks and Guardrails
+
+- **DOM churn:** ESPN/Yahoo draft-room markup can change; implementation must use multiple selectors and degrade to manual fallback.
+- **MV3 lifecycle:** service worker termination and reconnect timing must be treated as standard behavior.
+- **Desync risk:** extension, UI, and backend can diverge unless server state stays authoritative.
+- **Scope blow-up:** requiring ESPN and Yahoo equally at launch materially increases risk.
+- **Auth/entitlement failures:** if the session cannot recover auth cleanly, the draft flow becomes launch-blocking.
+
+## Resolved Questions
 
 - Live draft sync is required for launch.
 - Manual fallback is required for launch.
-- Session recovery and reconnect are required for launch.
+- Session recovery/reconnect is required for launch.
 - Live draft sync requires authentication.
+- ESPN is the minimum launch-critical platform.
 
-## Unresolved questions
+## Open Questions
 
-1. Is launch approval satisfied by ESPN-only live sync, or must Yahoo also be launch-required?
-2. Should paid entitlement be enforced at launch, or is authentication alone enough for early launch scope?
-3. How draft-aware must suggestions be at v1: simple best-available versus more roster-aware recommendation logic?
-4. What exact sync-latency or user-visible freshness threshold is acceptable during a real draft?
+1. Is Yahoo also launch-required, or only best-effort at launch?
+2. Is paid entitlement enforced at launch, or is authentication alone sufficient for the initial release?
+3. How draft-aware must suggestions be at v1: simple best-available versus roster-aware recommendations?
+4. What user-visible freshness threshold is acceptable for “near real time” during an actual draft?
 
 ## Recommendation
 
-Approve this spec with the following scope guardrail:
+Approve this spec with the following guardrail:
 
-> Launch requires reliable ESPN live draft sync, reconnectable draft sessions, and manual fallback. Yahoo may ship at launch only if it does not jeopardize ESPN stability or session recovery quality.
+> Launch requires reliable ESPN live draft sync, reconnectable draft sessions, and manual fallback. Yahoo may ship at launch only if it does not jeopardize ESPN stability or recovery quality.
 
 Do not proceed to planning until this spec is approved.
