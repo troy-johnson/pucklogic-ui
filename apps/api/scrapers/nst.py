@@ -98,8 +98,12 @@ _FLOAT_COL_MAP_ALL: dict[str, str] = {
     "iSCF/60": "scf_per60",
     "First Assists/60": "p1_per60",
     "Goals/60": "g_per60",
+    # NST has used both older individual-stat headers (iHF/iBLK) and newer
+    # visible labels (Hits/60, Shots Blocked/60) over time.
     "iHF/60": "hits_per60",
+    "Hits/60": "hits_per60",
     "iBLK/60": "blocks_per60",
+    "Shots Blocked/60": "blocks_per60",
 }
 
 # On-ice column map (stdoi=oi fetch).
@@ -218,7 +222,8 @@ class NstScraper(BaseScraper):
             return []
 
         gp_col: int | None = headers.index("GP") if "GP" in headers else None
-        toi_col: int | None = headers.index("TOI") if "TOI" in headers else None
+        toi_total_col: int | None = headers.index("TOI") if "TOI" in headers else None
+        toi_per_gp_col: int | None = headers.index("TOI/GP") if "TOI/GP" in headers else None
 
         # Build float stat column index map from the provided (or default) map
         float_col_idx: dict[int, str] = {}
@@ -250,19 +255,28 @@ class NstScraper(BaseScraper):
                     except (ValueError, TypeError):
                         pass
 
-            # TOI (stored as toi_col_name = total_toi / gp)
-            if toi_col_name and toi_col is not None and toi_col < len(cells):
-                raw = cells[toi_col].get_text(strip=True)
-                if raw and raw.lower() not in _MISSING_VALUES:
-                    try:
-                        total_toi = float(raw)
-                        if gp and gp > 0:
-                            row_data[toi_col_name] = total_toi / gp
-                        else:
-                            # No GP available — store raw total as-is
-                            row_data[toi_col_name] = total_toi
-                    except (ValueError, TypeError):
-                        pass
+            # TOI/GP: prefer an explicit per-game column when present (live NST has
+            # used this on situation pages), otherwise derive it from total TOI / GP.
+            if toi_col_name:
+                if toi_per_gp_col is not None and toi_per_gp_col < len(cells):
+                    raw = cells[toi_per_gp_col].get_text(strip=True)
+                    if raw and raw.lower() not in _MISSING_VALUES:
+                        try:
+                            row_data[toi_col_name] = float(raw)
+                        except (ValueError, TypeError):
+                            pass
+                elif toi_total_col is not None and toi_total_col < len(cells):
+                    raw = cells[toi_total_col].get_text(strip=True)
+                    if raw and raw.lower() not in _MISSING_VALUES:
+                        try:
+                            total_toi = float(raw)
+                            if gp and gp > 0:
+                                row_data[toi_col_name] = total_toi / gp
+                            else:
+                                # No GP available — store raw total as-is
+                                row_data[toi_col_name] = total_toi
+                        except (ValueError, TypeError):
+                            pass
 
             # Float stats (cf_pct, xgf_pct, sh_pct, pdo)
             for col_idx, stat_key in float_col_idx.items():
@@ -316,13 +330,45 @@ class NstScraper(BaseScraper):
     # DB helpers
     # ------------------------------------------------------------------
 
+    def _fetch_all_rows(
+        self,
+        db: Any,
+        table: str,
+        fields: str,
+        *,
+        order_by: str,
+        desc: bool = False,
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        start = 0
+        page_size = 1000
+
+        while True:
+            result = (
+                db.table(table)
+                .select(fields)
+                .order(order_by, desc=desc)
+                .range(start, start + page_size - 1)
+                .execute()
+            )
+            batch = result.data or []
+            rows.extend(batch)
+            if len(batch) < page_size:
+                break
+            start += page_size
+
+        return rows
+
     def _fetch_players(self, db: Any) -> list[dict[str, Any]]:
-        result = db.table("players").select("id,name").execute()
-        return result.data or []
+        return self._fetch_all_rows(db, "players", "id,name", order_by="id")
 
     def _fetch_aliases(self, db: Any) -> list[dict[str, Any]]:
-        result = db.table("player_aliases").select("alias_name,player_id,source").execute()
-        return result.data or []
+        return self._fetch_all_rows(
+            db,
+            "player_aliases",
+            "alias_name,player_id,source",
+            order_by="alias_name",
+        )
 
     def _upsert_player_stats(
         self,
@@ -339,6 +385,7 @@ class NstScraper(BaseScraper):
         db.table("player_stats").upsert(
             payload,
             on_conflict="player_id,season",
+            default_to_null=False,
         ).execute()
 
     # ------------------------------------------------------------------
@@ -490,6 +537,8 @@ def _iter_seasons(start: str, end: str) -> list[str]:
     """
     start_year = int(start.split("-")[0])
     end_year = int(end.split("-")[0])
+    if start_year > end_year:
+        raise ValueError(f"start season {start} is after end season {end}")
     seasons = []
     for y in range(start_year, end_year + 1):
         short = str(y + 1)[-2:]
@@ -514,13 +563,24 @@ async def _main() -> None:
             "are skipped gracefully. Run before the first training run."
         ),
     )
+    parser.add_argument(
+        "--start-season",
+        default="2005-06",
+        help="History mode only: first season to backfill (default: 2005-06).",
+    )
+    parser.add_argument(
+        "--end-season",
+        default=None,
+        help="History mode only: last season to backfill (default: current season).",
+    )
     args = parser.parse_args()
 
     db = create_client(settings.supabase_url, settings.supabase_service_role_key)
     scraper = NstScraper()
 
     if args.history:
-        seasons = _iter_seasons("2005-06", settings.current_season)
+        end_season = args.end_season or settings.current_season
+        seasons = _iter_seasons(args.start_season, end_season)
         total = 0
         for season in seasons:
             try:
@@ -529,7 +589,7 @@ async def _main() -> None:
                 print(f"NST {season}: {count} rows")
             except Exception as exc:
                 logger.warning("NST %s: skipped — %s", season, exc)
-        print(f"NST history: {total} total rows upserted")
+        print(f"NST history {args.start_season}..{end_season}: {total} total rows upserted")
     else:
         count = await scraper.scrape(settings.current_season, db)
         print(f"Upserted {count} rows.")

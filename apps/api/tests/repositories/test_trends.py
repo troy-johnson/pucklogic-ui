@@ -39,7 +39,9 @@ def _make_trend(
     }
 
 
-def _configure(mock_db: MagicMock, players: list[dict], trends: list[dict]) -> None:
+def _configure(
+    mock_db: MagicMock, players: list[dict], trends: list[dict]
+) -> tuple[MagicMock, MagicMock]:
     """Wire mock_db for two independent .table().select()...execute() chains."""
     players_chain = MagicMock()
     players_chain.execute.return_value.data = players
@@ -52,7 +54,15 @@ def _configure(mock_db: MagicMock, players: list[dict], trends: list[dict]) -> N
 
     mock_db.table.side_effect = _table_side_effect
     players_chain.select.return_value = players_chain
-    trends_chain.select.return_value.eq.return_value = trends_chain
+    players_chain.order.return_value = players_chain
+    players_chain.range.return_value = players_chain
+
+    trends_chain.select.return_value = trends_chain
+    trends_chain.eq.return_value = trends_chain
+    trends_chain.order.return_value = trends_chain
+    trends_chain.range.return_value = trends_chain
+
+    return players_chain, trends_chain
 
 
 class TestGetTrends:
@@ -101,3 +111,38 @@ class TestGetTrends:
         _configure(mock_db, players=[], trends=[])
         result = repo.get_trends("2025-26")
         assert result.season == "2025-26"
+
+    def test_legacy_wing_positions_are_normalized(self, repo, mock_db):
+        _configure(
+            mock_db,
+            players=[
+                {"id": "p-l", "name": "Left Wing", "position": "L", "team": "EDM"},
+                {"id": "p-r", "name": "Right Wing", "position": "R", "team": "EDM"},
+            ],
+            trends=[],
+        )
+        result = repo.get_trends("2025-26")
+        by_id = {p.player_id: p for p in result.players}
+        assert by_id["p-l"].position == "LW"
+        assert by_id["p-r"].position == "RW"
+
+    def test_unknown_position_is_coerced_to_none(self, repo, mock_db):
+        _configure(
+            mock_db,
+            players=[{"id": "p-f", "name": "Forward", "position": "F", "team": "EDM"}],
+            trends=[],
+        )
+        result = repo.get_trends("2025-26")
+        assert result.players[0].position is None
+
+    def test_players_query_paginates_beyond_1000(self, repo, mock_db):
+        players_chain, trends_chain = _configure(mock_db, players=[], trends=[])
+        first = [_make_player(player_id=f"p-{i}") for i in range(1000)]
+        second = [_make_player(player_id="p-1001")]
+        players_chain.execute.side_effect = [MagicMock(data=first), MagicMock(data=second)]
+        trends_chain.execute.return_value.data = []
+
+        result = repo.get_trends("2025-26")
+
+        assert result.player_count == 1001
+        assert players_chain.execute.call_count == 2

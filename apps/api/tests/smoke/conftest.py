@@ -90,14 +90,14 @@ async def nhl_com_done(db: Client, smoke_season: str) -> int:
     depend on ``players`` being populated.  This fixture MUST complete before any
     of those tests run.
 
-    Returns the upserted row count.
+    Returns the summary-pass upserted row count.
     """
-    count = await NhlComScraper().scrape(smoke_season, db)
-    assert count >= 500, (
-        f"NHL.com prerequisite failed: only {count} rows written. "
+    summary_count, _realtime_count = await NhlComScraper().scrape(smoke_season, db)
+    assert summary_count >= 500, (
+        f"NHL.com prerequisite failed: only {summary_count} summary rows written. "
         "Check network access to api.nhle.com."
     )
-    return count
+    return summary_count
 
 
 @pytest.fixture(scope="session", autouse=True)

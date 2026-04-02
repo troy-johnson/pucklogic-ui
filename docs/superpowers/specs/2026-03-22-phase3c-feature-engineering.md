@@ -271,7 +271,7 @@ All tests use constructed plain dicts — zero DB fixtures, zero Supabase mocks 
 
 ## Data Dependency
 
-`player_stats` Tier 1 columns (icf_per60, ixg_per60, etc.) must be populated by running the NST and MoneyPuck scrapers before Phase 3d training can begin. NHL.com and MoneyPuck scrapers are currently failing in GitHub Actions CI — tracked in Notion: **[3c] Fix NHL.com + MoneyPuck scrapers failing on GitHub Actions** (P1). This does not block writing or unit-testing the feature engineering code.
+`player_stats` Tier 1 columns and the Phase 3c implementation are now in place. Phase 3b smoke coverage and subsequent Phase 3c implementation completed the core dependency chain for feature engineering. Current follow-up work is scraper hardening and historical backfill/data-quality verification on `feat/scraper-data-quality` (for example NHL.com aggregate/realtime correctness, NST parsing fixes, and Hockey Reference traded-player/career dedup). This is a reliability/data-quality pass for retraining and backfill confidence, not an unfinished Phase 3c implementation blocker.
 
 ---
 
@@ -285,4 +285,4 @@ All tests use constructed plain dicts — zero DB fixtures, zero Supabase mocks 
 | SH% regression toward career mean (step 2 of projection pipeline) | 3d |
 | Projected TOI with context flag adjustments | 3d |
 | Projected counting stats (rate × TOI) | 3d |
-| Smoke test requiring live DB data | 3d — after scraper CI fix + data ingestion run |
+| Smoke test requiring live DB data | 3d+ — after scraper hardening/backfill verification run |

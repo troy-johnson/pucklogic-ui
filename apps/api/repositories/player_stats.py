@@ -71,15 +71,26 @@ class PlayerStatsRepository:
         Returns:
             {player_id: [rows sorted newest-first]}
         """
-        result = (
-            self._db.table("player_stats")
-            .select(f"{_STAT_COLUMNS}, players(date_of_birth, position)")
-            .order("season", desc=True)
-            .execute()
-        )
+        page_size = 1000
+        offset = 0
+        all_data: list[dict[str, Any]] = []
+        while True:
+            result = (
+                self._db.table("player_stats")
+                .select(f"{_STAT_COLUMNS}, players(date_of_birth, position)")
+                .order("season", desc=True)
+                .order("player_id", desc=False)
+                .range(offset, offset + page_size - 1)
+                .execute()
+            )
+            batch = result.data or []
+            all_data.extend(batch)
+            if len(batch) < page_size:
+                break
+            offset += page_size
 
         grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
-        for raw in result.data:
+        for raw in all_data:
             players_join = raw.pop("players", None) or {}
             row = {**raw, **players_join}
             grouped[row["player_id"]].append(row)

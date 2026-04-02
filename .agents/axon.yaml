@@ -1,0 +1,107 @@
+version: 1
+
+project:
+  name: pucklogic-ui
+  preferred_profile: personal
+
+project_files:
+  commit_mode: shared
+
+paths:
+  specs_dir: docs/superpowers/specs
+  plans_dir: docs/superpowers/plans
+  architecture_docs:
+    - AGENTS.md
+    - docs/pucklogic-architecture.md
+    - docs/backend-reference.md
+    - docs/frontend-reference.md
+    - docs/extension-reference.md
+  backend_dir: apps/api
+  frontend_dir: apps/web
+  shared_ui_dir: packages/ui
+  extension_dir: packages/extension
+  migrations_dir: supabase/migrations
+  scripts_dir: scripts
+
+commands:
+  install: pnpm install
+  dev: pnpm run dev
+  build: pnpm run build
+  lint: pnpm run lint
+  test: pnpm run test
+  smoke_test: ./scripts/run_smoke_tests.sh
+  migration_verify: supabase db reset && ./scripts/run_smoke_tests.sh
+  external_review: ./scripts/codex_review.sh
+  backend_install: pip install -e ".[dev]"
+  backend_smoke_install: pip install -e ".[dev,smoke]"
+  backend_dev: uvicorn main:app --reload
+  backend_lint: ruff check .
+  backend_format: ruff format .
+  backend_test: pytest
+  backend_targeted_test: pytest <path-or-nodeid> -v
+  frontend_dev: pnpm dev
+  frontend_build: pnpm build
+  frontend_lint: pnpm lint
+  frontend_test: pnpm test
+
+knowledge_sources:
+  repo_docs: true
+  session_state: true
+  notion:
+    enabled: true
+    search_domains:
+      - tasks
+      - handoffs
+      - context_notes
+      - decision_notes
+
+continuity:
+  require_session_state: true
+  require_handoff_on_pause: true
+
+mcp:
+  github:
+    default_enabled: true
+  supabase:
+    default_enabled: true
+  playwright:
+    default_enabled: true
+
+skills:
+  enabled:
+    - feature-dev
+  available:
+    - ux
+    - project-manager
+
+feature_dev:
+  require_spec_for_tier:
+    - 2
+    - 3
+  review_prompts:
+    gemini: null
+    codex: null
+    ui: null
+    security: null
+  durable_rule_update_targets:
+    - AGENTS.md
+    - apps/api/CLAUDE.md
+
+environment:
+  backend:
+    python: ">=3.11"
+    preferred_venv: apps/api/.venv
+  smoke_tests:
+    requires:
+      - Supabase CLI
+      - Docker
+      - supabase init
+      - supabase start
+      - supabase db reset
+    optional_env:
+      - SMOKE_ELITE_PROSPECTS_API_KEY
+
+notes:
+  - Do not commit secrets or local env files.
+  - Treat docs/archive as historical context only, not canonical implementation guidance.
+  - Active feature specs and plans live under docs/superpowers.

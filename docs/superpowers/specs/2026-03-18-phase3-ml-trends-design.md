@@ -22,6 +22,8 @@ Phase 3 builds the ML Trends Engine that overlays breakout/regression scores on 
 
 Each milestone ships independently and has its own test coverage before the next begins.
 
+**Implementation status note (2026-03-28):** Milestones **3a**, **3b**, and **3c** have been completed in implementation. Current follow-up work is scraper hardening and historical backfill/data-quality verification (for example NHL.com aggregate/realtime correctness, NST parsing fixes, and Hockey Reference traded-player dedup), not new Phase 3c feature work.
+
 ---
 
 ## Milestone 3a — Scrapers & Full Data Pipeline

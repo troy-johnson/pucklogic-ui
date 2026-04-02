@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 
-from ml.train import FEATURE_NAMES, build_labeled_dataset, compute_label
+from ml.train import (
+    FEATURE_NAMES,
+    _normalize_all_rows_seasons,
+    build_labeled_dataset,
+    compute_label,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -189,6 +196,37 @@ class TestBuildLabeledDataset:
             feature_row, _ = dataset[0]
             for name in FEATURE_NAMES:
                 assert name in feature_row, f"Missing feature: {name}"
+
+    def test_normalized_string_seasons_produce_examples(self):
+        all_rows = self._make_all_rows()
+        # Simulate production DB format where seasons are labels like "2008-09".
+        all_rows_str: dict[str, list[dict]] = {}
+        for pid, rows in all_rows.items():
+            converted = []
+            for r in rows:
+                start_year = r["season"] - 1
+                season_label = f"{start_year}-{str(r['season'])[2:]}"
+                converted.append({**r, "season": season_label})
+            all_rows_str[pid] = converted
+
+        normalized = _normalize_all_rows_seasons(all_rows_str)
+        dataset = build_labeled_dataset(normalized, train_seasons=range(2009, 2011))
+        assert len(dataset) > 0
+
+    def test_normalize_logs_dropped_unparseable_seasons(self, caplog):
+        all_rows = {
+            "p1": [
+                _make_row("p1", 2010, p1_per60=3.0),
+                {**_make_row("p1", 2009, p1_per60=2.8), "season": "bad-season"},
+            ]
+        }
+
+        with caplog.at_level(logging.WARNING):
+            normalized = _normalize_all_rows_seasons(all_rows)
+
+        assert "p1" in normalized
+        assert len(normalized["p1"]) == 1
+        assert "Dropped 1 player_stats rows" in caplog.text
 
 
 # ---------------------------------------------------------------------------

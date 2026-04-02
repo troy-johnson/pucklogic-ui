@@ -112,6 +112,71 @@ class TestParseHtml:
     def test_missing_table_returns_empty(self) -> None:
         assert HockeyReferenceScraper._parse_html("<html><body></body></html>") == []
 
+    def test_traded_player_dedups_to_highest_gp_row(self) -> None:
+        html = """
+        <table id="player_stats">
+          <tbody>
+            <tr>
+              <td data-stat="name_display">Traded Player</td>
+              <td data-stat="games">50</td>
+              <td data-stat="goals">20</td>
+              <td data-stat="shots">150</td>
+            </tr>
+            <tr>
+              <td data-stat="name_display">Traded Player</td>
+              <td data-stat="games">20</td>
+              <td data-stat="goals">8</td>
+              <td data-stat="shots">70</td>
+            </tr>
+            <tr>
+              <td data-stat="name_display">Traded Player</td>
+              <td data-stat="games">30</td>
+              <td data-stat="goals">12</td>
+              <td data-stat="shots">80</td>
+            </tr>
+            <tr>
+              <td data-stat="name_display">Single Team</td>
+              <td data-stat="games">82</td>
+              <td data-stat="goals">25</td>
+              <td data-stat="shots">200</td>
+            </tr>
+          </tbody>
+        </table>
+        """
+        rows = HockeyReferenceScraper._parse_html(html)
+
+        traded = [r for r in rows if r["player_name"] == "Traded Player"]
+        assert len(traded) == 1
+        assert traded[0]["gp"] == 50
+        assert traded[0]["goals"] == 20
+        assert traded[0]["shots"] == 150
+
+    def test_traded_player_equal_gp_keeps_first_row(self) -> None:
+        html = """
+        <table id="player_stats">
+          <tbody>
+            <tr>
+              <td data-stat="name_display">Equal GP Player</td>
+              <td data-stat="games">40</td>
+              <td data-stat="goals">10</td>
+              <td data-stat="shots">100</td>
+            </tr>
+            <tr>
+              <td data-stat="name_display">Equal GP Player</td>
+              <td data-stat="games">40</td>
+              <td data-stat="goals">12</td>
+              <td data-stat="shots">110</td>
+            </tr>
+          </tbody>
+        </table>
+        """
+        rows = HockeyReferenceScraper._parse_html(html)
+
+        assert len(rows) == 1
+        assert rows[0]["player_name"] == "Equal GP Player"
+        assert rows[0]["goals"] == 10
+        assert rows[0]["shots"] == 100
+
 
 # ---------------------------------------------------------------------------
 # Career stats accumulation (_compute_career_stats)
@@ -152,6 +217,17 @@ class TestComputeCareerStats:
         result = HockeyReferenceScraper._compute_career_stats(rows)
         assert result["P"]["2023-24"]["nhl_experience"] == 1
         assert result["P"]["2024-25"]["nhl_experience"] == 2
+
+    def test_career_stats_correct_after_single_season_dedup(self) -> None:
+        rows = {
+            "2023-24": [{"player_name": "P", "goals": 10, "shots": 100, "gp": 70}],
+            # Simulates output after parser dedup keeps the aggregate row only.
+            "2024-25": [{"player_name": "P", "goals": 20, "shots": 150, "gp": 50}],
+        }
+        result = HockeyReferenceScraper._compute_career_stats(rows)
+        assert result["P"]["2024-25"]["career_goals"] == 30
+        assert result["P"]["2024-25"]["career_shots"] == 250
+        assert result["P"]["2024-25"]["sh_pct_career_avg"] == pytest.approx(30 / 250)
 
 
 # ---------------------------------------------------------------------------
