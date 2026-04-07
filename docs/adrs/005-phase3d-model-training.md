@@ -40,7 +40,7 @@ complete before `ml.train` runs.
 - `docs/pucklogic-architecture.md` § 6 (ML Trends Engine)
 - `apps/api/CLAUDE.md` § Phase 3d
 - `docs/specs/007-feature-engineering-spec.md`
-- Phase 3c spec: `docs/adr/004-phase3c-feature-engineering.md`
+- Phase 3c spec: `docs/adrs/004-phase3c-feature-engineering.md`
 
 ---
 
