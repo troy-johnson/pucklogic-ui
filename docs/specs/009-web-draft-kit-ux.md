@@ -38,6 +38,35 @@ This spec is intentionally web-first. Live draft sync remains launch-required, b
 - Post-launch UX optimization work that does not shape launch information architecture
 - Detailed component implementation tasks or engineering estimates
 
+## Surface responsibilities
+
+This spec covers **web UI only**. Extension implementation is deferred to Milestone I and will be specified separately.
+
+### Web UI responsibilities (in scope)
+
+- All pre-draft prep surfaces: dashboard, kit library, league profile, rankings workspace
+- Session initiation from the web app
+- Live draft session page: session status display, rankings table, suggestion list, kit switching
+- Manual pick entry form (user-initiated, available whenever sync is unavailable or degraded)
+- Reconnect prompt and guided recovery flow (surfaced when backend session state requires reconciliation)
+- Sync health status indicators (`connected`, `reconnecting`, `disconnected`, `manual`, `out-of-sync`) — driven by backend session state, not by extension presence
+- Session end and post-draft summary
+
+### Extension responsibilities (out of scope — Milestone I)
+
+- Draft room detection and sync initiation
+- Pick extraction from platform DOM
+- Automatic pick ingestion into backend session state
+- Auto-reversion from manual mode when sync recovers (with user notification)
+- Token consumption prompt on draft room entry
+- Extension sidebar and popup UI
+
+### How they connect
+
+The web UI reads and displays backend session state. The extension writes to that same backend state. The web UI must function without the extension installed — extension integration is additive, not required for web UI operation.
+
+---
+
 ## Planning split recommendation
 
 This work should be reviewed as three linked subareas inside one spec:
@@ -59,7 +88,7 @@ This work should be reviewed as three linked subareas inside one spec:
 
 ### In scope
 
-- Web onboarding, authenticated return flow, kit selection/creation, draft prep, live draft session UX, reconnect/resume, and manual fallback
+- Web onboarding, authenticated return flow, kit selection/creation, draft prep, live draft session UX, reconnect, and manual fallback
 - Launch-worthy screen inventory and interaction states
 - Wireframe sequencing and design-system foundation
 
@@ -80,10 +109,10 @@ This work should be reviewed as three linked subareas inside one spec:
 5. Save progress to account when ready for durable prep
 6. Review rankings and suggestions in the pre-draft workspace
 7. Export/print from the pre-draft workspace once auth and prep-readiness gates are satisfied
-8. Start a live draft session from the web app
-9. Monitor synced picks, rankings, and suggested best available players
-10. If sync degrades, switch to manual pick entry fallback without leaving the session
-11. If disconnected, reconnect and reconcile authoritative session state
+8. Start a live draft session from the web app (extension connects and begins syncing picks independently — Milestone I)
+9. Monitor session status, rankings, and suggested best available players on the live draft screen
+10. Enter picks manually if sync is unavailable or degraded; session continues without interruption
+11. If disconnected, reconnect and reconcile authoritative session state from the web app
 12. End session and return to saved kit context
 
 ## Primary user journeys
@@ -105,7 +134,7 @@ This work should be reviewed as three linked subareas inside one spec:
 
 - User lands on dashboard
 - Sees recent kits, recent league profiles, last draft session status, and next recommended action
-- Can resume prep, open an existing kit, or resume an interrupted session
+- Can resume prep, open an existing kit, or reconnect to an interrupted session
 - Success condition: user reaches intended work area in 1–2 clicks
 
 ### 3. Creating/selecting a draft kit
@@ -114,7 +143,7 @@ This work should be reviewed as three linked subareas inside one spec:
 - If anonymous, user creates a temporary kit tied to browser/session state
 - If no saved kits exist, guided empty state drives first-kit creation
 - If one kit exists, make it the default working context while preserving easy edit/duplicate actions
-- If multiple kits exist, support search/sort/select/duplicate/delete/archive naming flows
+- If multiple kits exist, support search/sort/select/duplicate/delete/rename flows
 - Success condition: exactly one active kit is in context for rankings and live session launch
 
 ### 4. Preparing for a draft
@@ -122,17 +151,18 @@ This work should be reviewed as three linked subareas inside one spec:
 - User starts with an active kit and default rankings even before league profile is complete
 - User progressively adds league profile + scoring context as prep becomes more serious
 - User lands in pre-draft workspace with rankings table, top suggestions, and setup warnings if needed
-- User can edit source weights, save changes, and validate that rankings have refreshed
+- User can edit source weights, save changes, and validate that rankings have refreshed — the table enters skeleton state during recompute, then repopulates with an "Updated just now" timestamp and a "Rankings updated" toast on completion
 - Success condition: prep is complete enough to start a live session confidently
 
 ### 5. Starting a live draft session from the web app
 
 - User clicks start draft session from prep workspace
 - If anonymous, user is gated to auth before launch can continue
-- Launch flow confirms league/profile, active kit, platform target, sync readiness, and that no other active live session is currently owned by the user
-- ESPN is the launch-critical sync target; any Yahoo launch support must not jeopardize ESPN stability or clarity in the primary web flow
-- User enters live draft screen with visible session status, sync state, and fallback affordances
-- Success condition: user understands whether sync is healthy and what to do if it is not
+- Launch flow confirms league/profile, active kit, and that no other active live session is currently owned by the user
+- Session is created in backend; extension connects independently to begin syncing picks (Milestone I)
+- User enters live draft screen showing session status sourced from backend state
+- Web UI displays sync health indicators and manual fallback affordances regardless of whether the extension is active
+- Success condition: user can begin the draft from the web UI; sync state is visible and fallback is always available
 
 ### 6. Drafting with rankings/suggestions
 
@@ -140,38 +170,85 @@ This work should be reviewed as three linked subareas inside one spec:
 - User can inspect suggestion rationale without losing draft position awareness
 - Deeper rationale is guaranteed for the decision-relevant player cohort; if implementation lift is negligible, rationale may be available for all players
 - Rankings and suggestions refresh after authoritative pick updates
+- **Kit changes are allowed during a live session.** Switching the active kit triggers a rankings recompute: table enters skeleton state, then repopulates with updated rankings, and a toast confirms "Rankings updated." The session's `kit_id` is updated in the backend. The user should see a clear visual signal distinguishing a kit-change refresh from a pick-driven refresh.
 - Success condition: user can make the next pick decision from one screen without context switching
 
 ### 7. Manual pick entry fallback
 
 - If sync confidence drops or automation is unavailable, user enters manual mode from an inline alert or action bar
 - User searches player, records drafted team/pick, and immediately sees rankings/session state reconcile
-- Manual mode remains reversible if sync returns
+- Manual mode is reversible: when backend session state reports sync health restored, the web UI surfaces a prompt to return to sync mode
+- Sync recovery detection is an extension responsibility (Milestone I); the web UI reacts to the resulting backend state update
 - Success condition: draft can continue without abandoning the live session UX
 
-### 8. Reconnect/resume flow
+### 8. Reconnect flow
 
 - On refresh, tab close/reopen, or transient disconnect, user returns to a reconnecting state
 - App requests authoritative `sync_state` and shows last known session timestamp/status
 - If reconciliation succeeds, user resumes in place and sees confirmation that the session state was restored
-- If reconciliation fails, authenticated users get guided recovery options first (retry, reconnect, resume), then manual mode, then end-session escape hatch
+- If reconciliation fails, authenticated users get a guided reconnect option first, then manual mode, then end-session escape hatch
 - Success condition: no ambiguity about whether displayed draft state is trusted, stale, or recovered
+
+## Draft pass model
+
+**User-facing term:** draft pass / draft passes  
+**Internal/backend term:** session token (`draft_tokens` table, `draft_sessions` record)
+
+> **v2 naming note:** When in-season recommendations ship, a "season pass" product will need a distinct name to avoid confusion with draft passes. Resolve before v2 goes to market.
+
+### Draft pass balance display
+
+- Pass balance is persistently visible in the authenticated app shell (header or nav) whenever the user has one or more passes ("2 draft passes remaining")
+- Zero-pass state shows a prompt to purchase rather than hiding the indicator
+- Balance updates immediately after a successful Stripe purchase
+
+### Starting a session — draft pass states
+
+**User has passes available:**
+1. User clicks "Start draft session" from prep workspace or live draft nav
+2. Start session modal confirms: active kit, league profile, platform target, passes remaining
+3. User confirms → pass consumed (session token created in backend) → `draft_sessions` record created → user enters live draft screen
+
+**User has no passes:**
+1. Start session is available in the UI but leads to a payment gate, not a blocked state
+2. Payment gate explains what a draft pass includes and links to Stripe Checkout
+3. After successful purchase, user returns to the session start flow with pass available
+
+**User is anonymous:**
+1. Start session is gated to auth first, then payment if no pass exists
+2. Auth gate explains that purchasing a draft pass requires an account
+
+### Pass consumption confirmation
+
+- The pass is consumed at the moment the user confirms session start — not at purchase time and not at draft room entry (for web-initiated sessions)
+- Confirmation step must clearly state "This will use 1 of your X remaining draft passes"
+- If the user exits the start flow before confirming, no pass is consumed
+
+### Milestone I extension behaviour (not web UI scope)
+
+- Extension detects draft room entry and surfaces its own pass consumption prompt in the sidebar
+- Extension prompt mirrors the web confirmation: "Use PuckLogic for this draft? X draft passes remaining"
+- If no pass is available, extension links to web app purchase flow
+- Pass consumption via extension uses the same backend path as web-initiated sessions
 
 ## Authentication and temporary-work policy
 
 ### Anonymous exploration
 
-- Anonymous users may create a temporary kit and view rankings
+- Anonymous users may create a temporary kit, customize source weights, and view their custom rankings — all browser-scoped
 - Anonymous users may not create durable saved kits, export/print, or start a live draft session
 - Anonymous state must be visibly temporary through both persistent lightweight status and contextual auth-gate messaging
+- The kit editor must display a persistent label before customization begins: "Working in temporary session — kit pass required to save"
+- The save gate copy should frame the kit pass as value gained, not access restricted: "Your custom rankings are ready — save them with a kit pass to use across devices and in your live draft"
 
 ### Temporary-kit lifecycle
 
 - Temporary kits are tied to the browser/session token
-- Temporary kits are directly resumable for **24 hours based on last activity**
-- The product must track last-activity timestamp strongly enough to support this 24-hour direct-return rule
-- After 24 hours and before the existing 7-day cleanup window expires, recovery requires normal sign-in
-- After authentication, temporary kit ownership migrates to the user account
+- Temporary kits are **directly resumable for 24 hours based on last activity** — the product must track `last_activity_at` to support this
+- After the 24-hour direct-resume window, recovery requires normal sign-in (kit is still accessible, but not auto-resumed)
+- **Temporary kits are permanently deleted 7 days from `created_at`** — this is enforced by a nightly cron cleanup job; there is no recovery path after this point
+- The 7-day window is `created_at`-based, not `last_activity`-based; interacting with the kit does not extend the cleanup deadline
+- After authentication within the 7-day window, temporary kit ownership migrates to the user account
 - After recovery or mid-flow auth migration, the UI should show a confirmation toast/banner that the temporary work has been restored to the account
 
 ### Durable actions that require auth
@@ -181,11 +258,88 @@ This work should be reviewed as three linked subareas inside one spec:
 - Export/print rankings
 - Start a live draft session
 
+## Default rankings
+
+Default rankings are shown to all users — anonymous and authenticated — without requiring any setup. They are the entry-point experience for the free tier and the fallback state when no kit or league profile is active.
+
+### What default rankings are built from
+
+- PuckLogic's own projection aggregation using all active public sources at equal weight
+- A standard preset scoring configuration (ESPN standard H2H as the baseline)
+- A default league profile assumption (10 teams, standard roster slots)
+- All skaters included — no player count cutoff
+
+### When default rankings are shown
+
+- Anonymous user arrives and begins exploring
+- Authenticated user has no saved kit or league profile yet
+- Authenticated user on free tier (no kit pass) without an active temporary custom kit session — shown default rankings
+- Kit pass holder who has not yet configured a kit or league profile
+
+### How the UI represents default rankings
+
+- A visible label indicates rankings are using preset defaults (e.g. "Default settings — customize for your league")
+- Users on the free tier see a persistent prompt explaining that a kit pass unlocks saving their customization across devices and sessions
+- When a kit pass holder saves a kit and league profile, rankings recompute against their specific context and the default label clears
+- Switching back to no active kit restores default rankings — no empty/error state
+
+### What default rankings are not
+
+- Default rankings are not a degraded or error state — they are a first-class product experience
+- The "rankings empty state (setup incomplete)" view state applies only when a user is mid-setup with a partial configuration, not on first visit
+
+## Payment model
+
+### Tiers
+
+**Free tier**
+- Default rankings for all players using preset source weights and preset scoring configuration
+- Source weight customization is available in a temporary browser-scoped session — work is visible immediately but cannot be saved to account without a kit pass
+- No saved kits, no export, no live draft
+- Available to anonymous and authenticated users
+- The kit editor must display a persistent label indicating the session is temporary ("Working in temporary session — kit pass required to save") before the user invests time customizing
+
+**Kit pass (paid — one-time seasonal purchase)**
+- Custom source weights and saved kits
+- Export/print (included; not pay-per-file for kit pass holders)
+- Required for any personalized prep work beyond default rankings
+- Pricing TBD
+
+**Draft passes (paid — $2.99 per pass)**
+- Required to start a live draft session; user-facing name is "draft pass"
+- Purchased in advance via Stripe Checkout on the web app; passes sit in account until consumed
+- Consuming a pass creates a `draft_sessions` record (internal: session token)
+- Pass balance is visible in the web app header and (Milestone I) in the extension popup
+- Pass packs (e.g. 5 passes at a discount) are a post-launch consideration
+
+### Draft pass consumption model
+
+- Passes are purchased independently of session start — users may hold a balance
+- A session is started from the web app or (Milestone I) triggered by extension draft room detection
+- At session start the user confirms before the pass is consumed
+- Unused passes persist in the account indefinitely
+
+### Payment gates in the UI
+
+| Action | Gate |
+|---|---|
+| View default rankings | None |
+| Customize source weights (temporary, browser-scoped) | None |
+| Save customized kit to account | Kit pass required |
+| Export / print rankings | Kit pass required |
+| Start a live draft session | Auth + draft pass required |
+
+### Open pricing decision
+
+- Whether the kit pass and draft passes are sold separately or bundled is not yet decided
+- The extension requires a draft pass to function; the kit pass alone does not unlock live draft
+
 ## Export and prep-readiness policy
 
 - Export/print belongs in the pre-draft workspace, not a separate export funnel
 - Export is available only when:
   - the user is authenticated
+  - the user holds a kit pass
   - an active kit is selected
   - the league profile is complete enough for rankings
   - rankings are in a valid computed state
@@ -216,7 +370,7 @@ The UI may treat rankings as export-ready only when:
 - League profile create/edit page
 - Pre-draft workspace / rankings page
 - Live draft session page
-- Session summary / post-draft return page
+- Session summary / post-draft return page (final roster by position, pick log with round/pick number, PuckLogic ranking vs actual pick position per player, undrafted top suggestions, roster completeness check, link back to saved kit)
 - Account/settings page
 
 ### Launch-required overlays and subviews
@@ -228,7 +382,7 @@ The UI may treat rankings as export-ready only when:
 - Suggestion detail drawer
 - Player detail drawer
 - Manual pick entry modal or drawer
-- Reconnect / resume modal
+- Reconnect modal
 - Unsaved changes confirmation modal
 - Session end confirmation modal
 - Auth-required gate modal for anonymous users reaching save/live actions
@@ -252,8 +406,10 @@ The UI may treat rankings as export-ready only when:
 - Live draft disconnected/manual-fallback suggested state
 - Live draft manual mode active state
 - Live draft error/blocking state
-- Session resume available state
+- Session reconnect available state
 - Saved success/toast state for kits/profile changes
+- Draft pass balance state (has passes)
+- Draft pass zero-balance / purchase prompt state
 
 ## Wireframe list
 
@@ -266,7 +422,7 @@ The UI may treat rankings as export-ready only when:
 - **Live draft session screen** — high fidelity
 - **Auth gate for save/export/live draft actions** — medium fidelity
 - **Manual pick entry flow** — medium fidelity
-- **Reconnect/resume state** — medium fidelity
+- **Reconnect state** — medium fidelity
 
 ### Wireframe second
 
@@ -276,7 +432,7 @@ The UI may treat rankings as export-ready only when:
 - **Temporary-kit recovery after sign-in** — medium fidelity
 - **Player detail drawer** — low to medium fidelity
 - **Suggestion rationale drawer** — medium fidelity
-- **Session summary screen** — low fidelity
+- **Session summary screen** — medium fidelity
 - **Account/settings page** — low fidelity
 
 ### Fidelity rationale
@@ -307,6 +463,7 @@ The UI may treat rankings as export-ready only when:
 - Contextual subnav inside prep/live flows where needed
 - Persist active kit and active league context visibly in the app shell
 - Persist temporary-versus-saved status visibly in the app shell when unauthenticated
+- Persist draft pass balance visibly in the app shell for authenticated users ("X draft passes remaining"); zero-pass state shows a purchase prompt rather than hiding the indicator
 
 ### Data presentation primitives
 
@@ -328,6 +485,7 @@ The UI may treat rankings as export-ready only when:
 
 - Empty states must always include next best action
 - Loading states should preserve layout skeletons on tables/cards instead of blank screens
+- Rankings recompute (triggered by source weight save or kit change) uses skeleton state → repopulated table → "Updated just now" timestamp + "Rankings updated" toast; toast is suppressed on page load and background refreshes
 - Error states should distinguish retryable failures from setup blockers
 - Out-of-sync states need explicit copy about authoritative backend reconciliation
 
@@ -381,8 +539,9 @@ The UI may treat rankings as export-ready only when:
 
 ### Temporary work state
 
-- Temporary and directly resumable (< 24h since last activity)
-- Temporary and login-gated for recovery (24h to 7d)
+- Temporary and directly resumable (< 24h since last activity, based on `last_activity_at`)
+- Temporary and login-gated for recovery (24h–7d since `created_at`)
+- Temporary and permanently expired (> 7 days since `created_at` — cron-deleted, not recoverable)
 - Migrating to authenticated account
 - Restored to authenticated account
 
@@ -397,7 +556,7 @@ The UI may treat rankings as export-ready only when:
 - Temporary anonymous exploration with clear auth gates
 - Live draft session screen with clear sync status
 - Manual pick entry fallback
-- Reconnect/resume recovery flow
+- Reconnect recovery flow
 - Basic suggestion rationale visibility
 - Export/print inside prep workspace with explicit readiness gating
 
@@ -409,7 +568,9 @@ The UI may treat rankings as export-ready only when:
 - Extensive draft history analytics
 - Multi-platform UX specialization beyond what is required to preserve web-first information architecture
 
-## Future extension constraints to respect
+## Web UI constraints for future extension compatibility
+
+The web UI must be built in a way that allows extension integration in Milestone I without redesigning core state models. These are web UI requirements, not extension implementation notes.
 
 - Web live draft session UX must not assume extension presence in the primary happy path
 - Session status model should be reusable by extension integration later (`connected`, `reconnecting`, `manual`, `out-of-sync`)
@@ -493,7 +654,7 @@ These defaults were reviewed and are the current recommended decisions unless la
 2. **Pre-draft workspace + live draft session wireframes** — highest risk, highest leverage
 3. **Dashboard + kit library + temporary-state flows** — establish entry and saved-work model
 4. **League profile + export gating flows** — ensure readiness requirements are represented clearly
-5. **Manual fallback + reconnect/resume flows** — validate recovery UX before implementation
+5. **Manual fallback + reconnect flows** — validate recovery UX before implementation
 6. **Design-system primitives** — finalize app shell, table, drawer, chip, alert, and state treatments
 7. **Supporting auth/settings/session-summary screens** — complete launch shell around the core workflow
 
@@ -535,6 +696,11 @@ These defaults were reviewed and are the current recommended decisions unless la
 - The product enforces one active live draft session per user at launch
 - Manual fallback mode is available from the live draft session when sync confidence drops and is reversible if sync health returns
 - Out-of-sync states explicitly communicate that backend session state is authoritative and reconciliation is required
+- Payment tier model is defined: free (default rankings + browser-scoped customization), kit pass (saved kits + export), draft passes (live draft sessions)
+- Free-tier users may customize source weights in a temporary browser session; saving to account requires a kit pass; the kit editor displays a persistent temporary-session label before customization begins
+- Default rankings are defined as a first-class product experience available to all users without setup; they are not a degraded or error state
+- Draft pass balance is visible in the authenticated app shell; zero-pass state surfaces a purchase prompt
+- Draft passes use the user-facing term "draft pass / draft passes"; internal backend term is session token
 
 ## Recommendation
 
