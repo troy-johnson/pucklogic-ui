@@ -4,7 +4,7 @@
 
 **Timeline:** April – July 2026 (Phase 3)
 **Target Release:** v1.0 (September 2026)
-**Reference:** `docs/feature-engineering-spec.md` · `docs/stats-research.md`
+**Reference:** `docs/specs/007-feature-engineering-spec.md` · `docs/stats-research.md`
 
 ---
 
@@ -1123,7 +1123,7 @@ def log_training_metrics(metrics: Dict[str, float]):
 | `apps/api/src/routers/trends.py` | FastAPI `/api/trends` endpoint |
 | `.github/workflows/ml-train-annual.yml` | Annual retraining trigger |
 | `apps/api/tests/ml/` | All ML unit & integration tests |
-| `docs/feature-engineering-spec.md` | Feature reference (this document builds on it) |
+| `docs/specs/007-feature-engineering-spec.md` | Feature reference (this document builds on it) |
 | `docs/stats-research.md` | Methodology & source citations |
 
 ---

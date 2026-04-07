@@ -38,7 +38,7 @@ These documents are the current implementation source of truth:
 - `docs/backend-reference.md`
 - `docs/frontend-reference.md`
 - `docs/extension-reference.md`
-- current milestone specs and plans in `docs/superpowers/`
+- current milestone specs in `docs/specs/` and plans in `docs/plans/`
 
 Historical material in `docs/archive/` is reference-only unless a current doc explicitly points back to it.
 

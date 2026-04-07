@@ -11,7 +11,7 @@ Use this file as the repo entrypoint for any coding agent.
    - `docs/backend-reference.md`
    - `docs/frontend-reference.md`
    - `docs/extension-reference.md`
-5. Current milestone specs/plans in `docs/superpowers/` when working inside an active feature area
+5. Current milestone specs in `docs/specs/` and plans in `docs/plans/` when working inside an active feature area
 
 ## Source Of Truth
 
@@ -21,7 +21,7 @@ Treat these as canonical unless a newer current doc explicitly replaces them:
 - `docs/backend-reference.md`
 - `docs/frontend-reference.md`
 - `docs/extension-reference.md`
-- active milestone specs and plans in `docs/superpowers/`
+- active milestone specs in `docs/specs/` and plans in `docs/plans/`
 
 Do not treat `docs/archive/` as canonical implementation guidance. Archive docs are historical context only.
 

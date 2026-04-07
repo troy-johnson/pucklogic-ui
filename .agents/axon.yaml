@@ -8,8 +8,8 @@ project_files:
   commit_mode: shared
 
 paths:
-  specs_dir: docs/superpowers/specs
-  plans_dir: docs/superpowers/plans
+  specs_dir: docs/specs
+  plans_dir: docs/plans
   architecture_docs:
     - AGENTS.md
     - docs/pucklogic-architecture.md
@@ -104,4 +104,4 @@ environment:
 notes:
   - Do not commit secrets or local env files.
   - Treat docs/archive as historical context only, not canonical implementation guidance.
-  - Active feature specs and plans live under docs/superpowers.
+  - Active feature specs live under docs/specs and plans live under docs/plans.

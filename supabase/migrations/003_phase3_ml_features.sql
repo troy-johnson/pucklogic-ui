@@ -3,7 +3,7 @@
 --
 -- player_stats: adds Tier 1 advanced-stat columns, Tier 2/3 supplementary columns,
 --               flag columns, and career-level stat columns required by the feature
---               engineering pipeline (docs/superpowers/specs/2026-03-18-phase3-ml-trends-design.md §3a).
+--               engineering pipeline (docs/specs/002-phase3-ml-trends-design.md §3a).
 --
 -- player_trends: adds ML output columns for breakout/regression signals, SHAP top-3,
 --                and projection metadata (spec §3c).
@@ -65,7 +65,7 @@ alter table player_stats add column if not exists scf_per60 float;
 alter table player_stats add column if not exists p1_per60 float;
 
 -- Even-strength TOI per game (minutes). Distinct from toi_per_game (total TOI, all situations).
--- NOTE: docs/feature-engineering-spec.md names this feature toi_ev_per_game. The feature
+-- NOTE: docs/specs/007-feature-engineering-spec.md names this feature toi_ev_per_game. The feature
 -- engineering pipeline (transforms.py) must alias toi_ev → toi_ev_per_game when building
 -- the feature matrix to match the spec's column naming.
 alter table player_stats add column if not exists toi_ev float;
@@ -198,7 +198,7 @@ alter table player_trends add column if not exists projection_pts float;
 -- Projection tier from the rule-based breakout/regression signal count (NOT model confidence).
 -- 'HIGH' = 4+ signals fired, 'MEDIUM' = 3, 'LOW' = 2.
 -- Distinct from the `confidence` column (XGBoost max class probability).
--- See docs/feature-engineering-spec.md §Projection Pipeline step 7.
+-- See docs/specs/007-feature-engineering-spec.md §Projection Pipeline step 7.
 alter table player_trends add column if not exists projection_tier text;
 
 -- Named constraint added separately for idempotency (same pattern as pp_unit above).
