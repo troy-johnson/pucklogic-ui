@@ -1,13 +1,21 @@
 | Field | Value |
 |---|---|
-| Active Phase | Scraper data quality hardening closeout on `feat/scraper-data-quality`; Hockey Reference dedup fix landed locally and verification is complete |
-| Active Branch | feat/scraper-data-quality |
+| Active Phase | Documentation taxonomy cleanup and web-first draft kit UX spec consolidation on `feat/live-draft-sync-spec`; spec/research/ADR structure and numbering are being normalized for continuity across sessions |
+| Active Branch | feat/live-draft-sync-spec |
 | Open PR | None |
-| Current Focus | Keep axon-state and Notion aligned as canonical status sources, then move to draft-kit workflow/UI scope lock |
-| Last Action | Merged PR #30 after syncing Notion readiness/status pages to the post-ML-run state and verifying Hockey Reference dedup hardening, scraper tests, and 2024-25 data-quality coverage |
+| Current Focus | Keep docs taxonomy, canonical-source rules, and web-first draft-kit UX artifacts aligned so the branch can be resumed cleanly from another machine/session |
+| Last Action | Finalized and reviewed the web-first draft kit UX spec, moved supporting brainstorm material into `docs/research/`, normalized ADR placement under `docs/adrs/`, and updated documentation numbering/reference policy in `docs/README.md` |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
-| Current Hypothesis | HR multi-team/career dedup risk is now mitigated by stable player-key parsing, so remaining risk is review/merge coordination rather than scraper correctness |
-| Next Steps | 1. Lock draft-kit workflow/UI scope 2. Start backend integration verification for the launch flow 3. Keep Notion and axon-state synced during product build |
+| Current Hypothesis | Documentation ambiguity is now a larger continuity risk than implementation ambiguity; keeping canonical doc classes, numbering, and axon-state aligned will reduce restart friction across sessions and machines |
+| Next Steps | 1. Commit/push any remaining docs taxonomy cleanup 2. Keep Notion and axon-state synced with the web-first draft-kit UX scope 3. Resume backend integration verification and wireframe/design follow-up from the approved spec |
+
+## Documentation continuity outcome (2026-04-07)
+
+- `docs/specs/009-web-draft-kit-ux.md` is the canonical Milestone B web-first UX contract.
+- Supporting brainstorm material now lives in `docs/research/002-web-draft-kit-ux-brainstorm.md`.
+- Durable architecture decisions now live under `docs/adrs/`, including `007-web-first-draft-session-and-temp-kit-lifecycle.md`.
+- Research docs now use their own numbered sequence with `docs/research/INDEX.md` as the folder guide.
+- `docs/README.md` now documents folder classification, canonical-source precedence, numbering policy, and the requirement to keep `.agents/axon-state.md` current when docs meaningfully change.
 
 ## Backfill/data quality completion status (current)
 

@@ -3,7 +3,7 @@
 ## Trends Engine — ML Model (XGBoost/LightGBM)
 
 **Version 1.0 · March 2026**
-**Reference:** `docs/stats-research.md` for full methodology and source citations
+**Reference:** `docs/research/001-nhl-advanced-stats-research.md` for full methodology and source citations
 
 -----
 
@@ -306,5 +306,5 @@ model is complete.
 
 -----
 
-*Full methodology and source citations: `docs/stats-research.md`*
+*Full methodology and source citations: `docs/research/001-nhl-advanced-stats-research.md`*
 *Architecture context: `pucklogic_architecture.docx`*

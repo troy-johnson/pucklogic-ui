@@ -51,7 +51,8 @@ pucklogic/
 │       ├── RankingsTable/
 │       └── SuggestionPanel/
 ├── docs/
-│   ├── stats-research.md       # NHL advanced stats research
+│   ├── research/
+│   │   └── 001-nhl-advanced-stats-research.md  # NHL advanced stats research
 │   ├── feature-engineering-spec.md  # ML feature spec
 │   └── claude-code-reference.md    # THIS FILE
 ├── turbo.json
@@ -587,7 +588,7 @@ SESSION_SECRET=xxx
 ## Project Context
 Read docs/claude-code-reference.md for full technical context (schema, patterns, stack).
 Read docs/specs/007-feature-engineering-spec.md for ML feature details (Phase 3 only).
-Read docs/stats-research.md for NHL advanced stats rationale.
+Read docs/research/001-nhl-advanced-stats-research.md for NHL advanced stats rationale.
 
 ## Working Conventions
 - Use opusplan mode for major features, Sonnet for day-to-day work

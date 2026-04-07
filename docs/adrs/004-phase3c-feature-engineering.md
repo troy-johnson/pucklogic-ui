@@ -4,7 +4,7 @@
 **Status:** Approved for implementation
 **References:**
 - `docs/specs/007-feature-engineering-spec.md` — feature definitions, signal rules, projection pipeline
-- `docs/stats-research.md` — statistical methodology and source citations
+- `docs/research/001-nhl-advanced-stats-research.md` — statistical methodology and source citations
 - `docs/pucklogic-architecture.md` §6 — ML Trends Engine
 - `supabase/migrations/003_phase3_ml_features.sql` — schema for all new columns
 - `apps/api/CLAUDE.md` — Phase 3 status table

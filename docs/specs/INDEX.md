@@ -10,3 +10,4 @@
 | 006 | [backfill-data-quality-runner](006-backfill-data-quality-runner.md) | Implemented | 2026-03-28 | Scraper backfill and data-quality runner |
 | 007 | [feature-engineering-spec](007-feature-engineering-spec.md) | Active | — | Canonical feature engineering reference |
 | 008 | [live-draft-sync-launch-required](008-live-draft-sync-launch-required.md) | Draft for approval | 2026-04-01 | Launch gate for live draft sync |
+| 009 | [web-draft-kit-ux](009-web-draft-kit-ux.md) | Draft for approval | 2026-04-07 | Canonical web-first draft kit UX contract for Milestone B |

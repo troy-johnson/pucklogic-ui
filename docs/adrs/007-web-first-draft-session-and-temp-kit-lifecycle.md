@@ -2,7 +2,7 @@
 
 **Status:** Draft  
 **Date:** 2026-04-06  
-**Related:** `docs/specs/009-web-draft-kit-ux.md`, `docs/research/009-web-draft-kit-ux-brainstorm.md`, `docs/specs/008-live-draft-sync-launch-required.md`
+**Related:** `docs/specs/009-web-draft-kit-ux.md`, `docs/research/002-web-draft-kit-ux-brainstorm.md`, `docs/specs/008-live-draft-sync-launch-required.md`
 
 ## Context
 

@@ -5,7 +5,7 @@
 **Priority:** Launch-shaping  
 **Risk:** High  
 **Supersedes:** UX planning detail previously embedded in `docs/plans/008a-draft-season-readiness.md`  
-**Related:** `docs/specs/008-live-draft-sync-launch-required.md`, `docs/research/009-web-draft-kit-ux-brainstorm.md`, `docs/plans/008a-draft-season-readiness.md`, `docs/adrs/007-web-first-draft-session-and-temp-kit-lifecycle.md`
+**Related:** `docs/specs/008-live-draft-sync-launch-required.md`, `docs/research/002-web-draft-kit-ux-brainstorm.md`, `docs/plans/008a-draft-season-readiness.md`, `docs/adrs/007-web-first-draft-session-and-temp-kit-lifecycle.md`
 
 ## Architecture References
 
