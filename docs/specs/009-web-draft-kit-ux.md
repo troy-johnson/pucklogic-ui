@@ -54,7 +54,7 @@ This spec covers **web UI only**. Extension implementation is deferred to Milest
 
 ### Extension responsibilities (out of scope — Milestone I)
 
-- Draft room detection and sync initiation
+- Draft room detection and sync initiation — **ESPN is the launch-critical platform; Yahoo ships at Milestone I only if it does not jeopardize ESPN stability (per spec 008 §D5)**
 - Pick extraction from platform DOM
 - Automatic pick ingestion into backend session state
 - Auto-reversion from manual mode when sync recovers (with user notification)
@@ -218,6 +218,15 @@ This work should be reviewed as three linked subareas inside one spec:
 1. Start session is gated to auth first, then payment if no pass exists
 2. Auth gate explains that purchasing a draft pass requires an account
 
+### Single-session rule and conflict behavior
+
+- One active live draft session per user is enforced at launch
+- If a user attempts to start a new session while one is already active, the start flow is blocked
+- The user sees a prompt: *"You already have an active draft session. Resume it or end it before starting a new one."* with two explicit actions: **Resume active session** / **End active session**
+- Silent takeover is not permitted — no session is replaced without explicit user confirmation
+- Multi-device behavior follows the same rule: any device may reconnect to the active session via the standard reconnect flow, but no device may start a second session while one is active
+- No pass is consumed for a blocked session start attempt
+
 ### Pass consumption confirmation
 
 - The pass is consumed at the moment the user confirms session start — not at purchase time and not at draft room entry (for web-initiated sessions)
@@ -245,9 +254,12 @@ This work should be reviewed as three linked subareas inside one spec:
 
 - Temporary kits are tied to the browser/session token
 - Temporary kits are **directly resumable for 24 hours based on last activity** — the product must track `last_activity_at` to support this
+- **Activity definition:** only write actions update `last_activity_at` — changes to source weights, league profile selection, or kit name. Viewing rankings or loading the page does not count.
 - After the 24-hour direct-resume window, recovery requires normal sign-in (kit is still accessible, but not auto-resumed)
+- **UI state for 24h–7d window:** a persistent banner appears in the kit context: *"Your temporary work is saved in this browser. Sign in to save it permanently before it expires."* with a days-remaining indicator and a sign-in CTA
 - **Temporary kits are permanently deleted 7 days from `created_at`** — this is enforced by a nightly cron cleanup job; there is no recovery path after this point
 - The 7-day window is `created_at`-based, not `last_activity`-based; interacting with the kit does not extend the cleanup deadline
+- **Post-expiry state:** if a user returns after the 7-day cleanup, the temporary kit is gone; show an empty state with *"Your temporary session has expired"* and a CTA to start fresh or sign in to access saved kits
 - After authentication within the 7-day window, temporary kit ownership migrates to the user account
 - After recovery or mid-flow auth migration, the UI should show a confirmation toast/banner that the temporary work has been restored to the account
 
@@ -333,6 +345,10 @@ Default rankings are shown to all users — anonymous and authenticated — with
 
 - Whether the kit pass and draft passes are sold separately or bundled is not yet decided
 - The extension requires a draft pass to function; the kit pass alone does not unlock live draft
+
+### Entitlement resolution
+
+Spec 008 open question #2 ("Is paid entitlement enforced at launch?") is resolved: draft passes are required to start a live draft session at launch. Spec 008 §D6 has been updated to remove the conditional "if paid entitlement is enforced" language.
 
 ## Export and prep-readiness policy
 

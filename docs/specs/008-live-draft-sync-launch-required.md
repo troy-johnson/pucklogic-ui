@@ -82,11 +82,11 @@ ESPN live draft sync is the minimum required platform for launch approval. Yahoo
 
 **Rationale:** Existing repo docs and risk notes indicate ESPN is the safest primary target.
 
-### D6. Auth is required for live draft sync
+### D6. Auth and paid entitlement are required for live draft sync
 
-Live draft sync requires authenticated access. If paid entitlement is enforced at launch, entitlement checks occur before session start and on reconnect.
+Live draft sync requires authenticated access. Paid entitlement is enforced at launch — a draft pass ($2.99/session) is required to start a session. Entitlement checks occur before session start and on reconnect.
 
-**Rationale:** Draft sessions are persistent, user-owned state and must be protected server-side.
+**Rationale:** Draft sessions are persistent, user-owned state and must be protected server-side. Entitlement model is defined in `docs/specs/009-web-draft-kit-ux.md` (draft pass model).
 
 ## Implementation Surface
 
@@ -246,8 +246,8 @@ The user must be able to:
 
 ## Open Questions
 
-1. Is Yahoo also launch-required, or only best-effort at launch?
-2. Is paid entitlement enforced at launch, or is authentication alone sufficient for the initial release?
+1. ~~Is Yahoo also launch-required, or only best-effort at launch?~~ **Resolved:** ESPN only at launch. Yahoo may ship only if it does not jeopardize ESPN stability or recovery quality.
+2. ~~Is paid entitlement enforced at launch, or is authentication alone sufficient for the initial release?~~ **Resolved:** Paid entitlement enforced at launch. Draft passes ($2.99/session) required. See `docs/specs/009-web-draft-kit-ux.md` §Draft pass model.
 3. How draft-aware must suggestions be at v1: simple best-available versus roster-aware recommendations?
 4. What user-visible freshness threshold is acceptable for “near real time” during an actual draft?
 
