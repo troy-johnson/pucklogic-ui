@@ -1,13 +1,13 @@
 | Field | Value |
 |---|---|
-| Active Phase | Documentation taxonomy cleanup and web-first draft kit UX spec consolidation on `feat/live-draft-sync-spec`; spec/research/ADR structure and numbering are being normalized for continuity across sessions |
+| Active Phase | Milestone B locked — wireframe design decisions captured; design system and implementation planning next |
 | Active Branch | feat/live-draft-sync-spec |
 | Open PR | None |
-| Current Focus | Keep docs taxonomy, canonical-source rules, and web-first draft-kit UX artifacts aligned so the branch can be resumed cleanly from another machine/session |
-| Last Action | Finalized and reviewed the web-first draft kit UX spec, moved supporting brainstorm material into `docs/research/`, normalized ADR placement under `docs/adrs/`, and updated documentation numbering/reference policy in `docs/README.md` |
+| Current Focus | Completing Milestone B design artifacts before Milestone D (web UI build, May 19) — design system section of spec 010 is the remaining open item |
+| Last Action | Approved spec 009, closed all Milestone B decisions (kit pass $4.99, draft passes $2.99 separate, Discord beta feedback pipeline), wrote wireframe design spec 010 |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
-| Current Hypothesis | Documentation ambiguity is now a larger continuity risk than implementation ambiguity; keeping canonical doc classes, numbering, and axon-state aligned will reduce restart friction across sessions and machines |
-| Next Steps | 1. Commit/push any remaining docs taxonomy cleanup 2. Keep Notion and axon-state synced with the web-first draft-kit UX scope 3. Resume backend integration verification and wireframe/design follow-up from the approved spec |
+| Current Hypothesis | Layout decisions are locked; design system (colors, typography, tokens) needs to be defined before Milestone D implementation planning can begin |
+| Next Steps | 1. Complete design system section of spec 010 2. Write Milestone C implementation plan (backend verification, May 5–18) 3. Write Milestone D implementation plan (web UI build, May 19–Jun 29) |
 
 ## Documentation continuity outcome (2026-04-07)
 

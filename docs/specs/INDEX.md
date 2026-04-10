@@ -11,3 +11,4 @@
 | 007 | [feature-engineering-spec](007-feature-engineering-spec.md) | Active | — | Canonical feature engineering reference |
 | 008 | [live-draft-sync-launch-required](008-live-draft-sync-launch-required.md) | Draft for approval | 2026-04-01 | Launch gate for live draft sync |
 | 009 | [web-draft-kit-ux](009-web-draft-kit-ux.md) | Approved | 2026-04-07 | Canonical web-first draft kit UX contract for Milestone B |
+| 010 | [web-ui-wireframes-design](010-web-ui-wireframes-design.md) | Draft | 2026-04-09 | Web UI wireframe layout decisions — app shell, workspace, live draft session |
