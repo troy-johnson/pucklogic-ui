@@ -1,15 +1,29 @@
 | Field | Value |
 |---|---|
-| Active Phase | Milestone B locked — wireframe design decisions captured; design system and implementation planning next |
+| Active Phase | Spec refreshed: 008 now canonically owns non-UI live draft backend/sync scope; next phase is plan/implement-tdd against 008b |
 | Active Branch | feat/live-draft-sync-spec |
 | Open PR | #31 — https://github.com/troy-johnson/pucklogic-ui/pull/31 |
-| Current Focus | Completing Milestone B design artifacts before Milestone D (web UI build, May 19) — design system section of spec 010 is the remaining open item |
-| Last Action | Merged main (scraper data quality) into PR #31 branch; resolved all conflicts keeping HEAD; addressed two Codex code review findings in nst.py (TOI fallback + alias pagination ordering) |
+| Current Focus | Execute plan set against refreshed spec boundary: `docs/specs/008-live-draft-sync-launch-required.md`, `docs/plans/008b-live-draft-backend.md`, `docs/plans/010a-web-draft-kit-ui.md`, `docs/plans/008c-extension-sync-adapters.md` |
+| Last Action | Rewrote canonical spec `008` to retain only non-UI live draft backend/sync scope, archived prior mixed-scope 008, and aligned index/state with the 008→009→010 split |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
-| Current Hypothesis | Layout decisions are locked; design system (colors, typography, tokens) needs to be defined before Milestone D implementation planning can begin |
-| Next Steps | 1. Complete design system section of spec 010 2. Merge PR #31 3. Write Milestone C implementation plan (backend verification, May 5–18) 4. Write Milestone D implementation plan (web UI build, May 19–Jun 29) |
+| Current Hypothesis | WebSocket-backed backend authority is the critical first implementation slice; ESPN is MVP, Yahoo is secondary, manual mode remains the launch fallback, and launch infra is Fly.io single-instance with Redis deferred |
+| Next Steps | 1. Execute `008b-live-draft-backend` with TDD, WebSocket transport, draft-pass enforcement, and realtime observability 2. Execute `010a-web-draft-kit-ui` under spec 009/010 ownership 3. Bootstrap and execute `008c-extension-sync-adapters` |
 
 ## Merge and code review outcome (2026-04-10)
+
+## Planning outcome (2026-04-10)
+
+- Rewrote canonical spec `docs/specs/008-live-draft-sync-launch-required.md` as the non-UI live draft backend and sync contract.
+- Archived the previous mixed-scope 008 draft at `docs/archive/2026-04-01-008-live-draft-sync-launch-required.md`.
+- Updated `docs/specs/INDEX.md` to mark `008` approved with its narrowed canonical scope.
+- Confirmed scope split: `008` owns backend/session/extension contract, `009` owns UX/product workflow, `010` owns wireframes/layout.
+
+- Wrote implementation plan `docs/plans/008b-live-draft-backend.md` for backend session authority, entitlement checks, and WebSocket transport.
+- Wrote implementation plan `docs/plans/010a-web-draft-kit-ui.md` for landing page, app shell, pre-draft workspace, live draft UI, and design tokens.
+- Wrote implementation plan `docs/plans/008c-extension-sync-adapters.md` for extension bootstrap, ESPN MVP sync, Yahoo secondary sync, and manual fallback escalation.
+- Updated `docs/plans/INDEX.md` to index the new plan set.
+- Planning assumption now locked: final implementation uses WebSocket transport; Yahoo remains stretch acceptance and must not delay ESPN MVP readiness.
+- Infra assumption now locked for launch planning: Fly.io single-instance backend, WebSocket primary, HTTP/manual fallback allowed, Redis deferred until scale requires it.
 
 - Merged `main` (`c34f36b` scraper data quality hardening) into `feat/live-draft-sync-spec`.
 - All conflicts resolved keeping HEAD: agent config paths (post-rename), `hockey_reference.py` stable dedup, `hockey_reference` test suite.
