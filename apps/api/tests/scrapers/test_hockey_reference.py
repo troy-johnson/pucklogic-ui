@@ -177,6 +177,30 @@ class TestParseHtml:
         assert rows[0]["goals"] == 10
         assert rows[0]["shots"] == 100
 
+    def test_same_name_players_with_distinct_hr_ids_do_not_dedup(self) -> None:
+        html = """
+        <table id="player_stats">
+          <tbody>
+            <tr>
+              <td data-stat="name_display"><a href="/players/s/smithal01.html">Alex Smith</a></td>
+              <td data-stat="games">82</td>
+              <td data-stat="goals">30</td>
+              <td data-stat="shots">200</td>
+            </tr>
+            <tr>
+              <td data-stat="name_display"><a href="/players/s/smithal02.html">Alex Smith</a></td>
+              <td data-stat="games">80</td>
+              <td data-stat="goals">20</td>
+              <td data-stat="shots">180</td>
+            </tr>
+          </tbody>
+        </table>
+        """
+        rows = HockeyReferenceScraper._parse_html(html)
+
+        assert len(rows) == 2
+        assert {r["goals"] for r in rows} == {20, 30}
+
 
 # ---------------------------------------------------------------------------
 # Career stats accumulation (_compute_career_stats)

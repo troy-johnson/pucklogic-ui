@@ -1,13 +1,31 @@
 | Field | Value |
 |---|---|
-| Active Phase | Scraper data quality hardening and historical backfill verification completed for production-ready coverage targets; next execution track is Hockey Reference dedup closure + first real ML run |
-| Active Branch | feat/scraper-data-quality |
-| Open PR | #30 — https://github.com/troy-johnson/pucklogic-ui/pull/30 |
-| Current Focus | Await PR #30 review/merge after completing scraper hardening, HR dedup, first real ML run, and trends API stability fixes |
-| Last Action | Completed HR verification backfill, executed first real ML run (artifacts + player_trends writes), fixed trends position validation + pagination, and opened PR #30 |
+| Active Phase | Milestone B locked — wireframe design decisions captured; design system and implementation planning next |
+| Active Branch | feat/live-draft-sync-spec |
+| Open PR | #31 — https://github.com/troy-johnson/pucklogic-ui/pull/31 |
+| Current Focus | Completing Milestone B design artifacts before Milestone D (web UI build, May 19) — design system section of spec 010 is the remaining open item |
+| Last Action | Merged main (scraper data quality) into PR #31 branch; resolved all conflicts keeping HEAD; addressed two Codex code review findings in nst.py (TOI fallback + alias pagination ordering) |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
-| Current Hypothesis | With corrected historical backfills (NHL raw from 2005-06 onward, NST per-60 from 2007-08 onward), the first real ML execution run can proceed once Hockey Reference dedup is closed |
-| Next Steps | 1. Address PR #30 review feedback 2. Merge scraper hardening/ML closeout branch 3. Move to draft kit workflow/UI lock |
+| Current Hypothesis | Layout decisions are locked; design system (colors, typography, tokens) needs to be defined before Milestone D implementation planning can begin |
+| Next Steps | 1. Complete design system section of spec 010 2. Merge PR #31 3. Write Milestone C implementation plan (backend verification, May 5–18) 4. Write Milestone D implementation plan (web UI build, May 19–Jun 29) |
+
+## Merge and code review outcome (2026-04-10)
+
+- Merged `main` (`c34f36b` scraper data quality hardening) into `feat/live-draft-sync-spec`.
+- All conflicts resolved keeping HEAD: agent config paths (post-rename), `hockey_reference.py` stable dedup, `hockey_reference` test suite.
+- Date-stamped plan/ADR files from main (`2026-03-28-*`) accepted at canonical `docs/plans/` and `docs/adrs/` paths; all are duplicates of existing numbered files and are not indexed separately.
+- Addressed two Codex P2 findings in `nst.py`:
+  - TOI fallback: blank/unparsable `toi_per_gp_col` now falls through to `total_TOI / GP` derivation instead of silently dropping stat.
+  - Alias pagination: `_fetch_all_rows` now supports compound `order_by` (comma-separated); `_fetch_aliases` uses `alias_name,source` for stable offset-based paging.
+- 52 nst tests passing; both Codex comment threads replied to on GitHub.
+
+## Documentation continuity outcome (2026-04-07)
+
+- `docs/specs/009-web-draft-kit-ux.md` is the canonical Milestone B web-first UX contract.
+- Supporting brainstorm material now lives in `docs/research/002-web-draft-kit-ux-brainstorm.md`.
+- Durable architecture decisions now live under `docs/adrs/`, including `007-web-first-draft-session-and-temp-kit-lifecycle.md`.
+- Research docs now use their own numbered sequence with `docs/research/INDEX.md` as the folder guide.
+- `docs/README.md` now documents folder classification, canonical-source precedence, numbering policy, and the requirement to keep `.agents/axon-state.md` current when docs meaningfully change.
 
 ## Backfill/data quality completion status (current)
 
@@ -50,3 +68,19 @@
 - HR targeted verification backfill succeeded (`2009-10..2010-11`, 336 rows).
 - First real ML run succeeded for `2026-27` (dataset 11229, artifacts uploaded, `player_trends` 901 rows).
 - Trends endpoint now returns stable populated responses with normalization + pagination fixes.
+
+## Execution outcomes (2026-04-01)
+
+- Hockey Reference parser dedup now prefers stable key sources in order: player href id (e.g. `mcdavid01`) → `data-append-csv` → name fallback.
+- Added regression test to ensure same-name players with distinct HR ids are not incorrectly deduped in a single season.
+- Targeted tests passed:
+  - `pytest tests/scrapers/test_hockey_reference.py -v` → 31 passed
+  - `pytest tests/scrapers/test_nhl_com.py tests/scrapers/test_nst.py -v` → 85 passed
+- One-season data-quality verification passed (`2024-25`):
+  - `total=925`, `gp_rows=924`, `rate_rows=914` (`98.9%`), `raw_rows=920` (`99.6%`)
+  - No validation failures; TOI non-negativity check passed.
+
+## Merge outcome (2026-04-01)
+
+- PR #30 merged successfully into `main`.
+- Canonical status now advances from scraper/backfill closeout into draft-kit workflow/UI scope lock.

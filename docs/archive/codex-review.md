@@ -357,7 +357,7 @@ Add a canonical season metadata helper that determines:
 
 **Evidence**
 
-- `AGENT.md`, `docs/phase-3-backend.md`, and `docs/feature-engineering-spec.md` require 10+ seasons of historical data.
+- `AGENT.md`, `docs/phase-3-backend.md`, and `docs/specs/007-feature-engineering-spec.md` require 10+ seasons of historical data.
 - The docs describe ongoing scrapers, but the initial bulk backfill is not scheduled as a first-class implementation stream.
 - `docs/pucklogic_architecture_v2.md` says unmatched players should surface in an admin dashboard, but the phase docs do not define that workflow.
 - Alias curation, historical reconciliation, and data-quality review are implied but not assigned concrete deliverables.

@@ -8,7 +8,7 @@
 
 **Tech Stack:** FastAPI, Supabase (PostgREST), Pydantic v2, openpyxl, WeasyPrint, pytest + MagicMock, SHA-256 cache keys via `hashlib`
 
-**Spec:** `docs/superpowers/specs/2026-03-13-projection-aggregation-design.md`
+**Spec:** `docs/adrs/001-projection-aggregation-design.md`
 **Backend reference:** `docs/backend-reference.md`
 
 ---

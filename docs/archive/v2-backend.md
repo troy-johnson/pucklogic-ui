@@ -4,7 +4,7 @@
 
 **Timeline:** Post-launch (after v1.0 September 2026 release)
 **Target Release:** v2.0 (TBD — in-season 2026–27)
-**Reference:** `docs/phase-3-backend.md` · `docs/feature-engineering-spec.md` · `docs/stats-research.md`
+**Reference:** `docs/phase-3-backend.md` · `docs/specs/007-feature-engineering-spec.md` · `docs/research/001-nhl-advanced-stats-research.md`
 
 ---
 

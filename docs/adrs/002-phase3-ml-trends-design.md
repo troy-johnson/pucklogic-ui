@@ -104,7 +104,7 @@ top_speed          float
 
 **Flag columns — add to `player_stats` (not a separate table):**
 
-`docs/feature-engineering-spec.md` specifies these as `ALTER TABLE player_stats ADD COLUMN IF NOT EXISTS ...` statements. This spec supersedes the earlier idea of a separate `player_metadata` table. Keeping flags in `player_stats` avoids an extra JOIN in the feature matrix query and is consistent with the existing schema pattern (one row per player per season).
+`docs/specs/007-feature-engineering-spec.md` specifies these as `ALTER TABLE player_stats ADD COLUMN IF NOT EXISTS ...` statements. This spec supersedes the earlier idea of a separate `player_metadata` table. Keeping flags in `player_stats` avoids an extra JOIN in the feature matrix query and is consistent with the existing schema pattern (one row per player per season).
 
 ```sql
 ALTER TABLE player_stats ADD COLUMN IF NOT EXISTS elc_flag boolean DEFAULT false;
@@ -223,7 +223,7 @@ apps/api/scrapers/features/
   validation.py        # assert schema, check for nulls, log coverage %
 ```
 
-### Feature Set (from `docs/feature-engineering-spec.md`)
+### Feature Set (from `docs/specs/007-feature-engineering-spec.md`)
 
 #### Tier 1 — Core (Always Include)
 
@@ -259,7 +259,7 @@ Raw GF%, SAT for counts (use rates), `ga60` for goalie proxy, raw PDO (use delta
 
 ### Label Definition
 
-**Minimum inclusion threshold:** 500 even-strength minutes per season (per `docs/feature-engineering-spec.md`). Players below this threshold are excluded from the training set.
+**Minimum inclusion threshold:** 500 even-strength minutes per season (per `docs/specs/007-feature-engineering-spec.md`). Players below this threshold are excluded from the training set.
 
 **Rate definition:** Rate = events per 60 min at even strength (not per game). The 3-year weighted average from `feature-engineering-spec.md §Projection Pipeline` is used: current season × 0.5, Y-1 × 0.3, Y-2 × 0.2.
 

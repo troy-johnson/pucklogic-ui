@@ -186,7 +186,7 @@ class TestFetchAllRows:
             db,
             "player_aliases",
             "alias_name,player_id,source",
-            order_by="alias_name",
+            order_by="alias_name,source",
         )
 
 

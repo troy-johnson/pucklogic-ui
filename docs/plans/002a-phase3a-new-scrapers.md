@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.11+, httpx, BeautifulSoup4/lxml, pytest, MagicMock, `PlayerMatcher` + `_fetch_players`/`_fetch_aliases` helpers (existing pattern from NstScraper).
 
-**Evolving Hockey (GAR/xGAR columns):** Per `docs/superpowers/specs/2026-03-18-phase3-ml-trends-design.md` Decisions §2, Evolving Hockey is a $5/month subscription and is ingested as a **manual one-time CSV upload** via the existing `POST /sources/upload` endpoint. No automated scraper is needed or planned. The `gar` and `xgar` columns in `player_stats` are populated this way.
+**Evolving Hockey (GAR/xGAR columns):** Per `docs/adrs/002-phase3-ml-trends-design.md` Decisions §2, Evolving Hockey is a $5/month subscription and is ingested as a **manual one-time CSV upload** via the existing `POST /sources/upload` endpoint. No automated scraper is needed or planned. The `gar` and `xgar` columns in `player_stats` are populated this way.
 
 ---
 

@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.11+, FastAPI, Supabase Python client (MagicMock in tests), pytest, ruff.
 
-**Spec:** `docs/superpowers/specs/2026-03-22-phase3c-feature-engineering.md`
+**Spec:** `docs/adrs/004-phase3c-feature-engineering.md`
 
 ---
 

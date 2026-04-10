@@ -258,14 +258,16 @@ class NstScraper(BaseScraper):
             # TOI/GP: prefer an explicit per-game column when present (live NST has
             # used this on situation pages), otherwise derive it from total TOI / GP.
             if toi_col_name:
+                toi_set = False
                 if toi_per_gp_col is not None and toi_per_gp_col < len(cells):
                     raw = cells[toi_per_gp_col].get_text(strip=True)
                     if raw and raw.lower() not in _MISSING_VALUES:
                         try:
                             row_data[toi_col_name] = float(raw)
+                            toi_set = True
                         except (ValueError, TypeError):
                             pass
-                elif toi_total_col is not None and toi_total_col < len(cells):
+                if not toi_set and toi_total_col is not None and toi_total_col < len(cells):
                     raw = cells[toi_total_col].get_text(strip=True)
                     if raw and raw.lower() not in _MISSING_VALUES:
                         try:
@@ -344,13 +346,12 @@ class NstScraper(BaseScraper):
         page_size = 1000
 
         while True:
-            result = (
-                db.table(table)
-                .select(fields)
-                .order(order_by, desc=desc)
-                .range(start, start + page_size - 1)
-                .execute()
-            )
+            query = db.table(table).select(fields)
+            for col in order_by.split(","):
+                col = col.strip()
+                if col:
+                    query = query.order(col, desc=desc)
+            result = query.range(start, start + page_size - 1).execute()
             batch = result.data or []
             rows.extend(batch)
             if len(batch) < page_size:
@@ -367,7 +368,7 @@ class NstScraper(BaseScraper):
             db,
             "player_aliases",
             "alias_name,player_id,source",
-            order_by="alias_name",
+            order_by="alias_name,source",
         )
 
     def _upsert_player_stats(

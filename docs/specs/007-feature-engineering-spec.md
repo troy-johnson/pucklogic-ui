@@ -3,7 +3,7 @@
 ## Trends Engine — ML Model (XGBoost/LightGBM)
 
 **Version 1.0 · March 2026**
-**Reference:** `docs/stats-research.md` for full methodology and source citations
+**Reference:** `docs/research/001-nhl-advanced-stats-research.md` for full methodology and source citations
 
 -----
 
@@ -11,7 +11,7 @@
 
 This spec feeds directly into Claude Code sessions. When starting Phase 3 (ML Trends Engine), open a session with:
 
-> *"Build the feature engineering pipeline per `docs/feature-engineering-spec.md` using MoneyPuck CSVs and Natural Stat Trick as primary sources."*
+> *"Build the feature engineering pipeline per `docs/specs/007-feature-engineering-spec.md` using MoneyPuck CSVs and Natural Stat Trick as primary sources."*
 
 -----
 
@@ -306,5 +306,5 @@ model is complete.
 
 -----
 
-*Full methodology and source citations: `docs/stats-research.md`*
+*Full methodology and source citations: `docs/research/001-nhl-advanced-stats-research.md`*
 *Architecture context: `pucklogic_architecture.docx`*

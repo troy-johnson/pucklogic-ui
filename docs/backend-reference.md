@@ -288,6 +288,9 @@ CREATE TABLE subscriptions (
   status TEXT DEFAULT 'active',
   expires_at TIMESTAMPTZ
 );
+-- NOTE: This table will be refactored in Milestone C to support the kit pass + draft pass
+-- entitlement model defined in docs/specs/009-web-draft-kit-ux.md. A draft_tokens table
+-- will be added to track purchased-but-unconsumed draft passes. See docs/ROADMAP.md.
 
 -- Injury tracking — one row per player (upserted daily via NHL.com injury feed).
 -- Feeds the Layer 2 "return from injury" signal in v2.0.
@@ -472,7 +475,7 @@ GET    /players/{id}/trends          — Breakout/regression scores + SHAP
 GET    /trends/breakouts             — Top breakout candidates
 GET    /trends/regressions           — Regression watchlist
 
-POST   /draft/session                — Create draft session (subscription required)
+POST   /draft/session                — Create draft session (auth + draft pass required)
 WS     /ws/draft/{session_id}        — Live draft WebSocket
 ```
 
@@ -1015,8 +1018,8 @@ REDIS_URL=redis://xxx:xxx@xxx.upstash.io:6379
 # Stripe
 STRIPE_SECRET_KEY=sk_live_xxx
 STRIPE_WEBHOOK_SECRET=whsec_xxx
-STRIPE_PRICE_DRAFT_SESSION=price_xxx   # $2.99 per draft session
-STRIPE_PRICE_EXPORT=price_xxx          # $1-3 per export
+STRIPE_PRICE_DRAFT_SESSION=price_xxx   # $2.99 per draft pass (pre-purchased, consumed at session start)
+# STRIPE_PRICE_EXPORT removed — export is included with kit pass, not sold separately
 
 # ML
 MODEL_PATH=./ml/pucklogic_model.joblib

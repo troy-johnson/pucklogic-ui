@@ -8,7 +8,7 @@
 
 **Tech Stack:** XGBoost, LightGBM, SHAP, Optuna, scikit-learn, joblib, Supabase Storage (via supabase-py v2), FastAPI lifespan context, pytest + MagicMock
 
-**Spec:** `docs/superpowers/specs/2026-03-23-phase3d-model-training.md`
+**Spec:** `docs/adrs/005-phase3d-model-training.md`
 
 ---
 
@@ -2554,7 +2554,7 @@ Expected: All tests green (smoke excluded).
 
 - [ ] **Step 2: Verify acceptance criteria checklist (from spec)**
 
-Check off each item in `docs/superpowers/specs/2026-03-23-phase3d-model-training.md`:
+Check off each item in `docs/adrs/005-phase3d-model-training.md`:
 - Training pipeline: all 10 items
 - Loader: all 5 items
 - Inference API: all 5 items
