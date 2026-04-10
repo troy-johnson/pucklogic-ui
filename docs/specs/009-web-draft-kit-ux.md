@@ -1,6 +1,6 @@
 # 2026-04-05 — Web-First Draft Kit UX Spec
 
-**Status:** Draft for approval  
+**Status:** Approved  
 **Milestone:** B — Lock the draft kit workflow / UI scope  
 **Priority:** Launch-shaping  
 **Risk:** High  
@@ -315,7 +315,7 @@ Default rankings are shown to all users — anonymous and authenticated — with
 - Custom source weights and saved kits
 - Export/print (included; not pay-per-file for kit pass holders)
 - Required for any personalized prep work beyond default rankings
-- Pricing TBD
+- Pricing: **$4.99 one-time**
 
 **Draft passes (paid — $2.99 per pass)**
 - Required to start a live draft session; user-facing name is "draft pass"
@@ -341,10 +341,12 @@ Default rankings are shown to all users — anonymous and authenticated — with
 | Export / print rankings | Kit pass required |
 | Start a live draft session | Auth + draft pass required |
 
-### Open pricing decision
+### Pricing resolution
 
-- Whether the kit pass and draft passes are sold separately or bundled is not yet decided
+- Kit pass ($4.99 one-time) and draft passes ($2.99/session) are sold **separately**
+- Users buy what they need independently; no bundle required at launch
 - The extension requires a draft pass to function; the kit pass alone does not unlock live draft
+- A bundle SKU may be considered post-launch if conversion data supports it
 
 ### Entitlement resolution
 

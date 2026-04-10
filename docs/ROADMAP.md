@@ -28,9 +28,9 @@
 Items identified during Milestone B spec review that need to land in later milestones.
 
 ### Milestone B approval (Apr 21 – May 4)
-- [ ] Approve payment model: default rankings free · kit customization = kit pass · live draft = session tokens
-- [ ] Approve token-based session model (buy tokens in advance, consume at draft room entry)
-- [ ] Approve closed beta strategy and feedback pipeline
+- [x] Approve payment model: default rankings free · kit pass $4.99 one-time · draft passes $2.99/session (sold separately)
+- [x] Approve token-based session model (buy passes in advance, consume at draft room entry)
+- [x] Approve closed beta feedback pipeline: Discord + structured prompt; user sourcing deferred to Aug 2026
 
 ### Milestone C backend additions (May 5 – May 18)
 - [ ] Design and implement `draft_tokens` table (purchased but unconsumed sessions — current `subscriptions` schema does not support this)
@@ -64,6 +64,10 @@ Items identified during Milestone B spec review that need to land in later miles
 | One active session per user | Yes at launch | [ADR 007](adrs/007-web-first-draft-session-and-temp-kit-lifecycle.md) |
 | Suggestion rationale cohort | Top 50% of expected draft pool (default 108 of 216) | [Spec 009](specs/009-web-draft-kit-ux.md) |
 | Archive at launch | No — rename, duplicate, delete only | [Spec 009](specs/009-web-draft-kit-ux.md) |
+| Kit pass price | $4.99 one-time | Milestone B approval |
+| Draft pass price | $2.99/session | [Architecture](pucklogic-architecture.md) §7.5 |
+| Kit pass + draft pass pricing | Sold separately; no bundle at launch | Milestone B approval |
+| Closed beta feedback pipeline | Discord + structured prompt; user sourcing deferred to Aug 2026 | Milestone B approval |
 
 ---
 
