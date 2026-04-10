@@ -2,12 +2,22 @@
 |---|---|
 | Active Phase | Milestone B locked — wireframe design decisions captured; design system and implementation planning next |
 | Active Branch | feat/live-draft-sync-spec |
-| Open PR | None |
+| Open PR | #31 — https://github.com/troy-johnson/pucklogic-ui/pull/31 |
 | Current Focus | Completing Milestone B design artifacts before Milestone D (web UI build, May 19) — design system section of spec 010 is the remaining open item |
-| Last Action | Approved spec 009, closed all Milestone B decisions (kit pass $4.99, draft passes $2.99 separate, Discord beta feedback pipeline), wrote wireframe design spec 010 |
+| Last Action | Merged main (scraper data quality) into PR #31 branch; resolved all conflicts keeping HEAD; addressed two Codex code review findings in nst.py (TOI fallback + alias pagination ordering) |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
 | Current Hypothesis | Layout decisions are locked; design system (colors, typography, tokens) needs to be defined before Milestone D implementation planning can begin |
-| Next Steps | 1. Complete design system section of spec 010 2. Write Milestone C implementation plan (backend verification, May 5–18) 3. Write Milestone D implementation plan (web UI build, May 19–Jun 29) |
+| Next Steps | 1. Complete design system section of spec 010 2. Merge PR #31 3. Write Milestone C implementation plan (backend verification, May 5–18) 4. Write Milestone D implementation plan (web UI build, May 19–Jun 29) |
+
+## Merge and code review outcome (2026-04-10)
+
+- Merged `main` (`c34f36b` scraper data quality hardening) into `feat/live-draft-sync-spec`.
+- All conflicts resolved keeping HEAD: agent config paths (post-rename), `hockey_reference.py` stable dedup, `hockey_reference` test suite.
+- Date-stamped plan/ADR files from main (`2026-03-28-*`) accepted at canonical `docs/plans/` and `docs/adrs/` paths; all are duplicates of existing numbered files and are not indexed separately.
+- Addressed two Codex P2 findings in `nst.py`:
+  - TOI fallback: blank/unparsable `toi_per_gp_col` now falls through to `total_TOI / GP` derivation instead of silently dropping stat.
+  - Alias pagination: `_fetch_all_rows` now supports compound `order_by` (comma-separated); `_fetch_aliases` uses `alias_name,source` for stable offset-based paging.
+- 52 nst tests passing; both Codex comment threads replied to on GitHub.
 
 ## Documentation continuity outcome (2026-04-07)
 
