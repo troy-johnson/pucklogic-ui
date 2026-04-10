@@ -46,3 +46,6 @@ apps/web/tsconfig.tsbuildinfo
 
 # Serena MCP local state
 .serena/
+
+# Superpowers brainstorm sessions
+.superpowers/
