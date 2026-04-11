@@ -65,6 +65,32 @@ class DraftSessionRepository:
             .execute()
         )
 
+    def update_session_progress(
+        self,
+        *,
+        session_id: str,
+        user_id: str,
+        sync_state: dict[str, Any],
+        accepted_picks: list[dict[str, Any]],
+        now: datetime,
+    ) -> None:
+        now_iso = now.astimezone(UTC).isoformat()
+        (
+            self._db.table("draft_sessions")
+            .update(
+                {
+                    "sync_state": sync_state,
+                    "accepted_picks": accepted_picks,
+                    "last_heartbeat_at": now_iso,
+                    "updated_at": now_iso,
+                }
+            )
+            .eq("session_id", session_id)
+            .eq("user_id", user_id)
+            .eq("status", "active")
+            .execute()
+        )
+
     def expire_inactive_sessions(self, cutoff: datetime) -> int:
         now_iso = datetime.now(UTC).isoformat()
         result = (

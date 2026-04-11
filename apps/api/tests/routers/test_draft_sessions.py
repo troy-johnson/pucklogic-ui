@@ -169,6 +169,14 @@ class TestDraftSessionWebSocket:
         mock_service.get_sync_state.return_value = {
             "sync_health": "healthy",
             "last_processed_pick": 10,
+            "cursor": None,
+        }
+        mock_service.accept_pick.return_value = {
+            "sync_state": {
+                "sync_health": "healthy",
+                "last_processed_pick": 11,
+                "cursor": None,
+            }
         }
 
         with client.websocket_connect("/draft-sessions/ses_1/ws") as ws:
@@ -178,6 +186,11 @@ class TestDraftSessionWebSocket:
 
         assert event["type"] == "state_update"
         assert event["payload"]["status"] == "pick_received"
+        assert event["payload"]["sync_state"]["last_processed_pick"] == 11
+        kwargs = mock_service.accept_pick.call_args.kwargs
+        assert kwargs["session_id"] == "ses_1"
+        assert kwargs["user_id"] == "usr_123"
+        assert kwargs["pick_number"] == 11
 
     def test_pick_event_rejects_duplicate_pick_number(
         self, client: TestClient, mock_service: MagicMock
@@ -185,7 +198,11 @@ class TestDraftSessionWebSocket:
         mock_service.get_sync_state.return_value = {
             "sync_health": "healthy",
             "last_processed_pick": 10,
+            "cursor": None,
         }
+        mock_service.accept_pick.side_effect = ValueError(
+            "pick_number 10 already processed; expected 11"
+        )
 
         with client.websocket_connect("/draft-sessions/ses_1/ws") as ws:
             ws.receive_json()  # initial sync_state
@@ -201,7 +218,9 @@ class TestDraftSessionWebSocket:
         mock_service.get_sync_state.return_value = {
             "sync_health": "healthy",
             "last_processed_pick": 10,
+            "cursor": None,
         }
+        mock_service.accept_pick.side_effect = ValueError("pick_number 13 out of turn; expected 11")
 
         with client.websocket_connect("/draft-sessions/ses_1/ws") as ws:
             ws.receive_json()  # initial sync_state

@@ -125,6 +125,35 @@ async def draft_session_ws(
                 )
                 continue
 
+            try:
+                result = service.accept_pick(
+                    session_id=session_id,
+                    user_id=user["id"],
+                    pick_number=pick_number,
+                    now=datetime.now(UTC),
+                )
+            except (ValueError, LookupError, PermissionError) as exc:
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "payload": {"message": str(exc)},
+                    }
+                )
+                continue
+
+            await websocket.send_json(
+                {
+                    "type": "state_update",
+                    "payload": {
+                        "status": "pick_received",
+                        "session_id": session_id,
+                        "pick_number": pick_number,
+                        "sync_state": result["sync_state"],
+                    },
+                }
+            )
+            continue
+
             sync_state = service.get_sync_state(
                 session_id=session_id,
                 user_id=user["id"],

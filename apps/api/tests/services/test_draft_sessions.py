@@ -223,3 +223,87 @@ class TestEndAndSyncState:
 
         with pytest.raises(LookupError, match="session not found"):
             service.get_sync_state(session_id="ses_1", user_id="usr_1", now=now)
+
+
+class TestAcceptPick:
+    def test_accept_pick_rejects_duplicate_pick_number(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+        mock_sub_repo.is_active.return_value = True
+        mock_repo.get_active_session.return_value = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "active",
+            "platform": "espn",
+            "sync_state": {"sync_health": "healthy", "last_processed_pick": 10, "cursor": None},
+            "accepted_picks": [],
+        }
+
+        with pytest.raises(ValueError, match="already processed"):
+            service.accept_pick(session_id="ses_1", user_id="usr_1", pick_number=10, now=now)
+
+        mock_repo.update_session_progress.assert_not_called()
+
+    def test_accept_pick_rejects_out_of_turn_pick_number(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+        mock_sub_repo.is_active.return_value = True
+        mock_repo.get_active_session.return_value = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "active",
+            "platform": "espn",
+            "sync_state": {"sync_health": "healthy", "last_processed_pick": 10, "cursor": None},
+            "accepted_picks": [],
+        }
+
+        with pytest.raises(ValueError, match="out of turn"):
+            service.accept_pick(session_id="ses_1", user_id="usr_1", pick_number=13, now=now)
+
+        mock_repo.update_session_progress.assert_not_called()
+
+    def test_accept_pick_updates_sync_state_and_accepted_picks(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+        mock_sub_repo.is_active.return_value = True
+        mock_repo.get_active_session.return_value = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "active",
+            "platform": "espn",
+            "sync_state": {"sync_health": "healthy", "last_processed_pick": 10, "cursor": "pk_10"},
+            "accepted_picks": [
+                {
+                    "pick_number": 10,
+                    "platform": "espn",
+                    "ingestion_mode": "manual",
+                    "timestamp": "2026-04-11T10:00:00+00:00",
+                    "player_lookup": {"external_pick_number": 10},
+                }
+            ],
+        }
+
+        result = service.accept_pick(session_id="ses_1", user_id="usr_1", pick_number=11, now=now)
+
+        assert result["sync_state"]["last_processed_pick"] == 11
+        assert result["accepted_pick"]["pick_number"] == 11
+        assert result["accepted_pick"]["platform"] == "espn"
+        assert result["accepted_pick"]["ingestion_mode"] == "manual"
+
+        update_kwargs = mock_repo.update_session_progress.call_args.kwargs
+        assert update_kwargs["session_id"] == "ses_1"
+        assert update_kwargs["user_id"] == "usr_1"
+        assert update_kwargs["sync_state"]["last_processed_pick"] == 11
+        assert update_kwargs["accepted_picks"][-1]["pick_number"] == 11

@@ -83,6 +83,39 @@ class TestDraftSessionRepositoryLifecycle:
         assert update_call["status"] == "ended"
         assert update_call["updated_at"] == now.isoformat()
 
+    def test_update_session_progress_updates_sync_state_and_picks(
+        self, repo: DraftSessionRepository, mock_db: MagicMock
+    ) -> None:
+        now = datetime.now(UTC)
+        sync_state = {"sync_health": "healthy", "last_processed_pick": 11, "cursor": "pk_11"}
+        accepted_picks = [
+            {
+                "pick_number": 11,
+                "platform": "espn",
+                "ingestion_mode": "manual",
+                "timestamp": now.isoformat(),
+                "player_lookup": {"external_pick_number": 11},
+            }
+        ]
+
+        repo.update_session_progress(
+            session_id="ses_1",
+            user_id="usr_1",
+            sync_state=sync_state,
+            accepted_picks=accepted_picks,
+            now=now,
+        )
+
+        update_call = (
+            mock_db.table.return_value.update.call_args.args[0]
+            if mock_db.table.return_value.update.call_args.args
+            else mock_db.table.return_value.update.call_args.kwargs.get("json", {})
+        )
+        assert update_call["sync_state"] == sync_state
+        assert update_call["accepted_picks"] == accepted_picks
+        assert update_call["last_heartbeat_at"] == now.isoformat()
+        assert update_call["updated_at"] == now.isoformat()
+
 
 class TestDraftSessionRepositoryExpiry:
     def test_get_active_session_with_cutoff_filters_heartbeat(
