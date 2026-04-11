@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Response, WebSocket, WebSocketDisconnect
 
 from core.dependencies import get_current_user, get_draft_session_service
-from models.schemas import DraftSessionStartRequest
+from models.schemas import DraftManualPickRequest, DraftSessionStartRequest
 from services.draft_sessions import DraftSessionService
 
 router = APIRouter(prefix="/draft-sessions", tags=["draft-sessions"])
@@ -83,6 +83,28 @@ async def get_sync_state(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
+@router.post("/{session_id}/manual-picks")
+async def add_manual_pick(
+    session_id: str,
+    req: DraftManualPickRequest,
+    user: dict[str, Any] = Depends(get_current_user),
+    service: DraftSessionService = Depends(get_draft_session_service),
+) -> dict[str, Any]:
+    try:
+        return service.accept_pick(
+            session_id=session_id,
+            user_id=user["id"],
+            pick_number=req.pick_number,
+            now=datetime.now(UTC),
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 @router.websocket("/{session_id}/ws")
 async def draft_session_ws(
     websocket: WebSocket,
@@ -154,60 +176,17 @@ async def draft_session_ws(
             )
             continue
 
-            sync_state = service.get_sync_state(
-                session_id=session_id,
-                user_id=user["id"],
-                now=datetime.now(UTC),
-            )
-            last_processed_pick = sync_state.get("last_processed_pick")
-            expected_pick_number = (last_processed_pick or 0) + 1
-
-            if pick_number < expected_pick_number:
-                error_message = (
-                    f"pick_number {pick_number} already processed; expected {expected_pick_number}"
-                )
-                await websocket.send_json(
-                    {
-                        "type": "error",
-                        "payload": {
-                            "message": error_message,
-                        },
-                    }
-                )
-                continue
-
-            if pick_number > expected_pick_number:
-                error_message = (
-                    f"pick_number {pick_number} out of turn; expected {expected_pick_number}"
-                )
-                await websocket.send_json(
-                    {
-                        "type": "error",
-                        "payload": {
-                            "message": error_message,
-                        },
-                    }
-                )
-                continue
-
-            await websocket.send_json(
-                {
-                    "type": "state_update",
-                    "payload": {
-                        "status": "pick_received",
-                        "session_id": session_id,
-                        "pick_number": pick_number,
-                    },
-                }
-            )
-            continue
-
         if event_type == "sync_state":
-            sync_state = service.get_sync_state(
-                session_id=session_id,
-                user_id=user["id"],
-                now=datetime.now(UTC),
-            )
+            try:
+                sync_state = service.get_sync_state(
+                    session_id=session_id,
+                    user_id=user["id"],
+                    now=datetime.now(UTC),
+                )
+            except (PermissionError, LookupError) as exc:
+                await websocket.send_json({"type": "error", "payload": {"message": str(exc)}})
+                continue
+
             await websocket.send_json({"type": "sync_state", "payload": sync_state})
             continue
 

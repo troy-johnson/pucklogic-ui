@@ -133,6 +133,55 @@ class TestSyncState:
         assert response.status_code == 404
 
 
+class TestManualPickEndpoint:
+    def test_manual_pick_returns_state_update_payload(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.accept_pick.return_value = {
+            "sync_state": {
+                "sync_health": "healthy",
+                "last_processed_pick": 19,
+                "cursor": "pk_19",
+            },
+            "accepted_pick": {
+                "pick_number": 19,
+                "platform": "espn",
+                "ingestion_mode": "manual",
+                "timestamp": "2026-04-11T12:00:00+00:00",
+                "player_lookup": {"external_pick_number": 19},
+            },
+        }
+
+        response = client.post("/draft-sessions/ses_1/manual-picks", json={"pick_number": 19})
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["sync_state"]["last_processed_pick"] == 19
+        assert body["accepted_pick"]["pick_number"] == 19
+        kwargs = mock_service.accept_pick.call_args.kwargs
+        assert kwargs["session_id"] == "ses_1"
+        assert kwargs["user_id"] == "usr_123"
+        assert kwargs["pick_number"] == 19
+
+    def test_manual_pick_returns_409_for_out_of_turn_pick(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.accept_pick.side_effect = ValueError("pick_number 22 out of turn; expected 20")
+
+        response = client.post("/draft-sessions/ses_1/manual-picks", json={"pick_number": 22})
+
+        assert response.status_code == 409
+
+    def test_manual_pick_returns_403_without_entitlement(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.accept_pick.side_effect = PermissionError("active draft pass required")
+
+        response = client.post("/draft-sessions/ses_1/manual-picks", json={"pick_number": 19})
+
+        assert response.status_code == 403
+
+
 class TestDraftSessionWebSocket:
     def test_connect_emits_sync_state_event(
         self, client: TestClient, mock_service: MagicMock

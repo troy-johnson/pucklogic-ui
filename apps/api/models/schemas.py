@@ -351,6 +351,10 @@ class DraftSessionStartRequest(BaseModel):
     platform: DraftPlatform
 
 
+class DraftManualPickRequest(BaseModel):
+    pick_number: int = Field(..., ge=1)
+
+
 # ---------------------------------------------------------------------------
 # Trends — Phase 3 Layer 1 ML scores (GET /trends)
 # No paywall gate in v1.0; all scores visible to free users.
