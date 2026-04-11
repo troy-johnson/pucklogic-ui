@@ -1,11 +1,14 @@
 # Plan: Live Draft Backend Authority and Realtime Session Flow
 
 **Spec basis:** `docs/specs/008-live-draft-sync-launch-required.md`, `docs/specs/009-web-draft-kit-ux.md`  
-**Branch:** `feat/live-draft-sync-spec`  
+**Branch:** `feat/live-draft-sync-backend-contract`  
 **Risk Tier:** 3 — Auth, entitlement, session state, realtime transport  
 **Scope:** Large (~2–4 days, multi-session)  
 **Execution mode:** Dependency waves  
 **Transport decision:** WebSocket in the final implementation from the first backend slice
+
+**Execution status (2026-04-11):** Active implementation entry point. This is the first plan to execute.
+**Readiness:** Approved to begin implement-TDD now; open questions below are non-blocking clarifications unless implementation proves otherwise.
 
 ## Infrastructure Decision
 

@@ -1,11 +1,14 @@
 # Plan: Extension Sync Adapters for ESPN MVP and Yahoo Secondary Support
 
 **Spec basis:** `docs/specs/008-live-draft-sync-launch-required.md`, `docs/specs/009-web-draft-kit-ux.md`  
-**Branch:** `feat/live-draft-sync-spec`  
+**Branch:** `feat/live-draft-sync-backend-contract`  
 **Risk Tier:** 3 — New package, browser runtime, DOM volatility  
 **Scope:** Large (~3–5 days, multi-session)  
 **Execution mode:** Dependency waves  
 **Acceptance tier:** ESPN required, Yahoo stretch acceptance before launch
+
+**Execution status (2026-04-11):** Second execution track after `008b` backend protocol stabilization.
+**Readiness:** Approved for bootstrap + ESPN MVP once shared backend session/protocol contracts are frozen; Yahoo remains non-blocking/stretch.
 
 ## Infrastructure Assumptions
 

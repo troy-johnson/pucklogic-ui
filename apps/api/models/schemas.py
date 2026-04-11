@@ -302,6 +302,56 @@ class UploadResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Live Draft session state — Phase 8 Wave 1
+# ---------------------------------------------------------------------------
+
+DraftPlatform = Literal["espn", "yahoo"]
+DraftSessionStatus = Literal["active", "ended", "expired"]
+DraftSyncHealth = Literal["healthy", "degraded", "manual"]
+DraftIngestionMode = Literal["auto", "manual"]
+
+
+class DraftPick(BaseModel):
+    pick_number: int = Field(..., ge=1)
+    platform: DraftPlatform
+    ingestion_mode: DraftIngestionMode
+    timestamp: datetime
+    player_id: str | None = None
+    player_lookup: dict[str, str | int | float | bool] | None = None
+    team_context: dict[str, str | int | float | bool] | None = None
+
+    @model_validator(mode="after")
+    def requires_player_identifier(self) -> DraftPick:
+        if not self.player_id and not self.player_lookup:
+            raise ValueError("DraftPick requires player_id or player_lookup")
+        return self
+
+
+class DraftSyncState(BaseModel):
+    last_processed_pick: int | None = None
+    sync_health: DraftSyncHealth
+    cursor: str | None = None
+
+
+class DraftSession(BaseModel):
+    session_id: str
+    user_id: str
+    platform: DraftPlatform
+    status: DraftSessionStatus
+    entitlement_ref: str | None = None
+    sync_state: DraftSyncState
+    accepted_picks: list[DraftPick] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+    last_heartbeat_at: datetime | None = None
+    recovered_at: datetime | None = None
+
+
+class DraftSessionStartRequest(BaseModel):
+    platform: DraftPlatform
+
+
+# ---------------------------------------------------------------------------
 # Trends — Phase 3 Layer 1 ML scores (GET /trends)
 # No paywall gate in v1.0; all scores visible to free users.
 # Layer 2 columns (trending_up_score etc.) added in v2.0.

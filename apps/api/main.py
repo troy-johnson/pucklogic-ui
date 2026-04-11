@@ -10,6 +10,7 @@ from core.dependencies import get_db
 from ml.loader import ModelNotAvailableError, load
 from routers import (
     auth,
+    draft_sessions,
     exports,
     health,
     league_profiles,
@@ -77,6 +78,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(draft_sessions.router)
 app.include_router(health.router)
 app.include_router(players.router)
 app.include_router(sources.router)

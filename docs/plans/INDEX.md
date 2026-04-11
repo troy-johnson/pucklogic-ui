@@ -13,10 +13,10 @@
 | 005a | [phase3d-model-training](005a-phase3d-model-training.md) | Implemented | 2026-03-23 | Phase 3d training plan |
 | 006a | [hits-blocks-integration](006a-hits-blocks-integration.md) | Implemented | 2026-03-27 | Hits/blocks integration plan |
 | 006b | [scraper-data-quality](006b-scraper-data-quality.md) | Implemented | 2026-03-28 | Scraper hardening and backfill plan |
-| 008a | [draft-season-readiness](008a-draft-season-readiness.md) | Draft | 2026-03-28 | Draft-kit launch readiness plan |
-| 008b | [live-draft-backend](008b-live-draft-backend.md) | Draft | 2026-04-10 | Live draft backend authority, websocket transport, and entitlement plan |
-| 008c | [extension-sync-adapters](008c-extension-sync-adapters.md) | Draft | 2026-04-10 | ESPN MVP and Yahoo-secondary browser extension sync plan |
-| 010a | [web-draft-kit-ui](010a-web-draft-kit-ui.md) | Draft | 2026-04-10 | Web draft kit UI, live session screens, and design-token implementation plan |
+| 008a | [draft-season-readiness](008a-draft-season-readiness.md) | Reference | 2026-04-11 | Launch-readiness roadmap retained for context; active execution now runs through 008b/008c/010a |
+| 008b | [live-draft-backend](008b-live-draft-backend.md) | Approved | 2026-04-11 | Active first implementation track for backend authority, websocket transport, and entitlement |
+| 008c | [extension-sync-adapters](008c-extension-sync-adapters.md) | Approved | 2026-04-11 | Second implementation track after backend contract stabilization; ESPN MVP first, Yahoo stretch |
+| 010a | [web-draft-kit-ui](010a-web-draft-kit-ui.md) | Draft | 2026-04-11 | UI implementation plan limited to scaffolding until spec 010 wireframe/design decisions are approved |
 
 ## Drafts
 

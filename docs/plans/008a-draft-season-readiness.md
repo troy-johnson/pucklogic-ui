@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` or `superpowers:subagent-driven-development` when implementing this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Status (2026-04-11):** Reference roadmap only. The active implementation sequence is `008b-live-draft-backend` → `008c-extension-sync-adapters` → scaffold-only `010a-web-draft-kit-ui` until spec `010` is approved.
+
 **Goal:** Make PuckLogic draft-season ready by shipping a stable web draft kit first: projection aggregation, fantasy-point output, auth + saved kits, and spreadsheet/export workflow. Treat the paid in-draft extension as a secondary launch only if it does not jeopardize the web product.
 
 **Why this plan exists:** The project currently has stronger backend/data progress than product/UI progress. Most UI is still unbuilt or undecided, extension work has not started, and the first real ML backfill/train/validation run has not happened. The highest-value near-term work is to stabilize the data foundation and then finish the draft kit workflow users will actually rely on in draft season.
@@ -12,7 +14,7 @@
 1. **Primary launch (late Aug / early Sep):** web draft kit
 2. **Secondary launch (Sep / Oct):** paid extension MVP/beta, only if it does not jeopardize the web product
 
-**Current branch reality:** active work is `feat/scraper-data-quality` — NHL/NST hardening, HR dedup, first ML execution, and trends API hardening are complete; PR #30 is open and awaiting review.
+**Current branch reality:** active live-draft planning/execution work is `feat/live-draft-sync-backend-contract` with PR #32 open; this roadmap is retained for launch sequencing context, but execution now runs through `008b`, `008c`, and `010a`.
 
 ---
 

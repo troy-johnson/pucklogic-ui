@@ -1,13 +1,13 @@
 | Field | Value |
 |---|---|
-| Active Phase | Spec refreshed: 008 now canonically owns non-UI live draft backend/sync scope; next phase is plan/implement-tdd against 008b |
-| Active Branch | feat/live-draft-sync-spec |
-| Open PR | #31 — https://github.com/troy-johnson/pucklogic-ui/pull/31 |
-| Current Focus | Execute plan set against refreshed spec boundary: `docs/specs/008-live-draft-sync-launch-required.md`, `docs/plans/008b-live-draft-backend.md`, `docs/plans/010a-web-draft-kit-ui.md`, `docs/plans/008c-extension-sync-adapters.md` |
-| Last Action | Rewrote canonical spec `008` to retain only non-UI live draft backend/sync scope, archived prior mixed-scope 008, and aligned index/state with the 008→009→010 split |
+| Active Phase | Implement-TDD kickoff: execute 008b first, then 008c, with 010a limited to scaffold work until spec 010 is approved |
+| Active Branch | feat/live-draft-sync-backend-contract |
+| Open PR | #32 — https://github.com/troy-johnson/pucklogic-ui/pull/32 |
+| Current Focus | Execute the active implementation set in dependency order: `docs/plans/008b-live-draft-backend.md` → `docs/plans/008c-extension-sync-adapters.md` → scaffold-only `docs/plans/010a-web-draft-kit-ui.md` under `docs/specs/009-web-draft-kit-ux.md` / draft `docs/specs/010-web-ui-wireframes-design.md` |
+| Last Action | Advanced `008b` implement-TDD with draft-session router wiring/tests and stabilized ML test execution by creating an API Python 3.13 venv (`apps/api/.venv313`); full API suite passes there (862 passed) |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
 | Current Hypothesis | WebSocket-backed backend authority is the critical first implementation slice; ESPN is MVP, Yahoo is secondary, manual mode remains the launch fallback, and launch infra is Fly.io single-instance with Redis deferred |
-| Next Steps | 1. Execute `008b-live-draft-backend` with TDD, WebSocket transport, draft-pass enforcement, and realtime observability 2. Execute `010a-web-draft-kit-ui` under spec 009/010 ownership 3. Bootstrap and execute `008c-extension-sync-adapters` |
+| Next Steps | 1. Execute `008b-live-draft-backend` with TDD, WebSocket transport, draft-pass enforcement, and realtime observability 2. Freeze shared protocol/backend payload examples, then execute `008c-extension-sync-adapters` for extension bootstrap + ESPN MVP 3. Limit `010a-web-draft-kit-ui` to shell/data-boundary scaffolding until spec 010 design-system decisions are approved |
 
 ## Merge and code review outcome (2026-04-10)
 
@@ -17,6 +17,8 @@
 - Archived the previous mixed-scope 008 draft at `docs/archive/2026-04-01-008-live-draft-sync-launch-required.md`.
 - Updated `docs/specs/INDEX.md` to mark `008` approved with its narrowed canonical scope.
 - Confirmed scope split: `008` owns backend/session/extension contract, `009` owns UX/product workflow, `010` owns wireframes/layout.
+- Created branch `feat/live-draft-sync-backend-contract` and opened PR #32 for the spec/plan split.
+- Updated PR #32 description with summary, test plan, and known limitations.
 
 - Wrote implementation plan `docs/plans/008b-live-draft-backend.md` for backend session authority, entitlement checks, and WebSocket transport.
 - Wrote implementation plan `docs/plans/010a-web-draft-kit-ui.md` for landing page, app shell, pre-draft workspace, live draft UI, and design tokens.
@@ -24,6 +26,7 @@
 - Updated `docs/plans/INDEX.md` to index the new plan set.
 - Planning assumption now locked: final implementation uses WebSocket transport; Yahoo remains stretch acceptance and must not delay ESPN MVP readiness.
 - Infra assumption now locked for launch planning: Fly.io single-instance backend, WebSocket primary, HTTP/manual fallback allowed, Redis deferred until scale requires it.
+- Activated execution sequence on 2026-04-11: `008b` is the first implementation track, `008c` follows backend protocol stabilization, and `010a` is restricted to scaffold work until spec `010` leaves draft.
 
 - Merged `main` (`c34f36b` scraper data quality hardening) into `feat/live-draft-sync-spec`.
 - All conflicts resolved keeping HEAD: agent config paths (post-rename), `hockey_reference.py` stable dedup, `hockey_reference` test suite.

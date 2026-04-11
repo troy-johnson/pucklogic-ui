@@ -1,10 +1,13 @@
 # Plan: Web Draft Kit UI and Live Session Screens
 
 **Spec basis:** `docs/specs/009-web-draft-kit-ux.md`, `docs/specs/010-web-ui-wireframes-design.md`  
-**Branch:** `feat/live-draft-sync-spec`  
+**Branch:** `feat/live-draft-sync-backend-contract`  
 **Risk Tier:** 2 — Cross-route UI, state management, app shell  
 **Scope:** Large (~3–5 days, multi-session)  
 **Execution mode:** Dependency waves
+
+**Execution status (2026-04-11):** Deferred behind `008b` and `008c` except for limited shell/data-boundary scaffolding.
+**Readiness:** Scaffold-only until spec `010` is approved and design-system decisions are closed; avoid full layout/polish implementation before that gate passes.
 
 ---
 
