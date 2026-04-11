@@ -131,3 +131,50 @@ class TestSyncState:
         response = client.get("/draft-sessions/ses_1/sync-state")
 
         assert response.status_code == 404
+
+
+class TestDraftSessionWebSocket:
+    def test_connect_emits_sync_state_event(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.get_sync_state.return_value = {
+            "sync_health": "healthy",
+            "last_processed_pick": 22,
+            "cursor": "pk_22",
+        }
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws") as ws:
+            event = ws.receive_json()
+
+        assert event["type"] == "sync_state"
+        assert event["payload"]["last_processed_pick"] == 22
+        kwargs = mock_service.get_sync_state.call_args.kwargs
+        assert kwargs["session_id"] == "ses_1"
+        assert kwargs["user_id"] == "usr_123"
+
+    def test_connect_emits_error_event_when_session_missing(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.get_sync_state.side_effect = LookupError("active session not found for user")
+
+        with client.websocket_connect("/draft-sessions/ses_404/ws") as ws:
+            event = ws.receive_json()
+
+        assert event["type"] == "error"
+        assert "not found" in event["payload"]["message"]
+
+    def test_pick_event_receives_state_update(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.get_sync_state.return_value = {
+            "sync_health": "healthy",
+            "last_processed_pick": 10,
+        }
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws") as ws:
+            ws.receive_json()  # initial sync_state
+            ws.send_json({"type": "pick", "payload": {"pick_number": 11}})
+            event = ws.receive_json()
+
+        assert event["type"] == "state_update"
+        assert event["payload"]["status"] == "pick_received"

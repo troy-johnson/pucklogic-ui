@@ -4,7 +4,7 @@
 | Active Branch | feat/live-draft-sync-backend-contract |
 | Open PR | #32 — https://github.com/troy-johnson/pucklogic-ui/pull/32 |
 | Current Focus | Execute the active implementation set in dependency order: `docs/plans/008b-live-draft-backend.md` → `docs/plans/008c-extension-sync-adapters.md` → scaffold-only `docs/plans/010a-web-draft-kit-ui.md` under `docs/specs/009-web-draft-kit-ux.md` / draft `docs/specs/010-web-ui-wireframes-design.md` |
-| Last Action | Advanced `008b` implement-TDD with draft-session router wiring/tests and stabilized ML test execution by creating an API Python 3.13 venv (`apps/api/.venv313`); full API suite passes there (862 passed) |
+| Last Action | Advanced `008b` implement-TDD with WebSocket session transport (`/draft-sessions/{session_id}/ws`) and reconnect `sync_state` event coverage; websocket tests now pass alongside existing draft-session HTTP/service/repo/model suites |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
 | Current Hypothesis | WebSocket-backed backend authority is the critical first implementation slice; ESPN is MVP, Yahoo is secondary, manual mode remains the launch fallback, and launch infra is Fly.io single-instance with Redis deferred |
 | Next Steps | 1. Execute `008b-live-draft-backend` with TDD, WebSocket transport, draft-pass enforcement, and realtime observability 2. Freeze shared protocol/backend payload examples, then execute `008c-extension-sync-adapters` for extension bootstrap + ESPN MVP 3. Limit `010a-web-draft-kit-ui` to shell/data-boundary scaffolding until spec 010 design-system decisions are approved |

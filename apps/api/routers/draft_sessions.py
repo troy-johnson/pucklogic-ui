@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, WebSocket, WebSocketDisconnect
 
 from core.dependencies import get_current_user, get_draft_session_service
 from models.schemas import DraftSessionStartRequest
@@ -81,3 +81,57 @@ async def get_sync_state(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.websocket("/{session_id}/ws")
+async def draft_session_ws(
+    websocket: WebSocket,
+    session_id: str,
+    user: dict[str, Any] = Depends(get_current_user),
+    service: DraftSessionService = Depends(get_draft_session_service),
+) -> None:
+    await websocket.accept()
+
+    try:
+        sync_state = service.get_sync_state(
+            session_id=session_id,
+            user_id=user["id"],
+            now=datetime.now(UTC),
+        )
+        await websocket.send_json({"type": "sync_state", "payload": sync_state})
+    except (PermissionError, LookupError) as exc:
+        await websocket.send_json({"type": "error", "payload": {"message": str(exc)}})
+        await websocket.close(code=1008)
+        return
+
+    while True:
+        try:
+            message = await websocket.receive_json()
+        except WebSocketDisconnect:
+            break
+
+        event_type = message.get("type")
+        if event_type == "pick":
+            await websocket.send_json(
+                {
+                    "type": "state_update",
+                    "payload": {"status": "pick_received", "session_id": session_id},
+                }
+            )
+            continue
+
+        if event_type == "sync_state":
+            sync_state = service.get_sync_state(
+                session_id=session_id,
+                user_id=user["id"],
+                now=datetime.now(UTC),
+            )
+            await websocket.send_json({"type": "sync_state", "payload": sync_state})
+            continue
+
+        await websocket.send_json(
+            {
+                "type": "error",
+                "payload": {"message": f"unsupported event type: {event_type}"},
+            }
+        )
