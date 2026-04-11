@@ -112,10 +112,63 @@ async def draft_session_ws(
 
         event_type = message.get("type")
         if event_type == "pick":
+            payload = message.get("payload") or {}
+            pick_number = payload.get("pick_number")
+            if not isinstance(pick_number, int) or pick_number < 1:
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "payload": {
+                            "message": "pick event requires a positive integer pick_number"
+                        },
+                    }
+                )
+                continue
+
+            sync_state = service.get_sync_state(
+                session_id=session_id,
+                user_id=user["id"],
+                now=datetime.now(UTC),
+            )
+            last_processed_pick = sync_state.get("last_processed_pick")
+            expected_pick_number = (last_processed_pick or 0) + 1
+
+            if pick_number < expected_pick_number:
+                error_message = (
+                    f"pick_number {pick_number} already processed; expected {expected_pick_number}"
+                )
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "payload": {
+                            "message": error_message,
+                        },
+                    }
+                )
+                continue
+
+            if pick_number > expected_pick_number:
+                error_message = (
+                    f"pick_number {pick_number} out of turn; expected {expected_pick_number}"
+                )
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "payload": {
+                            "message": error_message,
+                        },
+                    }
+                )
+                continue
+
             await websocket.send_json(
                 {
                     "type": "state_update",
-                    "payload": {"status": "pick_received", "session_id": session_id},
+                    "payload": {
+                        "status": "pick_received",
+                        "session_id": session_id,
+                        "pick_number": pick_number,
+                    },
                 }
             )
             continue

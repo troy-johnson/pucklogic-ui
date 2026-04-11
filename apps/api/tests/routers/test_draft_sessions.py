@@ -178,3 +178,35 @@ class TestDraftSessionWebSocket:
 
         assert event["type"] == "state_update"
         assert event["payload"]["status"] == "pick_received"
+
+    def test_pick_event_rejects_duplicate_pick_number(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.get_sync_state.return_value = {
+            "sync_health": "healthy",
+            "last_processed_pick": 10,
+        }
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws") as ws:
+            ws.receive_json()  # initial sync_state
+            ws.send_json({"type": "pick", "payload": {"pick_number": 10}})
+            event = ws.receive_json()
+
+        assert event["type"] == "error"
+        assert "already processed" in event["payload"]["message"]
+
+    def test_pick_event_rejects_out_of_turn_pick_number(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.get_sync_state.return_value = {
+            "sync_health": "healthy",
+            "last_processed_pick": 10,
+        }
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws") as ws:
+            ws.receive_json()  # initial sync_state
+            ws.send_json({"type": "pick", "payload": {"pick_number": 13}})
+            event = ws.receive_json()
+
+        assert event["type"] == "error"
+        assert "out of turn" in event["payload"]["message"]
