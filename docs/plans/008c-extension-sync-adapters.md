@@ -107,11 +107,11 @@ When selectors fail or sync confidence drops, surface manual fallback immediatel
    Expected: ESPN tests pass.
 
 8. **Add failing ESPN reconnect/degraded-state tests that verify protocol-level recovery signals.**  
-   Command: `pnpm --filter @pucklogic/extension test -- src/__tests__/espn.test.ts -k reconnect`  
-   Expected: reconnect tests fail until recovery behavior is implemented.
+   Command: `pnpm --filter @pucklogic/extension test -- src/__tests__/espn.test.ts -t reconnect`  
+   Expected: reconnect tests fail until recovery behavior is implemented.  
 
 9. **Implement ESPN degraded-state and reconnect signaling.**  
-   Command: `pnpm --filter @pucklogic/extension test -- src/__tests__/espn.test.ts -k reconnect`  
+   Command: `pnpm --filter @pucklogic/extension test -- src/__tests__/espn.test.ts -t reconnect`  
    Expected: reconnect tests pass.
 
 ### Wave 3 — Yahoo secondary support
