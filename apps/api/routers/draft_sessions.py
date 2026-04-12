@@ -115,7 +115,7 @@ async def draft_session_ws(
     await websocket.accept()
 
     try:
-        sync_state = service.get_sync_state(
+        sync_state = service.attach_socket(
             session_id=session_id,
             user_id=user["id"],
             now=datetime.now(UTC),
@@ -153,6 +153,7 @@ async def draft_session_ws(
                     user_id=user["id"],
                     pick_number=pick_number,
                     now=datetime.now(UTC),
+                    ingestion_mode="socket",
                 )
             except (ValueError, LookupError, PermissionError) as exc:
                 await websocket.send_json(
@@ -178,7 +179,7 @@ async def draft_session_ws(
 
         if event_type == "sync_state":
             try:
-                sync_state = service.get_sync_state(
+                sync_state = service.reconnect_sync_state(
                     session_id=session_id,
                     user_id=user["id"],
                     now=datetime.now(UTC),

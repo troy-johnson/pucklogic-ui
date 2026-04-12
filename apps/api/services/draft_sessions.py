@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from repositories.draft_sessions import DraftSessionRepository
 from repositories.subscriptions import SubscriptionRepository
+
+logger = logging.getLogger(__name__)
 
 
 class DraftSessionService:
@@ -20,6 +23,12 @@ class DraftSessionService:
         self._draft_session_repo = draft_session_repo
         self._subscription_repo = subscription_repo
         self._inactivity_timeout = inactivity_timeout
+        self._observability_counters: dict[str, int] = {
+            "socket_attach": 0,
+            "socket_reconnect": 0,
+            "manual_fallback": 0,
+            "sync_recovery": 0,
+        }
 
     def start_session(self, *, user_id: str, platform: str, now: datetime) -> dict:
         self._require_active_pass(user_id)
@@ -94,6 +103,34 @@ class DraftSessionService:
             raise LookupError("active session not found for user")
         return active.get("sync_state", {})
 
+    def attach_socket(self, *, session_id: str, user_id: str, now: datetime) -> dict:
+        sync_state = self.get_sync_state(session_id=session_id, user_id=user_id, now=now)
+        self._increment_counter("socket_attach")
+        logger.info(
+            "draft_session.socket_attach",
+            extra={
+                "session_id": session_id,
+                "user_id": user_id,
+                "sync_health": sync_state.get("sync_health"),
+                "last_processed_pick": sync_state.get("last_processed_pick"),
+            },
+        )
+        return sync_state
+
+    def reconnect_sync_state(self, *, session_id: str, user_id: str, now: datetime) -> dict:
+        sync_state = self.get_sync_state(session_id=session_id, user_id=user_id, now=now)
+        self._increment_counter("socket_reconnect")
+        logger.info(
+            "draft_session.socket_reconnect",
+            extra={
+                "session_id": session_id,
+                "user_id": user_id,
+                "sync_health": sync_state.get("sync_health"),
+                "last_processed_pick": sync_state.get("last_processed_pick"),
+            },
+        )
+        return sync_state
+
     def accept_pick(
         self,
         *,
@@ -101,6 +138,7 @@ class DraftSessionService:
         user_id: str,
         pick_number: int,
         now: datetime,
+        ingestion_mode: str = "manual",
     ) -> dict[str, dict | list]:
         self._require_active_pass(user_id)
         active = self._draft_session_repo.get_active_session(
@@ -128,17 +166,44 @@ class DraftSessionService:
         accepted_pick = {
             "pick_number": pick_number,
             "platform": platform,
-            "ingestion_mode": "manual",
+            "ingestion_mode": ingestion_mode,
             "timestamp": now.astimezone(UTC).isoformat(),
             "player_lookup": {"external_pick_number": pick_number},
         }
         accepted_picks.append(accepted_pick)
 
+        prior_sync_health = sync_state.get("sync_health", "healthy")
+        sync_health = "healthy"
+        recovered = prior_sync_health != "healthy" and sync_health == "healthy"
+
         updated_sync_state = {
-            "sync_health": sync_state.get("sync_health", "healthy"),
+            "sync_health": sync_health,
             "last_processed_pick": pick_number,
             "cursor": f"pk_{pick_number}",
         }
+
+        if ingestion_mode == "manual":
+            self._increment_counter("manual_fallback")
+            logger.info(
+                "draft_session.manual_fallback",
+                extra={
+                    "session_id": session_id,
+                    "user_id": user_id,
+                    "pick_number": pick_number,
+                },
+            )
+
+        if recovered:
+            self._increment_counter("sync_recovery")
+            logger.info(
+                "draft_session.sync_recovery",
+                extra={
+                    "session_id": session_id,
+                    "user_id": user_id,
+                    "pick_number": pick_number,
+                },
+            )
+
         self._draft_session_repo.update_session_progress(
             session_id=session_id,
             user_id=user_id,
@@ -150,6 +215,12 @@ class DraftSessionService:
             "sync_state": updated_sync_state,
             "accepted_pick": accepted_pick,
         }
+
+    def get_observability_counters(self) -> dict[str, int]:
+        return dict(self._observability_counters)
+
+    def _increment_counter(self, name: str) -> None:
+        self._observability_counters[name] = self._observability_counters.get(name, 0) + 1
 
     def _require_active_pass(self, user_id: str) -> None:
         if not self._subscription_repo.is_active(user_id):

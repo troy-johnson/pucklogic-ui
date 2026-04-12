@@ -186,7 +186,7 @@ class TestDraftSessionWebSocket:
     def test_connect_emits_sync_state_event(
         self, client: TestClient, mock_service: MagicMock
     ) -> None:
-        mock_service.get_sync_state.return_value = {
+        mock_service.attach_socket.return_value = {
             "sync_health": "healthy",
             "last_processed_pick": 22,
             "cursor": "pk_22",
@@ -197,14 +197,14 @@ class TestDraftSessionWebSocket:
 
         assert event["type"] == "sync_state"
         assert event["payload"]["last_processed_pick"] == 22
-        kwargs = mock_service.get_sync_state.call_args.kwargs
+        kwargs = mock_service.attach_socket.call_args.kwargs
         assert kwargs["session_id"] == "ses_1"
         assert kwargs["user_id"] == "usr_123"
 
     def test_connect_emits_error_event_when_session_missing(
         self, client: TestClient, mock_service: MagicMock
     ) -> None:
-        mock_service.get_sync_state.side_effect = LookupError("active session not found for user")
+        mock_service.attach_socket.side_effect = LookupError("active session not found for user")
 
         with client.websocket_connect("/draft-sessions/ses_404/ws") as ws:
             event = ws.receive_json()
@@ -215,7 +215,7 @@ class TestDraftSessionWebSocket:
     def test_pick_event_receives_state_update(
         self, client: TestClient, mock_service: MagicMock
     ) -> None:
-        mock_service.get_sync_state.return_value = {
+        mock_service.attach_socket.return_value = {
             "sync_health": "healthy",
             "last_processed_pick": 10,
             "cursor": None,
@@ -244,7 +244,7 @@ class TestDraftSessionWebSocket:
     def test_pick_event_rejects_duplicate_pick_number(
         self, client: TestClient, mock_service: MagicMock
     ) -> None:
-        mock_service.get_sync_state.return_value = {
+        mock_service.attach_socket.return_value = {
             "sync_health": "healthy",
             "last_processed_pick": 10,
             "cursor": None,
@@ -264,7 +264,7 @@ class TestDraftSessionWebSocket:
     def test_pick_event_rejects_out_of_turn_pick_number(
         self, client: TestClient, mock_service: MagicMock
     ) -> None:
-        mock_service.get_sync_state.return_value = {
+        mock_service.attach_socket.return_value = {
             "sync_health": "healthy",
             "last_processed_pick": 10,
             "cursor": None,
@@ -278,3 +278,28 @@ class TestDraftSessionWebSocket:
 
         assert event["type"] == "error"
         assert "out of turn" in event["payload"]["message"]
+
+    def test_sync_state_event_uses_reconnect_flow(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.attach_socket.return_value = {
+            "sync_health": "healthy",
+            "last_processed_pick": 30,
+            "cursor": "pk_30",
+        }
+        mock_service.reconnect_sync_state.return_value = {
+            "sync_health": "healthy",
+            "last_processed_pick": 31,
+            "cursor": "pk_31",
+        }
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws") as ws:
+            ws.receive_json()  # initial sync_state from attach
+            ws.send_json({"type": "sync_state"})
+            event = ws.receive_json()
+
+        assert event["type"] == "sync_state"
+        assert event["payload"]["last_processed_pick"] == 31
+        kwargs = mock_service.reconnect_sync_state.call_args.kwargs
+        assert kwargs["session_id"] == "ses_1"
+        assert kwargs["user_id"] == "usr_123"
