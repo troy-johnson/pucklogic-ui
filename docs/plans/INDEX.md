@@ -15,7 +15,7 @@
 | 006b | [scraper-data-quality](006b-scraper-data-quality.md) | Implemented | 2026-03-28 | Scraper hardening and backfill plan |
 | 008a | [draft-season-readiness](008a-draft-season-readiness.md) | Reference | 2026-04-11 | Launch-readiness roadmap retained for context; active execution now runs through 008b/008c/010a |
 | 008b | [live-draft-backend](008b-live-draft-backend.md) | Approved | 2026-04-11 | Active first implementation track for backend authority, websocket transport, and entitlement |
-| 008c | [extension-sync-adapters](008c-extension-sync-adapters.md) | Approved | 2026-04-11 | Second implementation track after backend contract stabilization; ESPN MVP first, Yahoo stretch |
+| 008c | [extension-sync-adapters](008c-extension-sync-adapters.md) | Approved | 2026-04-11 | Second implementation track after backend contract stabilization; ESPN MVP first, Yahoo stretch; includes pre-launch adapter observability |
 | 010a | [web-draft-kit-ui](010a-web-draft-kit-ui.md) | Draft | 2026-04-11 | UI implementation plan limited to scaffolding until spec 010 wireframe/design decisions are approved |
 
 ## Drafts

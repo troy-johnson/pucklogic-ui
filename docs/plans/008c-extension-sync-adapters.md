@@ -143,6 +143,16 @@ When selectors fail or sync confidence drops, surface manual fallback immediatel
 
 ---
 
+### Wave 5 — pre-launch adapter observability
+
+15. **Add failing tests for adapter observability metrics around attach success/failure, reconnect recovery, and manual fallback activation.**  
+    Command: `pnpm --filter @pucklogic/extension test -- src/__tests__/protocol.test.ts src/__tests__/background.test.ts -t observability`  
+    Expected: tests fail until adapter metrics hooks are added.
+
+16. **Implement pre-launch adapter metrics for attach success/failure, reconnect recovery, selector fallback, and manual fallback activation.**  
+    Command: `pnpm --filter @pucklogic/extension test -- src/__tests__/protocol.test.ts src/__tests__/background.test.ts -t observability`  
+    Expected: observability tests pass and adapter metrics are ready for launch signoff.
+
 ## Verification Mapping
 
 | Acceptance need | Covered by |
