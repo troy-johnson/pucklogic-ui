@@ -303,3 +303,23 @@ class TestDraftSessionWebSocket:
         kwargs = mock_service.reconnect_sync_state.call_args.kwargs
         assert kwargs["session_id"] == "ses_1"
         assert kwargs["user_id"] == "usr_123"
+
+    def test_sync_state_event_emits_error_when_reconnect_denied(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.attach_socket.return_value = {
+            "sync_health": "healthy",
+            "last_processed_pick": 30,
+            "cursor": "pk_30",
+        }
+        mock_service.reconnect_sync_state.side_effect = PermissionError(
+            "active draft pass required"
+        )
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws") as ws:
+            ws.receive_json()  # initial sync_state from attach
+            ws.send_json({"type": "sync_state"})
+            event = ws.receive_json()
+
+        assert event["type"] == "error"
+        assert "active draft pass required" in event["payload"]["message"]
