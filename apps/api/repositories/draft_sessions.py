@@ -50,6 +50,22 @@ class DraftSessionRepository:
             .execute()
         )
 
+    def touch_heartbeat(self, *, session_id: str, user_id: str, now: datetime) -> None:
+        now_iso = now.astimezone(UTC).isoformat()
+        (
+            self._db.table("draft_sessions")
+            .update(
+                {
+                    "last_heartbeat_at": now_iso,
+                    "updated_at": now_iso,
+                }
+            )
+            .eq("session_id", session_id)
+            .eq("user_id", user_id)
+            .eq("status", "active")
+            .execute()
+        )
+
     def end_session(self, *, session_id: str, user_id: str, now: datetime) -> None:
         now_iso = now.astimezone(UTC).isoformat()
         (

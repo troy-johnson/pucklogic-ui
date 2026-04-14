@@ -260,15 +260,17 @@ CREATE TABLE league_profiles (
 
 CREATE TABLE draft_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id),
-  platform TEXT NOT NULL,          -- 'espn' or 'yahoo'
-  league_config JSONB,
-  picks JSONB DEFAULT '[]',
-  available JSONB DEFAULT '[]',
-  kit_id UUID REFERENCES user_kits(id),
-  status TEXT DEFAULT 'active',    -- 'active', 'completed', 'expired'
-  activated_at TIMESTAMPTZ DEFAULT now(),
-  expires_at TIMESTAMPTZ
+  session_id TEXT NOT NULL UNIQUE,
+  user_id UUID NOT NULL REFERENCES auth.users(id),
+  platform TEXT NOT NULL CHECK (platform IN ('espn', 'yahoo')),
+  status TEXT NOT NULL DEFAULT 'active',   -- 'active', 'ended', 'expired'
+  entitlement_ref TEXT,                    -- draft-pass / entitlement linkage for this session
+  sync_state JSONB NOT NULL DEFAULT '{"last_processed_pick": null, "sync_health": "healthy", "cursor": null}',
+  accepted_picks JSONB NOT NULL DEFAULT '[]',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_heartbeat_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  recovered_at TIMESTAMPTZ
 );
 
 CREATE TABLE exports (
@@ -467,6 +469,17 @@ GET    /players                      — Paginated player list (?limit=100&offse
 GET    /players/{id}                 — Single player by UUID; 404 if not found
 ```
 
+### Implemented live draft session routes
+
+```
+POST   /draft-sessions/start               — Create or resume the user's active draft session (auth + draft pass required)
+POST   /draft-sessions/{session_id}/resume — Reattach to an owned active draft session without consuming another pass
+POST   /draft-sessions/{session_id}/end    — Explicitly end the owned active draft session
+GET    /draft-sessions/{session_id}/sync-state — Fetch authoritative sync state for reconnect/manual recovery
+POST   /draft-sessions/{session_id}/manual-picks — Persist a manually entered pick into the authoritative session timeline
+WS     /draft-sessions/{session_id}/ws     — Live draft WebSocket for pick + sync-state events
+```
+
 ### Planned (Phase 3+, not yet implemented)
 
 ```
@@ -474,9 +487,6 @@ GET    /players/{id}/trends          — Breakout/regression scores + SHAP
 
 GET    /trends/breakouts             — Top breakout candidates
 GET    /trends/regressions           — Regression watchlist
-
-POST   /draft/session                — Create draft session (auth + draft pass required)
-WS     /ws/draft/{session_id}        — Live draft WebSocket
 ```
 
 ### Auth Middleware Pattern

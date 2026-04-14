@@ -153,7 +153,7 @@ async def draft_session_ws(
                     user_id=user["id"],
                     pick_number=pick_number,
                     now=datetime.now(UTC),
-                    ingestion_mode="socket",
+                    ingestion_mode="auto",
                 )
             except (ValueError, LookupError, PermissionError) as exc:
                 await websocket.send_json(

@@ -240,6 +240,7 @@ class TestDraftSessionWebSocket:
         assert kwargs["session_id"] == "ses_1"
         assert kwargs["user_id"] == "usr_123"
         assert kwargs["pick_number"] == 11
+        assert kwargs["ingestion_mode"] == "auto"
 
     def test_pick_event_rejects_duplicate_pick_number(
         self, client: TestClient, mock_service: MagicMock

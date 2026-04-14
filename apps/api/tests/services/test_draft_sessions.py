@@ -330,6 +330,11 @@ class TestObservability:
             payload = service.attach_socket(session_id="ses_1", user_id="usr_1", now=now)
 
         assert payload["last_processed_pick"] == 12
+        mock_repo.touch_heartbeat.assert_called_once_with(
+            session_id="ses_1",
+            user_id="usr_1",
+            now=now,
+        )
         counters = service.get_observability_counters()
         assert counters["socket_attach"] == 1
         assert "draft_session.socket_attach" in caplog.text
@@ -363,6 +368,11 @@ class TestObservability:
             payload = service.reconnect_sync_state(session_id="ses_1", user_id="usr_1", now=now)
 
         assert payload["last_processed_pick"] == 12
+        mock_repo.touch_heartbeat.assert_called_once_with(
+            session_id="ses_1",
+            user_id="usr_1",
+            now=now,
+        )
         counters = service.get_observability_counters()
         assert counters["socket_reconnect"] == 1
         assert "draft_session.socket_reconnect" in caplog.text
@@ -432,7 +442,7 @@ class TestObservability:
                 user_id="usr_1",
                 pick_number=21,
                 now=now,
-                ingestion_mode="socket",
+                ingestion_mode="auto",
             )
 
         assert result["sync_state"]["sync_health"] == "healthy"

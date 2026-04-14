@@ -83,6 +83,21 @@ class TestDraftSessionRepositoryLifecycle:
         assert update_call["status"] == "ended"
         assert update_call["updated_at"] == now.isoformat()
 
+    def test_touch_heartbeat_updates_heartbeat_and_updated_at(
+        self, repo: DraftSessionRepository, mock_db: MagicMock
+    ) -> None:
+        now = datetime.now(UTC)
+
+        repo.touch_heartbeat(session_id="ses_1", user_id="usr_1", now=now)
+
+        update_call = (
+            mock_db.table.return_value.update.call_args.args[0]
+            if mock_db.table.return_value.update.call_args.args
+            else mock_db.table.return_value.update.call_args.kwargs.get("json", {})
+        )
+        assert update_call["last_heartbeat_at"] == now.isoformat()
+        assert update_call["updated_at"] == now.isoformat()
+
     def test_update_session_progress_updates_sync_state_and_picks(
         self, repo: DraftSessionRepository, mock_db: MagicMock
     ) -> None:

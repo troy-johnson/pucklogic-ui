@@ -7,8 +7,8 @@
 **Execution mode:** Dependency waves  
 **Acceptance tier:** ESPN required, Yahoo stretch acceptance before launch
 
-**Execution status (2026-04-11):** Second execution track after `008b` backend protocol stabilization.
-**Readiness:** Approved for bootstrap + ESPN MVP once shared backend session/protocol contracts are frozen; Yahoo remains non-blocking/stretch.
+**Execution status (2026-04-14):** Active execution track after `008b` backend contract completion.
+**Readiness:** Backend session/protocol dependency is satisfied on the current branch; ESPN MVP remains the next implementation focus and Yahoo is still non-blocking/stretch.
 
 ## Infrastructure Assumptions
 

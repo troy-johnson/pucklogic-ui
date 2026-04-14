@@ -7,8 +7,10 @@
 **Execution mode:** Dependency waves  
 **Transport decision:** WebSocket in the final implementation from the first backend slice
 
-**Execution status (2026-04-11):** Active implementation entry point. This is the first plan to execute.
-**Readiness:** Approved to begin implement-TDD now; open questions below are non-blocking clarifications unless implementation proves otherwise.
+**Execution status (2026-04-14):** Implemented on the current branch and validated against the live backend/session contract.
+**Readiness:** Ready to ship. Follow-on lifecycle hardening moved to `008d` and is not required for `008b` closure.
+
+**Completion note:** The current branch ships the draft-session API surface, authoritative session persistence, websocket sync transport, manual-pick fallback, Supabase schema alignment, and backend reference updates. Verification passed with the targeted API draft-session suite.
 
 ## Infrastructure Decision
 
@@ -97,7 +99,7 @@ Before shipping realtime, add enough logging and counters to debug connection ch
 
 ---
 
-## Task List
+## Historical Task List
 
 ### Wave 1 — contract and persistence
 

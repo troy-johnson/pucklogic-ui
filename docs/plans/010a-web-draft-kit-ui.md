@@ -6,7 +6,7 @@
 **Scope:** Large (~3–5 days, multi-session)  
 **Execution mode:** Dependency waves
 
-**Execution status (2026-04-11):** Deferred behind `008b` and `008c` except for limited shell/data-boundary scaffolding.
+**Execution status (2026-04-14):** Deferred behind `008c` except for limited shell/data-boundary scaffolding; `008b` backend dependency is now satisfied on the current branch.
 **Readiness:** Scaffold-only until spec `010` is approved and design-system decisions are closed; avoid full layout/polish implementation before that gate passes.
 
 ---

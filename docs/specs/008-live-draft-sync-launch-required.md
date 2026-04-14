@@ -228,13 +228,13 @@ This spec requires that accepted picks can drive updated draft-state-aware ranki
 
 ### Backend / session acceptance
 
-- [ ] Draft-session ownership and auth checks are enforced server-side.
-- [ ] Session start enforces paid draft-pass entitlement.
-- [ ] Reconnect revalidates entitlement/ownership without consuming an additional pass.
-- [ ] One active session per user is enforced.
-- [ ] Reconnect restores authoritative session state well enough to continue drafting.
-- [ ] Duplicate and missed pick handling are defined against the authoritative session model.
-- [ ] Manual and automatic pick ingestion converge into one session model.
+- [x] Draft-session ownership and auth checks are enforced server-side.
+- [x] Session start enforces paid draft-pass entitlement.
+- [x] Reconnect revalidates entitlement/ownership without consuming an additional pass.
+- [x] One active session per user is enforced.
+- [x] Reconnect restores authoritative session state well enough to continue drafting.
+- [x] Duplicate and missed pick handling are defined against the authoritative session model.
+- [x] Manual and automatic pick ingestion converge into one session model.
 
 ### Transport / recovery acceptance
 
