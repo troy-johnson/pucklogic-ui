@@ -10,7 +10,15 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from models.schemas import ShapValues, TrendedPlayer, TrendsResponse
+from models.schemas import (
+    DraftManualPickRequest,
+    DraftPick,
+    DraftSession,
+    DraftSyncState,
+    ShapValues,
+    TrendedPlayer,
+    TrendsResponse,
+)
 
 # ---------------------------------------------------------------------------
 # ShapValues
@@ -235,3 +243,101 @@ class TestTrendsResponse:
         assert data["player_count"] == 1
         assert data["players"][0]["breakout_score"] == pytest.approx(0.82)
         assert data["players"][0]["projection_tier"] == "HIGH"
+
+
+# ---------------------------------------------------------------------------
+# Live Draft Session schemas — Phase 8b Wave 1
+# ---------------------------------------------------------------------------
+
+
+class TestDraftPick:
+    def test_accepts_auto_pick_with_player_id(self) -> None:
+        pick = DraftPick(
+            pick_number=1,
+            platform="espn",
+            ingestion_mode="auto",
+            timestamp=datetime.now(UTC),
+            player_id="8478402",
+        )
+        assert pick.player_id == "8478402"
+
+    def test_requires_player_id_or_lookup_payload(self) -> None:
+        with pytest.raises(ValidationError, match="player_id or player_lookup"):
+            DraftPick(
+                pick_number=1,
+                platform="espn",
+                ingestion_mode="auto",
+                timestamp=datetime.now(UTC),
+            )
+
+    def test_rejects_unknown_ingestion_mode(self) -> None:
+        with pytest.raises(ValidationError):
+            DraftPick(
+                pick_number=1,
+                platform="espn",
+                ingestion_mode="keyboard",
+                timestamp=datetime.now(UTC),
+                player_id="8478402",
+            )
+
+
+class TestDraftManualPickRequest:
+    def test_accepts_player_id_identifier(self) -> None:
+        req = DraftManualPickRequest(pick_number=19, player_id="8478402")
+        assert req.player_id == "8478402"
+
+    def test_accepts_player_lookup_identifier(self) -> None:
+        req = DraftManualPickRequest(
+            pick_number=19,
+            player_lookup={"espn_player_id": "401"},
+        )
+        assert req.player_lookup == {"espn_player_id": "401"}
+
+    def test_requires_player_identity(self) -> None:
+        with pytest.raises(ValidationError, match="player_id, player_name, or player_lookup"):
+            DraftManualPickRequest(pick_number=19)
+
+
+class TestDraftSession:
+    def test_accepts_active_session_with_sync_state(self) -> None:
+        session = DraftSession(
+            session_id="ses_123",
+            user_id="usr_123",
+            platform="espn",
+            status="active",
+            sync_state=DraftSyncState(last_processed_pick=12, sync_health="healthy"),
+            accepted_picks=[],
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            last_heartbeat_at=datetime.now(UTC),
+        )
+        assert session.status == "active"
+        assert session.sync_state.last_processed_pick == 12
+
+    def test_rejects_unknown_platform(self) -> None:
+        with pytest.raises(ValidationError):
+            DraftSession(
+                session_id="ses_123",
+                user_id="usr_123",
+                platform="sleeper",
+                status="active",
+                sync_state=DraftSyncState(last_processed_pick=0, sync_health="healthy"),
+                accepted_picks=[],
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
+                last_heartbeat_at=datetime.now(UTC),
+            )
+
+    def test_rejects_unknown_status(self) -> None:
+        with pytest.raises(ValidationError):
+            DraftSession(
+                session_id="ses_123",
+                user_id="usr_123",
+                platform="espn",
+                status="paused",
+                sync_state=DraftSyncState(last_processed_pick=0, sync_health="healthy"),
+                accepted_picks=[],
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
+                last_heartbeat_at=datetime.now(UTC),
+            )

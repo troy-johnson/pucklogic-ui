@@ -91,11 +91,15 @@ class TestUpload:
 
 
 class TestLoad:
-    def test_raises_when_storage_fails(self):
+    def test_raises_when_storage_fails(self, tmp_path):
         mock_db = __import__("unittest.mock", fromlist=["MagicMock"]).MagicMock()
         mock_db.storage.from_.return_value.download.side_effect = Exception("not found")
 
-        with pytest.raises(ModelNotAvailableError):
+        with (
+            patch.dict(os.environ, {"PUCKLOGIC_NO_DEV_CACHE": "1"}),
+            patch("ml.loader._DEV_CACHE_DIR", tmp_path),
+            pytest.raises(ModelNotAvailableError),
+        ):
             load(db=mock_db, season="2026-27")
 
     def test_returns_tuple_of_models_on_success(self, tiny_model, tmp_path):

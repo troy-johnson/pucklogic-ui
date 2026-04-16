@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 from fastapi import Header, HTTPException
 
 from core.config import settings
+from repositories.draft_sessions import DraftSessionRepository
 from repositories.league_profiles import LeagueProfileRepository
 from repositories.players import PlayerRepository
 from repositories.projections import ProjectionRepository
@@ -23,11 +24,13 @@ from repositories.sources import SourceRepository
 from repositories.subscriptions import SubscriptionRepository
 from repositories.trends import TrendsRepository
 from services.cache import CacheService
+from services.draft_sessions import DraftSessionService
 
 if TYPE_CHECKING:
     from supabase import Client
 
 logger = logging.getLogger(__name__)
+_draft_session_service: DraftSessionService | None = None
 
 # ---------------------------------------------------------------------------
 # Supabase singleton
@@ -79,6 +82,23 @@ def get_rankings_repository() -> RankingsRepository:
 
 def get_subscription_repository() -> SubscriptionRepository:
     return SubscriptionRepository(get_db())
+
+
+def get_draft_session_repository() -> DraftSessionRepository:
+    return DraftSessionRepository(get_db())
+
+
+def get_draft_session_service() -> DraftSessionService:
+    from datetime import timedelta
+
+    global _draft_session_service
+    if _draft_session_service is None:
+        _draft_session_service = DraftSessionService(
+            draft_session_repo=get_draft_session_repository(),
+            subscription_repo=get_subscription_repository(),
+            inactivity_timeout=timedelta(minutes=15),
+        )
+    return _draft_session_service
 
 
 def get_projection_repository() -> ProjectionRepository:

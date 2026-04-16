@@ -1,15 +1,32 @@
 | Field | Value |
 |---|---|
-| Active Phase | Milestone B locked — wireframe design decisions captured; design system and implementation planning next |
-| Active Branch | feat/live-draft-sync-spec |
-| Open PR | #31 — https://github.com/troy-johnson/pucklogic-ui/pull/31 |
-| Current Focus | Completing Milestone B design artifacts before Milestone D (web UI build, May 19) — design system section of spec 010 is the remaining open item |
-| Last Action | Merged main (scraper data quality) into PR #31 branch; resolved all conflicts keeping HEAD; addressed two Codex code review findings in nst.py (TOI fallback + alias pagination ordering) |
+| Active Phase | Ready-for-merge: `008b` backend contract plus PR-review hardening are complete on the branch; next active execution shifts to `008c`, with `010a` limited to scaffold work until spec 010 is approved |
+| Active Branch | feat/live-draft-sync-backend-contract |
+| Open PR | #32 — https://github.com/troy-johnson/pucklogic-ui/pull/32 |
+| Current Focus | Hold `008b` in merge-ready state after websocket auth/manual-pick/session-recovery follow-up fixes; next implementation track is `docs/plans/008c-extension-sync-adapters.md`, while `010a` stays scaffold-only under `docs/specs/009-web-draft-kit-ux.md` / draft `docs/specs/010-web-ui-wireframes-design.md` |
+| Last Action | Committed and pushed `a2dbd9d` (`fix(api): harden live draft session auth and recovery`), updated PR #32, reconciled websocket query-token auth/manual-pick identity/session expiry-recovery behavior, and reran the focused draft-session backend suite in `apps/api/.venv313` (`87 passed`) |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
-| Current Hypothesis | Layout decisions are locked; design system (colors, typography, tokens) needs to be defined before Milestone D implementation planning can begin |
-| Next Steps | 1. Complete design system section of spec 010 2. Merge PR #31 3. Write Milestone C implementation plan (backend verification, May 5–18) 4. Write Milestone D implementation plan (web UI build, May 19–Jun 29) |
+| Current Hypothesis | WebSocket-backed backend authority is the critical first implementation slice; ESPN is MVP, Yahoo is secondary, manual mode remains the launch fallback, and launch infra is Fly.io single-instance with Redis deferred |
+| Next Steps | 1. Merge PR #32 once final review is satisfied so `008b` can be treated as complete on `main` 2. Begin `008c-extension-sync-adapters` with Wave 1 bootstrap + shared protocol TDD after merge 3. Preserve the launch observability decision: backend logs + in-memory counters stay for now, while production metrics export remains a required pre-launch item in `008c` before go-live signoff 4. Review and approve `008d-draft-pass-session-lifecycle` before implementing pass consumption / completion hardening 5. Keep `010a-web-draft-kit-ui` limited to scaffold work until spec 010 is approved |
 
 ## Merge and code review outcome (2026-04-10)
+
+## Planning outcome (2026-04-10)
+
+- Rewrote canonical spec `docs/specs/008-live-draft-sync-launch-required.md` as the non-UI live draft backend and sync contract.
+- Archived the previous mixed-scope 008 draft at `docs/archive/2026-04-01-008-live-draft-sync-launch-required.md`.
+- Updated `docs/specs/INDEX.md` to mark `008` approved with its narrowed canonical scope.
+- Confirmed scope split: `008` owns backend/session/extension contract, `009` owns UX/product workflow, `010` owns wireframes/layout.
+- Created branch `feat/live-draft-sync-backend-contract` and opened PR #32 for the spec/plan split.
+- Updated PR #32 description with summary, test plan, and known limitations.
+
+- Wrote implementation plan `docs/plans/008b-live-draft-backend.md` for backend session authority, entitlement checks, and WebSocket transport.
+- Wrote implementation plan `docs/plans/010a-web-draft-kit-ui.md` for landing page, app shell, pre-draft workspace, live draft UI, and design tokens.
+- Wrote implementation plan `docs/plans/008c-extension-sync-adapters.md` for extension bootstrap, ESPN MVP sync, Yahoo secondary sync, and manual fallback escalation.
+- Updated `docs/plans/INDEX.md` to index the new plan set.
+- Planning assumption now locked: final implementation uses WebSocket transport; Yahoo remains stretch acceptance and must not delay ESPN MVP readiness.
+- Infra assumption now locked for launch planning: Fly.io single-instance backend, WebSocket primary, HTTP/manual fallback allowed, Redis deferred until scale requires it.
+- Activated execution sequence on 2026-04-11: `008b` is the first implementation track, `008c` follows backend protocol stabilization, and `010a` is restricted to scaffold work until spec `010` leaves draft.
 
 - Merged `main` (`c34f36b` scraper data quality hardening) into `feat/live-draft-sync-spec`.
 - All conflicts resolved keeping HEAD: agent config paths (post-rename), `hockey_reference.py` stable dedup, `hockey_reference` test suite.
