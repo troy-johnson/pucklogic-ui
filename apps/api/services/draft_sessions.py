@@ -31,6 +31,7 @@ class DraftSessionService:
         }
 
     def start_session(self, *, user_id: str, platform: str, now: datetime) -> dict:
+        self.expire_inactive_sessions(now)
         self._require_active_pass(user_id)
 
         active = self._draft_session_repo.get_active_session(
@@ -60,6 +61,7 @@ class DraftSessionService:
         return payload
 
     def resume_session(self, *, session_id: str, user_id: str, now: datetime) -> dict:
+        self.expire_inactive_sessions(now)
         self._require_active_pass(user_id)
         active = self._draft_session_repo.get_active_session(
             user_id,
@@ -73,14 +75,20 @@ class DraftSessionService:
             user_id=user_id,
             now=now,
         )
-        return active
+        resumed = self._draft_session_repo.get_active_session(
+            user_id,
+            active_after=now - self._inactivity_timeout,
+        )
+        if resumed is None or resumed.get("session_id") != session_id:
+            raise LookupError("active session not found for user")
+        return resumed
 
     def expire_inactive_sessions(self, now: datetime) -> int:
         cutoff = now - self._inactivity_timeout
         return self._draft_session_repo.expire_inactive_sessions(cutoff)
 
     def end_session(self, *, session_id: str, user_id: str, now: datetime) -> None:
-        self._require_active_pass(user_id)
+        self.expire_inactive_sessions(now)
         active = self._draft_session_repo.get_active_session(
             user_id,
             active_after=now - self._inactivity_timeout,
@@ -94,7 +102,7 @@ class DraftSessionService:
         )
 
     def get_sync_state(self, *, session_id: str, user_id: str, now: datetime) -> dict:
-        self._require_active_pass(user_id)
+        self.expire_inactive_sessions(now)
         active = self._draft_session_repo.get_active_session(
             user_id,
             active_after=now - self._inactivity_timeout,
@@ -123,6 +131,7 @@ class DraftSessionService:
         return sync_state
 
     def reconnect_sync_state(self, *, session_id: str, user_id: str, now: datetime) -> dict:
+        self.expire_inactive_sessions(now)
         sync_state = self.get_sync_state(session_id=session_id, user_id=user_id, now=now)
         self._draft_session_repo.touch_heartbeat(
             session_id=session_id,
@@ -149,7 +158,11 @@ class DraftSessionService:
         pick_number: int,
         now: datetime,
         ingestion_mode: str = "manual",
+        player_id: str | None = None,
+        player_name: str | None = None,
+        player_lookup: dict[str, str | int | float | bool] | None = None,
     ) -> dict[str, dict | list]:
+        self.expire_inactive_sessions(now)
         self._require_active_pass(user_id)
         active = self._draft_session_repo.get_active_session(
             user_id,
@@ -178,8 +191,17 @@ class DraftSessionService:
             "platform": platform,
             "ingestion_mode": ingestion_mode,
             "timestamp": now.astimezone(UTC).isoformat(),
-            "player_lookup": {"external_pick_number": pick_number},
         }
+        if player_id is not None:
+            accepted_pick["player_id"] = player_id
+        if player_name is not None:
+            accepted_pick["player_name"] = player_name
+        if player_lookup is not None:
+            accepted_pick["player_lookup"] = player_lookup
+        elif player_id is not None:
+            accepted_pick["player_lookup"] = {"player_id": player_id}
+        else:
+            accepted_pick["player_lookup"] = {"external_pick_number": pick_number}
         accepted_picks.append(accepted_pick)
 
         prior_sync_health = sync_state.get("sync_health", "healthy")

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
 
+from core import dependencies
 from core.dependencies import get_current_user, get_draft_session_service
 from main import app
 
@@ -19,11 +22,29 @@ def mock_service() -> MagicMock:
 
 
 @pytest.fixture(autouse=True)
-def override_deps(mock_service: MagicMock) -> None:
+def override_deps(mock_service: MagicMock) -> Iterator[None]:
     app.dependency_overrides[get_current_user] = lambda: MOCK_USER
     app.dependency_overrides[get_draft_session_service] = lambda: mock_service
     yield
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(autouse=True)
+def stub_supabase_auth(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    monkeypatch.setattr(
+        dependencies,
+        "get_db",
+        lambda: SimpleNamespace(
+            auth=SimpleNamespace(
+                get_user=lambda token: SimpleNamespace(
+                    user=SimpleNamespace(id="usr_123", email="user@example.com")
+                )
+                if token == "ws-token"
+                else SimpleNamespace(user=None)
+            )
+        ),
+    )
+    yield
 
 
 @pytest.fixture
@@ -122,6 +143,9 @@ class TestSyncState:
 
         assert response.status_code == 200
         assert response.json()["sync_health"] == "healthy"
+        kwargs = mock_service.get_sync_state.call_args.kwargs
+        assert kwargs["session_id"] == "ses_1"
+        assert kwargs["user_id"] == "usr_123"
 
     def test_get_sync_state_returns_404_when_not_found(
         self, client: TestClient, mock_service: MagicMock
@@ -131,6 +155,7 @@ class TestSyncState:
         response = client.get("/draft-sessions/ses_1/sync-state")
 
         assert response.status_code == 404
+        assert response.json()["detail"] == "active session not found for user"
 
 
 class TestManualPickEndpoint:
@@ -148,11 +173,15 @@ class TestManualPickEndpoint:
                 "platform": "espn",
                 "ingestion_mode": "manual",
                 "timestamp": "2026-04-11T12:00:00+00:00",
-                "player_lookup": {"external_pick_number": 19},
+                "player_id": "8478402",
+                "player_lookup": {"espn_player_id": "8478402"},
             },
         }
 
-        response = client.post("/draft-sessions/ses_1/manual-picks", json={"pick_number": 19})
+        response = client.post(
+            "/draft-sessions/ses_1/manual-picks",
+            json={"pick_number": 19, "player_id": "8478402"},
+        )
 
         assert response.status_code == 200
         body = response.json()
@@ -162,13 +191,50 @@ class TestManualPickEndpoint:
         assert kwargs["session_id"] == "ses_1"
         assert kwargs["user_id"] == "usr_123"
         assert kwargs["pick_number"] == 19
+        assert kwargs["player_id"] == "8478402"
+
+    def test_manual_pick_passes_player_identity_to_service(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.accept_pick.return_value = {
+            "sync_state": {
+                "sync_health": "healthy",
+                "last_processed_pick": 19,
+                "cursor": "pk_19",
+            },
+            "accepted_pick": {
+                "pick_number": 19,
+                "platform": "espn",
+                "ingestion_mode": "manual",
+                "timestamp": "2026-04-11T12:00:00+00:00",
+                "player_name": "Connor McDavid",
+                "player_lookup": {"espn_player_id": "8478402"},
+            },
+        }
+
+        response = client.post(
+            "/draft-sessions/ses_1/manual-picks",
+            json={
+                "pick_number": 19,
+                "player_name": "Connor McDavid",
+                "player_lookup": {"espn_player_id": "8478402"},
+            },
+        )
+
+        assert response.status_code == 200
+        kwargs = mock_service.accept_pick.call_args.kwargs
+        assert kwargs["player_name"] == "Connor McDavid"
+        assert kwargs["player_lookup"] == {"espn_player_id": "8478402"}
 
     def test_manual_pick_returns_409_for_out_of_turn_pick(
         self, client: TestClient, mock_service: MagicMock
     ) -> None:
         mock_service.accept_pick.side_effect = ValueError("pick_number 22 out of turn; expected 20")
 
-        response = client.post("/draft-sessions/ses_1/manual-picks", json={"pick_number": 22})
+        response = client.post(
+            "/draft-sessions/ses_1/manual-picks",
+            json={"pick_number": 22, "player_name": "Skater"},
+        )
 
         assert response.status_code == 409
 
@@ -177,7 +243,10 @@ class TestManualPickEndpoint:
     ) -> None:
         mock_service.accept_pick.side_effect = PermissionError("active draft pass required")
 
-        response = client.post("/draft-sessions/ses_1/manual-picks", json={"pick_number": 19})
+        response = client.post(
+            "/draft-sessions/ses_1/manual-picks",
+            json={"pick_number": 19, "player_name": "Skater"},
+        )
 
         assert response.status_code == 403
 
@@ -192,7 +261,7 @@ class TestDraftSessionWebSocket:
             "cursor": "pk_22",
         }
 
-        with client.websocket_connect("/draft-sessions/ses_1/ws") as ws:
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
             event = ws.receive_json()
 
         assert event["type"] == "sync_state"
@@ -201,12 +270,48 @@ class TestDraftSessionWebSocket:
         assert kwargs["session_id"] == "ses_1"
         assert kwargs["user_id"] == "usr_123"
 
+    def test_connect_uses_query_token_for_browser_websocket_auth(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.attach_socket.return_value = {
+            "sync_health": "healthy",
+            "last_processed_pick": 22,
+            "cursor": "pk_22",
+        }
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            event = ws.receive_json()
+
+        assert event["type"] == "sync_state"
+        kwargs = mock_service.attach_socket.call_args.kwargs
+        assert kwargs["user_id"] == "usr_123"
+
+    def test_connect_rejects_missing_query_token(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        with client.websocket_connect("/draft-sessions/ses_1/ws") as ws:
+            event = ws.receive_json()
+
+        assert event["type"] == "error"
+        assert "Missing or invalid token" in event["payload"]["message"]
+
+    def test_connect_rejects_invalid_query_token(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=bad-token") as ws:
+            event = ws.receive_json()
+
+        assert event["type"] == "error"
+        assert "Invalid token" in event["payload"]["message"]
+        mock_service.attach_socket.assert_not_called()
+        mock_service.attach_socket.assert_not_called()
+
     def test_connect_emits_error_event_when_session_missing(
         self, client: TestClient, mock_service: MagicMock
     ) -> None:
         mock_service.attach_socket.side_effect = LookupError("active session not found for user")
 
-        with client.websocket_connect("/draft-sessions/ses_404/ws") as ws:
+        with client.websocket_connect("/draft-sessions/ses_404/ws?token=ws-token") as ws:
             event = ws.receive_json()
 
         assert event["type"] == "error"
@@ -228,8 +333,8 @@ class TestDraftSessionWebSocket:
             }
         }
 
-        with client.websocket_connect("/draft-sessions/ses_1/ws") as ws:
-            ws.receive_json()  # initial sync_state
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            ws.receive_json()
             ws.send_json({"type": "pick", "payload": {"pick_number": 11}})
             event = ws.receive_json()
 
@@ -254,8 +359,8 @@ class TestDraftSessionWebSocket:
             "pick_number 10 already processed; expected 11"
         )
 
-        with client.websocket_connect("/draft-sessions/ses_1/ws") as ws:
-            ws.receive_json()  # initial sync_state
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            ws.receive_json()
             ws.send_json({"type": "pick", "payload": {"pick_number": 10}})
             event = ws.receive_json()
 
@@ -272,8 +377,8 @@ class TestDraftSessionWebSocket:
         }
         mock_service.accept_pick.side_effect = ValueError("pick_number 13 out of turn; expected 11")
 
-        with client.websocket_connect("/draft-sessions/ses_1/ws") as ws:
-            ws.receive_json()  # initial sync_state
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            ws.receive_json()
             ws.send_json({"type": "pick", "payload": {"pick_number": 13}})
             event = ws.receive_json()
 
@@ -294,8 +399,8 @@ class TestDraftSessionWebSocket:
             "cursor": "pk_31",
         }
 
-        with client.websocket_connect("/draft-sessions/ses_1/ws") as ws:
-            ws.receive_json()  # initial sync_state from attach
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            ws.receive_json()
             ws.send_json({"type": "sync_state"})
             event = ws.receive_json()
 
@@ -317,8 +422,8 @@ class TestDraftSessionWebSocket:
             "active draft pass required"
         )
 
-        with client.websocket_connect("/draft-sessions/ses_1/ws") as ws:
-            ws.receive_json()  # initial sync_state from attach
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            ws.receive_json()
             ws.send_json({"type": "sync_state"})
             event = ws.receive_json()
 

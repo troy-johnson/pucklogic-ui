@@ -353,6 +353,17 @@ class DraftSessionStartRequest(BaseModel):
 
 class DraftManualPickRequest(BaseModel):
     pick_number: int = Field(..., ge=1)
+    player_id: str | None = None
+    player_name: str | None = None
+    player_lookup: dict[str, str | int | float | bool] | None = None
+
+    @model_validator(mode="after")
+    def requires_player_identifier(self) -> DraftManualPickRequest:
+        if not self.player_id and not self.player_name and not self.player_lookup:
+            raise ValueError(
+                "DraftManualPickRequest requires player_id, player_name, or player_lookup"
+            )
+        return self
 
 
 # ---------------------------------------------------------------------------

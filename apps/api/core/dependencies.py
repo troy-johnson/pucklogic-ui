@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from supabase import Client
 
 logger = logging.getLogger(__name__)
+_draft_session_service: DraftSessionService | None = None
 
 # ---------------------------------------------------------------------------
 # Supabase singleton
@@ -90,11 +91,14 @@ def get_draft_session_repository() -> DraftSessionRepository:
 def get_draft_session_service() -> DraftSessionService:
     from datetime import timedelta
 
-    return DraftSessionService(
-        draft_session_repo=get_draft_session_repository(),
-        subscription_repo=get_subscription_repository(),
-        inactivity_timeout=timedelta(minutes=15),
-    )
+    global _draft_session_service
+    if _draft_session_service is None:
+        _draft_session_service = DraftSessionService(
+            draft_session_repo=get_draft_session_repository(),
+            subscription_repo=get_subscription_repository(),
+            inactivity_timeout=timedelta(minutes=15),
+        )
+    return _draft_session_service
 
 
 def get_projection_repository() -> ProjectionRepository:

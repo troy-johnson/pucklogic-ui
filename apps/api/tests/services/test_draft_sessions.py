@@ -77,6 +77,21 @@ class TestStartSession:
         assert result["sync_state"]["sync_health"] == "healthy"
         mock_repo.create_session.assert_called_once()
 
+    def test_start_session_expires_inactive_rows_before_lookup(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+        mock_sub_repo.is_active.return_value = True
+        mock_repo.get_active_session.return_value = None
+
+        service.start_session(user_id="usr_1", platform="espn", now=now)
+
+        cutoff = now - timedelta(minutes=15)
+        mock_repo.expire_inactive_sessions.assert_called_once_with(cutoff)
+
 
 class TestResumeSession:
     def test_resume_requires_active_entitlement(
@@ -123,12 +138,18 @@ class TestResumeSession:
     ) -> None:
         now = datetime.now(UTC)
         active = {"session_id": "ses_1", "user_id": "usr_1", "status": "active"}
+        resumed = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "active",
+            "last_heartbeat_at": now.isoformat(),
+        }
         mock_sub_repo.is_active.return_value = True
-        mock_repo.get_active_session.return_value = active
+        mock_repo.get_active_session.side_effect = [active, resumed]
 
         result = service.resume_session(session_id="ses_1", user_id="usr_1", now=now)
 
-        assert result == active
+        assert result == resumed
         mock_repo.resume_session.assert_called_once_with(
             session_id="ses_1",
             user_id="usr_1",
@@ -191,6 +212,28 @@ class TestEndAndSyncState:
             now=now,
         )
 
+    def test_end_session_allows_cleanup_without_active_entitlement(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+        mock_sub_repo.is_active.return_value = False
+        mock_repo.get_active_session.return_value = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "active",
+        }
+
+        service.end_session(session_id="ses_1", user_id="usr_1", now=now)
+
+        mock_repo.end_session.assert_called_once_with(
+            session_id="ses_1",
+            user_id="usr_1",
+            now=now,
+        )
+
     def test_get_sync_state_returns_authoritative_payload(
         self,
         service: DraftSessionService,
@@ -210,6 +253,55 @@ class TestEndAndSyncState:
 
         assert sync_state["sync_health"] == "healthy"
         assert sync_state["last_processed_pick"] == 14
+
+    def test_get_sync_state_allows_owned_session_without_active_entitlement(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+        mock_sub_repo.is_active.return_value = False
+        mock_repo.get_active_session.return_value = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "active",
+            "sync_state": {"sync_health": "healthy", "last_processed_pick": 14},
+        }
+
+        sync_state = service.get_sync_state(session_id="ses_1", user_id="usr_1", now=now)
+
+        assert sync_state == {"sync_health": "healthy", "last_processed_pick": 14}
+
+
+class TestReconnectSyncState:
+    def test_reconnect_sync_state_allows_owned_session_without_active_entitlement(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+        mock_sub_repo.is_active.return_value = False
+        mock_repo.get_active_session.return_value = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "active",
+            "sync_state": {"sync_health": "healthy", "last_processed_pick": 14},
+        }
+
+        sync_state = service.reconnect_sync_state(
+            session_id="ses_1",
+            user_id="usr_1",
+            now=now,
+        )
+
+        assert sync_state == {"sync_health": "healthy", "last_processed_pick": 14}
+        mock_repo.touch_heartbeat.assert_called_once_with(
+            session_id="ses_1",
+            user_id="usr_1",
+            now=now,
+        )
 
     def test_get_sync_state_raises_when_session_missing(
         self,
@@ -295,12 +387,23 @@ class TestAcceptPick:
             ],
         }
 
-        result = service.accept_pick(session_id="ses_1", user_id="usr_1", pick_number=11, now=now)
+        result = service.accept_pick(
+            session_id="ses_1",
+            user_id="usr_1",
+            pick_number=11,
+            now=now,
+            player_id="8478402",
+            player_name="Connor McDavid",
+            player_lookup={"espn_player_id": "8478402"},
+        )
 
         assert result["sync_state"]["last_processed_pick"] == 11
         assert result["accepted_pick"]["pick_number"] == 11
         assert result["accepted_pick"]["platform"] == "espn"
         assert result["accepted_pick"]["ingestion_mode"] == "manual"
+        assert result["accepted_pick"]["player_id"] == "8478402"
+        assert result["accepted_pick"]["player_name"] == "Connor McDavid"
+        assert result["accepted_pick"]["player_lookup"] == {"espn_player_id": "8478402"}
 
         update_kwargs = mock_repo.update_session_progress.call_args.kwargs
         assert update_kwargs["session_id"] == "ses_1"

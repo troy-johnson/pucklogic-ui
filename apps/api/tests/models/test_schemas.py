@@ -11,6 +11,7 @@ import pytest
 from pydantic import ValidationError
 
 from models.schemas import (
+    DraftManualPickRequest,
     DraftPick,
     DraftSession,
     DraftSyncState,
@@ -278,6 +279,23 @@ class TestDraftPick:
                 timestamp=datetime.now(UTC),
                 player_id="8478402",
             )
+
+
+class TestDraftManualPickRequest:
+    def test_accepts_player_id_identifier(self) -> None:
+        req = DraftManualPickRequest(pick_number=19, player_id="8478402")
+        assert req.player_id == "8478402"
+
+    def test_accepts_player_lookup_identifier(self) -> None:
+        req = DraftManualPickRequest(
+            pick_number=19,
+            player_lookup={"espn_player_id": "401"},
+        )
+        assert req.player_lookup == {"espn_player_id": "401"}
+
+    def test_requires_player_identity(self) -> None:
+        with pytest.raises(ValidationError, match="player_id, player_name, or player_lookup"):
+            DraftManualPickRequest(pick_number=19)
 
 
 class TestDraftSession:
