@@ -7,10 +7,10 @@
 **Execution mode:** Dependency waves  
 **Transport decision:** WebSocket in the final implementation from the first backend slice
 
-**Execution status (2026-04-14):** Implemented on the current branch and validated against the live backend/session contract.
-**Readiness:** Ready to ship. Follow-on lifecycle hardening moved to `008d` and is not required for `008b` closure.
+**Execution status (2026-04-15):** Implemented on the current branch, PR-review hardening is incorporated, and the branch is merge-ready pending final PR disposition.
+**Readiness:** Ready to merge. Follow-on lifecycle hardening moved to `008d` and is not required for `008b` closure.
 
-**Completion note:** The current branch ships the draft-session API surface, authoritative session persistence, websocket sync transport, manual-pick fallback, Supabase schema alignment, and backend reference updates. Verification passed with the targeted API draft-session suite.
+**Completion note:** The current branch ships the draft-session API surface, authoritative session persistence, websocket sync transport, browser-compatible query-token websocket auth, manual-pick fallback with player-identity convergence, Supabase schema alignment, and backend reference updates. Verification passed with the focused draft-session backend suite (`87 passed`).
 
 ## Infrastructure Decision
 

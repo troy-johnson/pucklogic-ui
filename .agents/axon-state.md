@@ -1,13 +1,13 @@
 | Field | Value |
 |---|---|
-| Active Phase | Implement-TDD: 008b backend contract is complete; next active execution shifts to 008c, with 010a limited to scaffold work until spec 010 is approved |
+| Active Phase | Ready-for-merge: `008b` backend contract plus PR-review hardening are complete on the branch; next active execution shifts to `008c`, with `010a` limited to scaffold work until spec 010 is approved |
 | Active Branch | feat/live-draft-sync-backend-contract |
 | Open PR | #32 — https://github.com/troy-johnson/pucklogic-ui/pull/32 |
-| Current Focus | Begin `docs/plans/008c-extension-sync-adapters.md` now that `008b` backend authority, persistence contract, and canonical backend docs are aligned; keep `010a` scaffold-only under `docs/specs/009-web-draft-kit-ux.md` / draft `docs/specs/010-web-ui-wireframes-design.md` |
-| Last Action | Closed `008b`: migrated Supabase `draft_sessions` to the authoritative session contract in project `mrjrtwwmbxfytnnjkaid`, updated `docs/backend-reference.md`, added follow-on lifecycle plan `docs/plans/008d-draft-pass-session-lifecycle.md`, and reran the focused draft-session suite in `apps/api/.venv313` (`76 passed`) |
+| Current Focus | Hold `008b` in merge-ready state after websocket auth/manual-pick/session-recovery follow-up fixes; next implementation track is `docs/plans/008c-extension-sync-adapters.md`, while `010a` stays scaffold-only under `docs/specs/009-web-draft-kit-ux.md` / draft `docs/specs/010-web-ui-wireframes-design.md` |
+| Last Action | Committed and pushed `a2dbd9d` (`fix(api): harden live draft session auth and recovery`), updated PR #32, reconciled websocket query-token auth/manual-pick identity/session expiry-recovery behavior, and reran the focused draft-session backend suite in `apps/api/.venv313` (`87 passed`) |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
 | Current Hypothesis | WebSocket-backed backend authority is the critical first implementation slice; ESPN is MVP, Yahoo is secondary, manual mode remains the launch fallback, and launch infra is Fly.io single-instance with Redis deferred |
-| Next Steps | 1. Begin `008c-extension-sync-adapters` with Wave 1 bootstrap + shared protocol TDD now that `008b` backend contract, schema alignment, and verification are closed 2. Preserve the launch observability decision: backend logs + in-memory counters stay for now, while production metrics export remains a required pre-launch item in `008c` before go-live signoff 3. Review and approve `008d-draft-pass-session-lifecycle` before implementing pass consumption / completion hardening 4. Keep `010a-web-draft-kit-ui` limited to scaffold work until spec 010 is approved |
+| Next Steps | 1. Merge PR #32 once final review is satisfied so `008b` can be treated as complete on `main` 2. Begin `008c-extension-sync-adapters` with Wave 1 bootstrap + shared protocol TDD after merge 3. Preserve the launch observability decision: backend logs + in-memory counters stay for now, while production metrics export remains a required pre-launch item in `008c` before go-live signoff 4. Review and approve `008d-draft-pass-session-lifecycle` before implementing pass consumption / completion hardening 5. Keep `010a-web-draft-kit-ui` limited to scaffold work until spec 010 is approved |
 
 ## Merge and code review outcome (2026-04-10)
 

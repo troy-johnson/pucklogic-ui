@@ -238,9 +238,9 @@ This spec requires that accepted picks can drive updated draft-state-aware ranki
 
 ### Transport / recovery acceptance
 
-- [ ] WebSocket transport supports live session updates for an active draft session.
-- [ ] `sync_state` recovery semantics are implemented and testable.
-- [ ] HTTP/manual fallback actions remain usable if live sync transport is degraded.
+- [x] WebSocket transport supports live session updates for an active draft session.
+- [x] `sync_state` recovery semantics are implemented and testable.
+- [x] HTTP/manual fallback actions remain usable if live sync transport is degraded.
 - [ ] Extension interruption does not permanently strand the session.
 
 ### Platform acceptance
@@ -251,11 +251,11 @@ This spec requires that accepted picks can drive updated draft-state-aware ranki
 
 ### Verification and observability acceptance
 
-- [ ] Automated tests cover draft-session lifecycle and pick-state reconciliation.
-- [ ] Automated tests cover duplicate and missed pick handling.
-- [ ] Automated tests cover manual pick ingestion.
-- [ ] Automated tests cover reconnect and `sync_state` recovery semantics.
-- [ ] Structured logging or counters exist for socket attach/open/close, reconnect attempts, manual fallback activation, and sync recovery/desync events.
+- [x] Automated tests cover draft-session lifecycle and pick-state reconciliation.
+- [x] Automated tests cover duplicate and missed pick handling.
+- [x] Automated tests cover manual pick ingestion.
+- [x] Automated tests cover reconnect and `sync_state` recovery semantics.
+- [x] Structured logging or counters exist for socket attach/open/close, reconnect attempts, manual fallback activation, and sync recovery/desync events.
 - [ ] Manual verification proves the backend/extension flow is usable in a real draft-like session.
 
 ## Risks and Guardrails
