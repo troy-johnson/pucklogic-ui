@@ -247,12 +247,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       break;
 
     case "MANUAL_PICK":
-      ws?.send(JSON.stringify({
-        type: "pick",
-        player_name: message.playerName,
+      void submitManualPickOverHttp({
+        sessionId,
+        playerName: message.playerName,
         round: message.round,
         pick: message.pick,
-      }));
+      });
       break;
 
     case "GET_SUGGESTIONS":
@@ -306,6 +306,8 @@ function connectWebSocket(): void {
 | server → client | `suggestions` | `{ players: RankedPlayer[] }` |
 | server → client | `state_update` | `{ picks: [], available: [] }` |
 | server → client | `error` | `{ message }` |
+
+For current `008` / `008c` launch scope, adapter readiness centers on `pick`, `sync_state`, `state_update`, and `error`. Suggestion messages are optional and should not block sync-adapter delivery.
 
 ---
 
@@ -370,17 +372,17 @@ export function Popup() {
 The extension never handles payments. The flow is:
 
 1. User purchases draft session on **pucklogic.com** via Stripe Checkout
-2. After successful payment, web app creates draft session via `POST /api/draft/session`
-3. Web app stores `{ session_id, jwt_token }` to Supabase (under user's account)
-4. Extension popup detects user is logged in, fetches `session_id` + `jwt_token` via `/api/draft/session/latest`
+2. After successful payment, web app creates draft session via `POST /draft-sessions/start`
+3. Web app stores `{ session_id, jwt_token }` under the user's account for later resume/attach flows
+4. Extension popup detects user is logged in and resumes or inspects the active session through the current draft-session API surface (`/draft-sessions/start`, `/draft-sessions/{session_id}/resume`, `/draft-sessions/{session_id}/sync-state`)
 5. Extension stores `pucklogic_token` in `chrome.storage.local`
-6. Extension service worker connects: `wss://api.pucklogic.com/ws/draft/{session_id}?token={jwt_token}`
+6. Extension service worker connects: `wss://api.pucklogic.com/draft-sessions/{session_id}/ws?token={jwt_token}`
 
 ```typescript
 // Popup: authenticate and init session
 async function initSession() {
   const token = await getStoredToken();  // from chrome.storage.local
-  const res = await fetch("https://api.pucklogic.com/api/draft/session/latest", {
+  const res = await fetch(`https://api.pucklogic.com/draft-sessions/${sessionId}/resume`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   const { session_id, ws_url } = await res.json();
@@ -398,6 +400,8 @@ async function initSession() {
 ## 9. Manual Fallback Mode
 
 When DOM detection fails (ESPN UI change), the popup shows a "Mark Pick" button:
+
+Manual picks should converge through `POST /draft-sessions/{session_id}/manual-picks` so they use the same authoritative session model as automatic picks instead of going over the WebSocket directly.
 
 ```typescript
 function ManualPickButton() {
@@ -451,7 +455,7 @@ Import via Turborepo workspace: `import { PlayerCard } from "@pucklogic/ui"`.
 - Extension is free to install, requires auth to activate
 - $2.99 per draft session — purchased on web app (Chrome Web Store compliance)
 - No payment UI in extension
-- Session expires when draft completes or 24 hours after activation
+- Draft-session expiry is backend-owned and configurable; the extension must not assume a fixed duration
 - A/B test $1.99 vs $3.99 post-launch
 
 ---
@@ -474,4 +478,12 @@ Import via Turborepo workspace: `import { PlayerCard } from "@pucklogic/ui"`.
 | ESPN/Yahoo DOM changes | 3–5 selector fallbacks per platform, manual fallback mode, HTML test fixtures |
 | Service worker terminated by Chrome | WebSocket reconnection with exponential backoff (max 30s), `sync_state` on reconnect |
 | Chrome Web Store rejection | Submit 3 weeks early, privacy policy, no payment UI in extension, MV3 compliant |
-| Yahoo support (Phase 4) | Same adapter pattern as ESPN — `YahooAdapter implements PlatformAdapter` |
+| Yahoo support (Phase 4) | Same adapter pattern as ESPN, but keep Yahoo gated/non-blocking until manual draft-room verification succeeds |
+
+## Launch scope alignment
+
+- `008c` covers extension sync adapters and recovery behavior, not full extension UX ownership.
+- ESPN is launch-critical.
+- Yahoo is secondary and gated.
+- Manual fallback is required for launch.
+- Launch planning assumes a single-instance Fly.io backend with Redis deferred until scale requires it.

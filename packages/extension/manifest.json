@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "PuckLogic Draft Sync",
+  "description": "Sync live draft picks into PuckLogic draft sessions.",
+  "version": "0.1.0",
+  "background": {
+    "service_worker": "src/background/index.ts",
+    "type": "module"
+  },
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://api.pucklogic.com/*",
+    "https://fantasy.espn.com/*",
+    "https://sports.yahoo.com/*"
+  ]
+}

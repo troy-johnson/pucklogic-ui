@@ -104,6 +104,8 @@ Manual pick entry is not a separate mode with separate data semantics. It is an 
 
 ESPN support is required for launch readiness. Yahoo is allowed only if it does not increase delivery risk or weaken recovery quality for ESPN.
 
+Yahoo remains gated behind non-blocking readiness criteria until manual draft-room verification succeeds. Automated adapter tests alone are not enough to promote Yahoo to launch-default behavior.
+
 **Rationale:** Platform scope must stay reversible and risk-bounded.
 
 ### D6. Launch infra optimizes for control, not multi-instance scale
@@ -131,6 +133,8 @@ A draft session must support:
 - accept manual picks
 - end explicitly
 - expire safely after inactivity
+
+Launch uses a backend-owned configurable inactivity-timeout policy. Extension and web clients must not hardcode a duration; they should treat expiry as server-driven and handle expired-session responses gracefully.
 
 The system must enforce one active session per user unless a future spec changes that rule.
 
@@ -188,6 +192,7 @@ Optional but expected follow-on event types, if the recommendation engine is wir
 - emit pick events with platform metadata
 - reconnect with backoff and request authoritative `sync_state`
 - degrade to manual fallback when selectors or lifecycle behavior become unreliable
+- expose only minimal local sync-health status when needed for attach/reconnect/manual-fallback awareness; richer user-facing workflow/status remains owned by the web app
 
 ### Web responsibilities under this contract
 
@@ -224,6 +229,8 @@ The web app is a client of backend authority. It may bootstrap sessions, open tr
 
 This spec requires that accepted picks can drive updated draft-state-aware rankings or suggestions, but it does not define the UI or presentation of those outputs. UI behavior belongs to `009` and `010`.
 
+Advanced live suggestion behavior is deferred outside `008c`. Whether launch uses simple best-available output or roster-aware recommendations remains a separate pre-launch requirement and does not block extension transport/state implementation.
+
 ## Acceptance Criteria
 
 ### Backend / session acceptance
@@ -248,6 +255,7 @@ This spec requires that accepted picks can drive updated draft-state-aware ranki
 - [ ] ESPN live draft sync is launch-ready.
 - [ ] Yahoo remains gated behind non-blocking launch criteria unless explicitly promoted later.
 - [ ] Selector failures do not fully block draft use because manual fallback exists.
+- [ ] Clients respect backend-owned session expiry without assuming a fixed inactivity duration.
 
 ### Verification and observability acceptance
 
@@ -277,9 +285,13 @@ This spec requires that accepted picks can drive updated draft-state-aware ranki
 
 ## Open Questions
 
-1. Should live suggestions at v1 be simple best-available output or roster-aware recommendations derived from the same state update path?
-2. What inactivity timeout should expire an abandoned draft session at launch?
-3. Should Yahoo remain hidden behind a feature flag in the same API surface, or behind a separate readiness gate until adapters are proven?
+Resolved for `008c` planning:
+
+1. `packages/extension` uses a minimal Vite-based setup.
+2. Yahoo remains behind a separate readiness gate until manual draft-room verification succeeds.
+3. Session inactivity expiry is backend-owned and configurable; clients must not hardcode a timeout duration.
+4. Extension may expose minimal local sync-health status, while richer user-facing workflow/status remains in the web app.
+5. Advanced live suggestion behavior is deferred as a separate pre-launch requirement.
 
 ## Recommendation
 

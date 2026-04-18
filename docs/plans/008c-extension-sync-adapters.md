@@ -1,14 +1,14 @@
 # Plan: Extension Sync Adapters for ESPN MVP and Yahoo Secondary Support
 
 **Spec basis:** `docs/specs/008-live-draft-sync-launch-required.md`, `docs/specs/009-web-draft-kit-ux.md`  
-**Branch:** `feat/live-draft-sync-backend-contract`  
+**Branch:** `feat/008c-extension-sync-adapters`  
 **Risk Tier:** 3 — New package, browser runtime, DOM volatility  
 **Scope:** Large (~3–5 days, multi-session)  
 **Execution mode:** Dependency waves  
 **Acceptance tier:** ESPN required, Yahoo stretch acceptance before launch
 
 **Execution status (2026-04-14):** Active execution track after `008b` backend contract completion.
-**Readiness:** Backend session/protocol dependency is satisfied on the current branch; ESPN MVP remains the next implementation focus and Yahoo is still non-blocking/stretch.
+**Readiness:** Backend session/protocol dependency is satisfied on the current branch; ESPN MVP remains the next implementation focus and Yahoo is still non-blocking/stretch. Before implementation begins, refresh `docs/extension-reference.md` so adapter work follows the current transport/session contract instead of stale route and message-shape guidance.
 
 ## Infrastructure Assumptions
 
@@ -16,6 +16,7 @@
 - Extension uses **WebSocket** as the primary live-sync transport
 - If the socket is unavailable, the product degrades to **manual fallback / HTTP-backed recovery** rather than blocking draft use
 - Redis is **not** required for launch-time extension sync behavior
+- Session inactivity expiry is a **backend-owned configurable policy**; the extension must not assume a fixed timeout duration
 
 ---
 
@@ -23,12 +24,15 @@
 
 Bootstrap the browser extension package and implement the sync adapter layer needed to connect supported draft rooms to the authoritative backend session. ESPN is the required MVP. Yahoo uses the same protocol and is pursued as a secondary launch target without blocking ESPN readiness.
 
+The extension package should use a minimal Vite-based setup compatible with MV3 and the monorepo.
+
 ## Non-Goals
 
 - Web app UI implementation
 - Backend authority rules
 - Perfect DOM durability without manual fallback
 - Cross-browser marketplace submission work
+- Advanced live suggestion sophistication beyond keeping accepted picks available to downstream recommendation logic
 
 ---
 
@@ -68,6 +72,8 @@ Implement the launch-critical adapter with multiple selectors and resilient pick
 ### Phase 4 — Yahoo adapter
 
 Implement the same protocol against Yahoo draft-room structure as a secondary acceptance target.
+
+Yahoo should remain gated and non-blocking until manual draft-room verification succeeds, even if automated adapter tests pass.
 
 ### Phase 5 — Manual fallback behavior
 
@@ -153,6 +159,12 @@ When selectors fail or sync confidence drops, surface manual fallback immediatel
     Command: `pnpm --filter @pucklogic/extension test -- src/__tests__/protocol.test.ts src/__tests__/background.test.ts -t observability`  
     Expected: observability tests pass and adapter metrics are ready for launch signoff.
 
+## Required dependency / backend follow-up
+
+- Confirm and document the backend-owned configurable inactivity-timeout behavior used for abandoned draft sessions.
+- If backend behavior is not fully implemented yet, track it as a required backend follow-up while keeping the extension implementation timeout-agnostic.
+- Treat advanced live suggestion behavior as a separate pre-launch requirement rather than a transport-blocking `008c` deliverable.
+
 ## Verification Mapping
 
 | Acceptance need | Covered by |
@@ -173,6 +185,10 @@ When selectors fail or sync confidence drops, surface manual fallback immediatel
 
 ## Open Questions
 
-1. Which extension build tool should be used in the new package: plain Vite, Plasmo, or another minimal setup compatible with the repo?
-2. Should Yahoo ship enabled by default once tests pass, or remain behind a feature flag until manual draft-room verification succeeds?
-3. Should the extension expose a small visible status surface in-page, or defer all user-visible sync status to the web app?
+Resolved decisions:
+
+1. Use a minimal **Vite** setup for `packages/extension`.
+2. Keep Yahoo **gated / non-blocking** until manual draft-room verification succeeds.
+3. Use a **hybrid status model**: the extension may expose a minimal local sync-health indicator, while richer user-visible sync/workflow status remains in the web app.
+4. Treat session inactivity expiry as a **backend-owned configurable timeout**; track any backend implementation/documentation gap as both an `008c` dependency and a backend follow-up item.
+5. Defer advanced live suggestion behavior to a separate pre-launch requirement.
