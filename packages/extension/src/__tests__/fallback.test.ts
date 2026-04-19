@@ -47,4 +47,12 @@ describe("manual fallback escalation", () => {
       }),
     );
   });
+
+  it("observability: omits selector fallback when reason is sync confidence low", () => {
+    expect(buildFallbackSignal({ reason: "sync_confidence_low", source: "yahoo" })).toEqual(
+      expect.objectContaining({
+        observability: ["manual_fallback_activated"],
+      }),
+    );
+  });
 });

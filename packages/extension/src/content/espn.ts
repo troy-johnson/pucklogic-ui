@@ -1,9 +1,4 @@
-export type DetectedPick = {
-  pickNumber: number;
-  playerName: string;
-  team?: string;
-  position?: string;
-};
+import { type DetectedPick, parsePickNumber, textFromFirstMatch } from "./shared";
 
 export type EspnReconnectSignal = {
   type: "sync_state";
@@ -35,32 +30,6 @@ const PICK_NUMBER_SELECTORS = [".pick-number", ".pick", '[class*="pickNumber"]']
 
 const TEAM_SELECTORS = [".team", '[class*="team"]'];
 const POSITION_SELECTORS = [".position", '[class*="position"]'];
-
-function textFromFirstMatch(root: ParentNode, selectors: string[]): string | null {
-  for (const selector of selectors) {
-    const el = root.querySelector(selector);
-    const text = el?.textContent?.trim();
-
-    if (text) {
-      return text;
-    }
-  }
-
-  return null;
-}
-
-function parsePickNumber(text: string | null): number {
-  if (!text) {
-    return 0;
-  }
-
-  const match = text.match(/\d+/);
-  if (!match) {
-    return 0;
-  }
-
-  return Number.parseInt(match[0], 10);
-}
 
 export function detectEspnDraftRoom(url: string): boolean {
   const parsed = new URL(url);

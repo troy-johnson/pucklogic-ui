@@ -5,6 +5,10 @@ import { BackgroundSessionBridge } from "../background";
 class FakeWebSocket {
   static instances: FakeWebSocket[] = [];
 
+  static readonly CONNECTING = 0;
+  static readonly OPEN = 1;
+  static readonly CLOSED = 3;
+
   onopen: (() => void) | null = null;
   onmessage: ((event: { data: string }) => void) | null = null;
   onclose: (() => void) | null = null;
@@ -12,6 +16,7 @@ class FakeWebSocket {
 
   readonly sent: string[] = [];
   readonly url: string;
+  readyState = FakeWebSocket.CONNECTING;
 
   constructor(url: string) {
     this.url = url;
@@ -23,10 +28,12 @@ class FakeWebSocket {
   }
 
   close(): void {
+    this.readyState = FakeWebSocket.CLOSED;
     this.onclose?.();
   }
 
   triggerOpen(): void {
+    this.readyState = FakeWebSocket.OPEN;
     this.onopen?.();
   }
 
@@ -69,6 +76,28 @@ describe("BackgroundSessionBridge", () => {
     expect(socket.sent).toContain(
       JSON.stringify({ type: "pick", player_name: "Connor McDavid", pick_number: 1 }),
     );
+  });
+
+  it("does not forward PICK_DETECTED before websocket open", async () => {
+    const bridge = new BackgroundSessionBridge({
+      WebSocketImpl: FakeWebSocket,
+      getToken: async () => "token-123",
+    });
+
+    await bridge.initSession({
+      sessionId: "session-123",
+      wsUrl: "wss://api.pucklogic.com/draft-sessions/session-123/ws",
+    });
+
+    const socket = FakeWebSocket.instances[0];
+
+    bridge.handleRuntimeMessage({
+      type: "PICK_DETECTED",
+      playerName: "Connor McDavid",
+      pickNumber: 1,
+    });
+
+    expect(socket.sent).toEqual([]);
   });
 
   it("requests sync_state on websocket open", async () => {
@@ -149,6 +178,28 @@ describe("BackgroundSessionBridge", () => {
         "sync_recovery",
       ]),
     );
+  });
+
+  it("observability: emits attach success only after socket opens", async () => {
+    const metrics: string[] = [];
+
+    const bridge = new BackgroundSessionBridge({
+      WebSocketImpl: FakeWebSocket,
+      getToken: async () => "token-obs",
+      onMetric: (event) => metrics.push(event.type),
+    });
+
+    await bridge.initSession({
+      sessionId: "session-obs",
+      wsUrl: "wss://api.pucklogic.com/draft-sessions/session-obs/ws",
+    });
+
+    expect(metrics).not.toContain("socket_attach_success");
+
+    const socket = FakeWebSocket.instances[0];
+    socket.triggerOpen();
+
+    expect(metrics).toContain("socket_attach_success");
   });
 
   it("observability: emits attach failure signal on socket error", async () => {

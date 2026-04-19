@@ -10,19 +10,23 @@
 ```
 packages/extension/
 ├── manifest.json                  # MV3 manifest
+├── package.json                   # Workspace package + scripts
+├── tsconfig.json                  # TypeScript config
+├── vitest.config.ts               # Test config
 ├── src/
-│   ├── content-script.ts          # Injected into draft room — DOM observer
-│   ├── service-worker.ts          # Background service worker — WebSocket mgmt
-│   ├── popup/
-│   │   ├── popup.html             # Extension popup entry point
-│   │   └── Popup.tsx              # React popup — session init + suggestions
-│   └── adapters/
-│       ├── types.ts               # PlatformAdapter interface
-│       ├── espn.ts                # ESPN Fantasy adapter
-│       └── yahoo.ts               # Yahoo Fantasy adapter
-├── vite.config.ts                 # Bundler config — 3 separate entry points
-└── __tests__/                     # Vitest tests for observer + adapter logic
+│   ├── background/
+│   │   └── index.ts               # Background/session bridge
+│   ├── content/
+│   │   ├── espn.ts                # ESPN Fantasy adapter
+│   │   ├── yahoo.ts               # Yahoo Fantasy adapter
+│   │   └── manualFallback.ts      # Selector-failure/manual-mode escalation helper
+│   ├── shared/
+│   │   └── protocol.ts            # Shared protocol/event primitives
+│   └── __tests__/                 # Vitest coverage for protocol/background/adapters/fallback
+└── dist/                          # Build output
 ```
+
+`008c` currently covers the sync-adapter/runtime foundation (background bridge, content adapters, protocol, fallback, observability). A richer popup/sidebar UX is owned by later web/extension workflow work and should not be assumed to exist yet.
 
 ---
 
@@ -71,30 +75,14 @@ packages/extension/
 
 ## 3. Build Configuration
 
-```typescript
-// packages/extension/vite.config.ts
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+`packages/extension` uses a **minimal Vite + Vitest** setup suitable for MV3 packaging in the monorepo. The current launch-path implementation is intentionally narrow:
 
-export default defineConfig({
-  plugins: [react()],
-  build: {
-    rollupOptions: {
-      input: {
-        "content-script": "src/content-script.ts",
-        "service-worker": "src/service-worker.ts",
-        popup: "src/popup/popup.html",
-      },
-      output: {
-        entryFileNames: "[name].js",
-        format: "es",
-      },
-    },
-    outDir: "dist",
-    emptyOutDir: true,
-  },
-});
-```
+- background entry: `src/background/index.ts`
+- content/runtime entries: `src/content/espn.ts`, `src/content/yahoo.ts`, `src/content/manualFallback.ts`
+- shared protocol primitives: `src/shared/protocol.ts`
+- focused tests under `src/__tests__/`
+
+If popup/sidebar UI entries are added later, update this section to reflect the actual packaged entrypoints instead of documenting planned-but-unimplemented surfaces.
 
 ---
 
@@ -311,59 +299,16 @@ For current `008` / `008c` launch scope, adapter readiness centers on `pick`, `s
 
 ---
 
-## 7. Extension Popup (React)
+## 7. Extension UI Surface
 
-```typescript
-// packages/extension/src/popup/Popup.tsx
-import { useEffect, useState } from "react";
+`008c` does **not** establish the final extension popup/sidebar UX. The current implementation scope is the runtime foundation needed for sync adapters:
 
-interface Suggestion {
-  player_id: string;
-  name: string;
-  team: string;
-  position: string;
-  composite_rank: number;
-  fantasy_pts: number;
-  breakout_score?: number;
-}
+- attach to supported draft-room pages
+- detect picks through platform adapters
+- forward sync/recovery/manual-fallback events through the shared protocol
+- surface reconnect/degraded/manual-mode state to the extension runtime
 
-export function Popup() {
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [sessionActive, setSessionActive] = useState(false);
-
-  useEffect(() => {
-    // Listen for WS messages from service worker
-    chrome.runtime.onMessage.addListener((message) => {
-      if (message.type === "WS_MESSAGE" && message.data.type === "suggestions") {
-        setSuggestions(message.data.players);
-        setSessionActive(true);
-      }
-    });
-
-    // Check if session is already active
-    chrome.storage.local.get("session_active", ({ session_active }) => {
-      if (session_active) {
-        setSessionActive(true);
-        chrome.runtime.sendMessage({ type: "GET_SUGGESTIONS" });
-      }
-    });
-  }, []);
-
-  if (!sessionActive) {
-    return <NoSessionUI />;  // Link to pucklogic.com to purchase session
-  }
-
-  return (
-    <div className="w-72 p-3">
-      <h2 className="font-bold text-sm mb-2">Best Available</h2>
-      {suggestions.map((p) => (
-        <SuggestionRow key={p.player_id} player={p} />
-      ))}
-      <ManualPickButton />
-    </div>
-  );
-}
-```
+Future popup/sidebar UX should be documented here only once those surfaces exist and have an approved implementation contract.
 
 ---
 
@@ -487,3 +432,5 @@ Import via Turborepo workspace: `import { PlayerCard } from "@pucklogic/ui"`.
 - Yahoo is secondary and gated.
 - Manual fallback is required for launch.
 - Launch planning assumes a single-instance Fly.io backend with Redis deferred until scale requires it.
+- Live draft-room manual verification is season-blocked until draft rooms are available again; track that launch-readiness work in `docs/ROADMAP.md`.
+- Backend-owned inactivity-timeout confirmation and broader analytics/metrics planning are tracked as pre-launch follow-ups, not as ad hoc `008c` scope expansion.

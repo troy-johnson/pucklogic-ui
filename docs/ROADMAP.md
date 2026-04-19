@@ -2,7 +2,7 @@
 
 **Launch target:** Mid-September 2026  
 **Strategy:** Ship web draft kit first. Extension is conditional — proceeds only if it does not jeopardize the web launch.  
-**Current date:** 2026-04-07  
+**Current date:** 2026-04-19  
 **Solo dev — nights and weekends**
 
 ---
@@ -12,14 +12,23 @@
 | Milestone | Window | Status | Key Docs |
 |---|---|---|---|
 | A — Scraper hardening + backfill | Mar 28 – Apr 12 | In progress | [Plan 008a](plans/008a-draft-season-readiness.md) |
-| F — First real ML execution | Apr 13 – Apr 20 | Upcoming | [Plan 008a §F](plans/008a-draft-season-readiness.md#milestone-f--first-real-ml-execution-run) |
-| B — Lock draft kit workflow / UI scope | Apr 21 – May 4 | Upcoming | [Spec 009](specs/009-web-draft-kit-ux.md) · [ADR 007](adrs/007-web-first-draft-session-and-temp-kit-lifecycle.md) |
+| F — First real ML execution | Apr 13 – Apr 20 | Complete | [Plan 008a §F](plans/008a-draft-season-readiness.md#milestone-f--first-real-ml-execution-run) |
+| B — Lock draft kit workflow / UI scope | Apr 21 – May 4 | Approved early | [Spec 009](specs/009-web-draft-kit-ux.md) · [ADR 007](adrs/007-web-first-draft-session-and-temp-kit-lifecycle.md) |
 | C — Backend integration verification | May 5 – May 18 | Planned | [Plan 008a §C](plans/008a-draft-season-readiness.md#milestone-c--verify--gap-fill-backend-integration) |
 | D — Build web draft kit UI | May 19 – Jun 29 | Planned | [Spec 009](specs/009-web-draft-kit-ux.md) |
 | E — Polish exports | Jun 30 – Jul 13 | Planned | [Plan 008a §E](plans/008a-draft-season-readiness.md#milestone-e--make-exports-launch-grade) |
 | G — Launch hardening | Jul 14 – Aug 17 | Planned | [Plan 008a §G](plans/008a-draft-season-readiness.md#milestone-g--harden-the-web-launch) |
 | H — Extension go/no-go | Aug 18 – Aug 24 | Conditional | [Plan 008a §H](plans/008a-draft-season-readiness.md#milestone-h--extension-gono-go) |
 | I — Extension MVP / beta | Aug 25 – Sep 14 | Conditional | [Spec 008](specs/008-live-draft-sync-launch-required.md) · [Plan 008a §I](plans/008a-draft-season-readiness.md#milestone-i--extension-mvp--beta-conditional) |
+
+### Current execution reality (2026-04-19)
+
+- `008a` is now a **reference roadmap**, not the literal active execution order.
+- `008b` live-draft backend contract work is **implemented and complete on `main`**.
+- `008c` extension sync adapters are the **active track** on `feat/008c-extension-sync-adapters`; Waves 1–5 are complete with focused extension verification passing, while live draft-room verification remains season-blocked and Yahoo stays gated/non-blocking.
+- `010a` web draft kit UI remains **scaffold-only** until spec `010` is approved.
+
+Use this roadmap for milestone sequencing and launch prioritization. For live branch/phase status, defer to `.agents/axon-state.md` and the active plan docs.
 
 ---
 
@@ -44,6 +53,31 @@ Items identified during Milestone B spec review that need to land in later miles
 - [ ] Token balance visible in extension popup
 - [ ] Manual session start from extension with explicit token consumption
 - [ ] Auto-revert from manual fallback when sync recovers (extension-side, with user notification)
+
+## Blocked / Pre-Launch Follow-Ups
+
+### Season-blocked live draft-room verification
+- [ ] Manual ESPN live draft-room verification once draft rooms are available next season
+- [ ] Manual Yahoo live draft-room verification once draft rooms are available next season
+- [ ] Execute the live verification checklist in a real room:
+  - [ ] attach/connect succeeds
+  - [ ] pick detection reaches backend session correctly
+  - [ ] reconnect after interruption restores authoritative state
+  - [ ] degraded-state behavior is visible and understandable
+  - [ ] manual fallback works without blocking draft use
+  - [ ] recovery from manual/degraded state is confirmed
+
+### Backend-owned inactivity-timeout confirmation
+- [ ] Confirm the backend config/source of truth for draft-session inactivity timeout
+- [ ] Confirm runtime behavior for expired/abandoned draft sessions
+- [ ] Confirm client-facing response/handling expectations for expired sessions
+- [ ] Reconcile the confirmed timeout contract across backend, extension, plan, and spec docs
+
+### Analytics / metrics follow-up
+- [ ] Write a dedicated analytics/telemetry spec covering web app, backend, and extension
+- [ ] Define the event taxonomy for live draft sync, reconnect, degraded state, and manual fallback
+- [ ] Decide whether telemetry flows through the Python backend as the primary ingest path before any provider fanout
+- [ ] Implement production-grade metrics export / observability after the spec is approved
 
 ---
 

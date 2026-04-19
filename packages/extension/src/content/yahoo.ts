@@ -1,9 +1,4 @@
-export type DetectedPick = {
-  pickNumber: number;
-  playerName: string;
-  team?: string;
-  position?: string;
-};
+import { type DetectedPick, parsePickNumber, textFromFirstMatch } from "./shared";
 
 export const YAHOO_LAUNCH_POLICY = {
   gated: true,
@@ -30,38 +25,14 @@ const PICK_NUMBER_SELECTORS = [".pick-number", ".PickNumber", '[class*="PickNumb
 const TEAM_SELECTORS = [".team", ".Team", '[class*="Team"]'];
 const POSITION_SELECTORS = [".position", ".Position", '[class*="Position"]'];
 
-function textFromFirstMatch(root: ParentNode, selectors: string[]): string | null {
-  for (const selector of selectors) {
-    const el = root.querySelector(selector);
-    const text = el?.textContent?.trim();
-
-    if (text) {
-      return text;
-    }
-  }
-
-  return null;
-}
-
-function parsePickNumber(text: string | null): number {
-  if (!text) {
-    return 0;
-  }
-
-  const match = text.match(/\d+/);
-  if (!match) {
-    return 0;
-  }
-
-  return Number.parseInt(match[0], 10);
-}
-
 export function detectYahooDraftRoom(url: string): boolean {
   const parsed = new URL(url);
   const hostname = parsed.hostname.toLowerCase();
   const path = parsed.pathname.toLowerCase();
 
-  return hostname.includes("yahoo.com") && path.includes("draft");
+  const isDraftRoomPath = path.includes("/draftroom") || /\/draft(\/|$)/.test(path);
+
+  return hostname.includes("yahoo.com") && isDraftRoomPath;
 }
 
 export function extractLatestYahooPick(doc: Document): DetectedPick | null {

@@ -7,8 +7,8 @@
 **Execution mode:** Dependency waves  
 **Acceptance tier:** ESPN required, Yahoo stretch acceptance before launch
 
-**Execution status (2026-04-14):** Active execution track after `008b` backend contract completion.
-**Readiness:** Backend session/protocol dependency is satisfied on the current branch; ESPN MVP remains the next implementation focus and Yahoo is still non-blocking/stretch. Before implementation begins, refresh `docs/extension-reference.md` so adapter work follows the current transport/session contract instead of stale route and message-shape guidance.
+**Execution status (2026-04-19):** Implementation complete on `feat/008c-extension-sync-adapters`; Waves 1–5 landed and the focused extension test suite is passing.
+**Readiness:** Backend session/protocol dependency is satisfied and the adapter package has been bootstrapped with protocol, background bridge, ESPN/Yahoo adapters, manual fallback, and observability hooks. Remaining follow-up is launch-readiness work: season-blocked live draft-room verification, backend timeout-contract confirmation, and broader analytics/metrics planning. Yahoo remains non-blocking/stretch until manual verification succeeds.
 
 ## Infrastructure Assumptions
 
@@ -164,6 +164,8 @@ When selectors fail or sync confidence drops, surface manual fallback immediatel
 - Confirm and document the backend-owned configurable inactivity-timeout behavior used for abandoned draft sessions.
 - If backend behavior is not fully implemented yet, track it as a required backend follow-up while keeping the extension implementation timeout-agnostic.
 - Treat advanced live suggestion behavior as a separate pre-launch requirement rather than a transport-blocking `008c` deliverable.
+- Treat production-grade analytics / metrics export as a separate pre-launch follow-up rather than extending `008c` scope ad hoc.
+- Treat real ESPN/Yahoo draft-room manual verification as season-blocked launch-readiness work; track the checklist in `docs/ROADMAP.md` until draft rooms are available again.
 
 ## Verification Mapping
 

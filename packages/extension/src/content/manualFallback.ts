@@ -24,15 +24,22 @@ export function buildFallbackSignal(input: FallbackSignalInput): {
   source: FallbackSource;
   mode: "manual";
   silent: false;
-  observability: ["selector_fallback", "manual_fallback_activated"];
+  observability:
+    | ["selector_fallback", "manual_fallback_activated"]
+    | ["manual_fallback_activated"];
 } {
+  const observability: ["selector_fallback", "manual_fallback_activated"] | ["manual_fallback_activated"] =
+    input.reason === "selector_failure"
+      ? ["selector_fallback", "manual_fallback_activated"]
+      : ["manual_fallback_activated"];
+
   return {
     type: "manual_fallback",
     reason: input.reason,
     source: input.source,
     mode: "manual",
     silent: false,
-    observability: ["selector_fallback", "manual_fallback_activated"],
+    observability,
   };
 }
 

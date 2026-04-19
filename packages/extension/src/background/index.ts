@@ -14,11 +14,13 @@ type SocketLike = {
   onmessage: ((event: { data: string }) => void) | null;
   onclose: (() => void) | null;
   onerror: (() => void) | null;
+  readyState: number;
   send: (payload: string) => void;
   close: () => void;
 };
 
 type SocketConstructor = new (url: string) => SocketLike;
+const SOCKET_OPEN_STATE = 1;
 
 type BackgroundSessionBridgeDeps = {
   WebSocketImpl: SocketConstructor;
@@ -53,8 +55,8 @@ export class BackgroundSessionBridge {
   }
 
   handleRuntimeMessage(message: RuntimeMessage): void {
-    if (message.type === "PICK_DETECTED") {
-      this.socket?.send(
+    if (message.type === "PICK_DETECTED" && this.socket?.readyState === SOCKET_OPEN_STATE) {
+      this.socket.send(
         JSON.stringify({
           type: "pick",
           player_name: message.playerName,
@@ -74,10 +76,10 @@ export class BackgroundSessionBridge {
 
     const socket = new this.WebSocketImpl(socketUrl);
     this.socket = socket;
-    this.onMetric({ type: "socket_attach_success" });
 
     socket.onopen = () => {
       this.reconnectDelayMs = 1000;
+      this.onMetric({ type: "socket_attach_success" });
       this.onMetric({ type: "socket_open" });
 
       if (this.sessionId) {

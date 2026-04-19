@@ -9,7 +9,7 @@ import {
 describe("Yahoo adapter", () => {
   it("detects Yahoo draft-room context from hostname and path", () => {
     expect(detectYahooDraftRoom("https://sports.yahoo.com/fantasy/hockey/draftroom/league-1")).toBe(true);
-    expect(detectYahooDraftRoom("https://basketball.fantasysports.yahoo.com/hockey/123/draftresults")).toBe(true);
+    expect(detectYahooDraftRoom("https://basketball.fantasysports.yahoo.com/hockey/123/draftresults")).toBe(false);
     expect(detectYahooDraftRoom("https://fantasy.espn.com/hockey/draft?leagueId=1")).toBe(false);
     expect(detectYahooDraftRoom("https://sports.yahoo.com/fantasy/hockey/league/1")).toBe(false);
   });

@@ -4,7 +4,7 @@
   "description": "Sync live draft picks into PuckLogic draft sessions.",
   "version": "0.1.0",
   "background": {
-    "service_worker": "src/background/index.ts",
+    "service_worker": "background.js",
     "type": "module"
   },
   "permissions": ["storage"],
@@ -12,5 +12,15 @@
     "https://api.pucklogic.com/*",
     "https://fantasy.espn.com/*",
     "https://sports.yahoo.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://fantasy.espn.com/*"],
+      "js": ["espn.js"]
+    },
+    {
+      "matches": ["https://sports.yahoo.com/*"],
+      "js": ["yahoo.js"]
+    }
   ]
 }

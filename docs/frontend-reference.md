@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
 - Anonymous users can build kits without signing in
 - Session tracked by `pucklogic_session` cookie (UUID)
 - Persistent banner: "Sign up to save this kit"
-- On sign-up/login → call `POST /api/auth/register` → backend migrates session-keyed kits to `user_id`
+- On sign-up/login, the web app ultimately targets the backend auth/session contract (for example `POST /auth/register` if using direct backend routes) so session-keyed kits can be migrated to `user_id`
 - Anonymous kits expire after 7 days (server-side cron)
 
 ---
@@ -320,7 +320,7 @@ export interface RankingsParams {
 
 export function useRankings(params: RankingsParams | null) {
   const key = params
-    ? `/api/rankings/compute`
+    ? `/rankings/compute`
     : null;
   const { data, error, isLoading, mutate } = useSWR(
     key ? [key, params] : null,
@@ -335,11 +335,13 @@ export function useRankings(params: RankingsParams | null) {
 }
 
 export function useSources() {
-  return useSWR("/api/rankings/sources", fetcher);
+  return useSWR("/sources", fetcher);
 }
 ```
 
 **Server Components** use `fetch` directly (no SWR). **Client Components** use SWR hooks for interactive data.
+
+If the Next.js app introduces local route handlers or proxy endpoints, keep them aligned with the canonical backend route names documented in `docs/backend-reference.md` instead of inventing a parallel API contract.
 
 ---
 
@@ -371,9 +373,9 @@ export function useSources() {
 ### ExportPanel
 
 - Location: `apps/web/src/components/ExportPanel.tsx`
-- Triggers `POST /api/exports/pdf` or `/api/exports/excel`
-- Polls `GET /api/exports/{id}/status` every 2s until `complete` or `failed`
-- On complete: shows download link (Supabase Storage URL, 24hr TTL)
+- Triggers `POST /exports/generate`
+- Current launch path assumes synchronous export generation/response rather than polling a queued export job
+- If queued exports are introduced later, update both this reference and the backend reference together
 
 ### TrendsPanel (Phase 3)
 
@@ -405,7 +407,7 @@ interface PlayerScoreDisplay {
 ```typescript
 // Export or draft session purchase → redirect to Stripe
 async function startCheckout(priceId: string, successPath: string) {
-  const res = await fetch("/api/stripe/checkout", {
+  const res = await fetch("/stripe/create-checkout-session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ price_id: priceId, success_path: successPath }),

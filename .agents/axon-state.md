@@ -1,14 +1,14 @@
 | Field | Value |
 |---|---|
-| Active Phase | `008c-extension-sync-adapters` implementation in progress on feature branch; Waves 1–5 are complete with focused extension verification passing, pending remote push/PR handoff |
+| Active Phase | `008c-extension-sync-adapters` implementation complete on feature branch; documentation/status reconciliation and review passes are in progress |
 | Active Branch | feat/008c-extension-sync-adapters |
-| Open PR | none — PR #32 merged |
-| Current Focus | Finalize `008c` branch sync: commit/push axon-state, open PR for extension bootstrap/protocol/adapters/fallback/observability, and keep Yahoo gated while manual verification + backend timeout documentation follow-ups are tracked |
+| Open PR | #33 — https://github.com/troy-johnson/pucklogic-ui/pull/33 |
+| Current Focus | Reconcile docs (`ROADMAP`, architecture, references, plans, axon-state), prepare review passes for `008c`, and keep Yahoo gated while season-blocked manual verification + backend timeout/analytics follow-ups are tracked |
 | Last Action | Completed Waves 1–5 of `008c` in `packages/extension` (protocol, background bridge, ESPN/Yahoo adapters, manual fallback, observability), committed as `8ba75cf`, and verified with `pnpm --filter @pucklogic/extension test` (`28 passed`) |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
 | Current Hypothesis | WebSocket-backed backend authority is the critical first implementation slice; ESPN is MVP, Yahoo is secondary, manual mode remains the launch fallback, and launch infra is Fly.io single-instance with Redis deferred |
-| Next Steps | 1. Commit and push updated `.agents/axon-state.md` on `feat/008c-extension-sync-adapters` 2. Open/update PR for `008c` implementation and include extension test evidence (`28 passed`) 3. Confirm/document backend-owned inactivity-timeout behavior and track any missing implementation as a backend follow-up 4. Preserve the launch observability decision: backend logs + in-memory counters stay for now, while production metrics export remains a required pre-launch item before go-live signoff 5. Keep Yahoo gated until manual draft-room verification succeeds and keep `010a-web-draft-kit-ui` scaffold-only until spec 010 is approved |
-| Next Session Entry | Resume at: push `feat/008c-extension-sync-adapters`, open the PR, and execute manual ESPN/Yahoo verification + backend timeout follow-up tracking. |
+| Next Steps | 1. Finish the targeted doc consistency pass across architecture + reference docs 2. Record blocked/pre-launch follow-ups for season-based manual verification, backend-owned inactivity-timeout confirmation, and analytics/metrics planning 3. Run review passes on PR #33 4. Keep Yahoo gated until manual draft-room verification succeeds and keep `010a-web-draft-kit-ui` scaffold-only until spec 010 is approved |
+| Next Session Entry | Resume at: continue PR #33 review prep after docs consistency + follow-up tracking updates are complete. |
 
 ## Merge and code review outcome (2026-04-10)
 
@@ -47,6 +47,19 @@
 - Durable architecture decisions now live under `docs/adrs/`, including `007-web-first-draft-session-and-temp-kit-lifecycle.md`.
 - Research docs now use their own numbered sequence with `docs/research/INDEX.md` as the folder guide.
 - `docs/README.md` now documents folder classification, canonical-source precedence, numbering policy, and the requirement to keep `.agents/axon-state.md` current when docs meaningfully change.
+
+## Documentation taxonomy update (2026-04-19)
+
+- `docs/README.md` now explicitly distinguishes the roles of `docs/ROADMAP.md`, `docs/pucklogic-architecture.md`, and the top-level backend/frontend/extension reference docs.
+- `ROADMAP.md` is treated as the milestone sequencing / launch-prioritization layer, not the canonical source for technical behavior.
+- `pucklogic-architecture.md` remains the cross-system blueprint, while the surface reference docs remain the canonical implementation references for their respective domains.
+- `docs/ROADMAP.md` was refreshed to match current execution reality: first real ML execution is complete, Milestone B scope approval landed early, `008b` is complete on `main`, `008c` is the active implementation track, and `010a` remains scaffold-only pending spec `010` approval.
+- Targeted consistency updates reconciled stale export-flow, route, extension-runtime, and active-PR wording across `docs/pucklogic-architecture.md`, `docs/frontend-reference.md`, `docs/extension-reference.md`, `docs/plans/008c-extension-sync-adapters.md`, and the top axon-state summary.
+- `docs/ROADMAP.md` now tracks blocked/pre-launch follow-ups for season-based live draft-room verification, backend-owned inactivity-timeout confirmation, and analytics/metrics planning; `docs/extension-reference.md` and `docs/plans/008c-extension-sync-adapters.md` now link those items as out-of-scope follow-ups rather than unfinished runtime implementation.
+- Notion task state was reconciled for the most relevant live-draft/extension cards: WebSocket draft session management, ESPN adapter, and Yahoo adapter now reflect implemented runtime work plus season-blocked verification; the popup/session-activation card remains backlog but now points to the current draft-session API model.
+- Second-pass Notion cleanup updated additional extension cards: MV3 scaffold is marked done; sidebar overlay and richer live suggestions remain backlog with current-scope notes; beta testing is marked blocked on season availability; Chrome Web Store submission remains backlog with updated launch-readiness dependencies.
+- `docs/README.md` now explicitly states Notion's role versus repo docs: Notion is for project-management/status tracking, `ROADMAP.md` is the repo milestone-priority layer, repo docs remain canonical for technical behavior, and `.agents/axon-state.md` remains the current-session tracker.
+- `docs/README.md` now also contains explicit agent instructions for when to update repo docs, `.agents/axon-state.md`, and Notion, including a required end-of-session sync checklist and minimum sync expectations by change type.
 
 ## Backfill/data quality completion status (current)
 
