@@ -4,7 +4,7 @@
 | Active Branch | feat/008c-extension-sync-adapters |
 | Open PR | #33 — https://github.com/troy-johnson/pucklogic-ui/pull/33 |
 | Current Focus | Reconcile docs (`ROADMAP`, architecture, references, plans, axon-state), prepare review passes for `008c`, and keep Yahoo gated while season-blocked manual verification + backend timeout/analytics follow-ups are tracked |
-| Last Action | Completed Waves 1–5 of `008c` in `packages/extension` (protocol, background bridge, ESPN/Yahoo adapters, manual fallback, observability), committed as `8ba75cf`, and verified with `pnpm --filter @pucklogic/extension test` (`28 passed`) |
+| Last Action | Completed Waves 1–5 of `008c` in `packages/extension` (protocol, background bridge, ESPN/Yahoo adapters, manual fallback, observability), committed as `8ba75cf`, and re-verified on current branch with `pnpm --filter @pucklogic/extension test` (`6 files, 32 passed`) |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
 | Current Hypothesis | WebSocket-backed backend authority is the critical first implementation slice; ESPN is MVP, Yahoo is secondary, manual mode remains the launch fallback, and launch infra is Fly.io single-instance with Redis deferred |
 | Next Steps | 1. Finish the targeted doc consistency pass across architecture + reference docs 2. Record blocked/pre-launch follow-ups for season-based manual verification, backend-owned inactivity-timeout confirmation, and analytics/metrics planning 3. Run review passes on PR #33 4. Keep Yahoo gated until manual draft-room verification succeeds and keep `010a-web-draft-kit-ui` scaffold-only until spec 010 is approved |
