@@ -37,6 +37,12 @@ describe("shared protocol contract", () => {
     expect(isPickPayload({})).toBe(false);
   });
 
+  it("rejects NaN and Infinity as pick_number", () => {
+    expect(isPickPayload({ player_name: "Auston Matthews", pick_number: NaN })).toBe(false);
+    expect(isPickPayload({ player_name: "Auston Matthews", pick_number: Infinity })).toBe(false);
+    expect(isPickPayload({ player_name: "Auston Matthews", pick_number: -Infinity })).toBe(false);
+  });
+
   it("observability: declares required signal categories", () => {
     expect(OBSERVABILITY_SIGNALS).toEqual(
       expect.arrayContaining([

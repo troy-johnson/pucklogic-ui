@@ -40,8 +40,9 @@ export function extractLatestEspnPick(doc: Document): DetectedPick | null {
   let container: Element | null = null;
 
   for (const selector of PICK_CONTAINER_SELECTORS) {
-    container = doc.querySelector(selector);
-    if (container) {
+    const all = doc.querySelectorAll(selector);
+    if (all.length > 0) {
+      container = all[all.length - 1];
       break;
     }
   }
@@ -88,4 +89,56 @@ export function buildEspnDegradedStateSignal(reason: string): EspnDegradedStateS
     message: `espn_degraded_state:${reason}`,
     source: "espn",
   };
+}
+
+export function startEspnContentScript(
+  sendPickMessage: (playerName: string, pickNumber?: number) => void,
+  {
+    url = window.location.href,
+    doc = document,
+    onDesync,
+  }: { url?: string; doc?: Document; onDesync?: () => void } = {},
+): MutationObserver | null {
+  if (!detectEspnDraftRoom(url)) {
+    return null;
+  }
+
+  let lastPlayerName: string | null = null;
+  let lastPickNumber: number | undefined;
+
+  const checkAndSend = () => {
+    const pick = extractLatestEspnPick(doc);
+    if (!pick) {
+      if (lastPlayerName !== null) {
+        onDesync?.();
+        lastPlayerName = null;
+        lastPickNumber = undefined;
+      }
+      return;
+    }
+    if (pick.playerName === lastPlayerName && pick.pickNumber === lastPickNumber) return;
+    lastPlayerName = pick.playerName;
+    lastPickNumber = pick.pickNumber;
+    sendPickMessage(pick.playerName, pick.pickNumber);
+  };
+
+  checkAndSend();
+
+  const observer = new MutationObserver(checkAndSend);
+  observer.observe(doc.body ?? doc.documentElement, { childList: true, subtree: true });
+  return observer;
+}
+
+// Top-level content-script entry point — only runs in the actual extension context
+if (typeof chrome !== "undefined" && chrome.runtime?.id) {
+  startEspnContentScript(
+    (playerName, pickNumber) => {
+      chrome.runtime.sendMessage({ type: "PICK_DETECTED", playerName, pickNumber });
+    },
+    {
+      onDesync: () => {
+        chrome.runtime.sendMessage({ type: "SYNC_DESYNC" });
+      },
+    },
+  );
 }

@@ -4,6 +4,7 @@ type RuntimeMessage =
       playerName: string;
       pickNumber?: number;
     }
+  | { type: "SYNC_DESYNC" }
   | {
       type: string;
       [key: string]: unknown;
@@ -63,6 +64,8 @@ export class BackgroundSessionBridge {
           pick_number: message.pickNumber,
         }),
       );
+    } else if (message.type === "SYNC_DESYNC") {
+      this.onMetric({ type: "sync_desync" });
     }
   }
 
@@ -111,4 +114,36 @@ export class BackgroundSessionBridge {
       socket.close();
     };
   }
+}
+
+export function startBackgroundServiceWorker(): void {
+  const bridge = new BackgroundSessionBridge({
+    WebSocketImpl: WebSocket,
+    getToken: async () => {
+      const result = await chrome.storage.local.get("authToken");
+      return result.authToken as string | undefined;
+    },
+    onMetric: (event) => console.log("[pucklogic:metric]", event.type, event.detail ?? ""),
+  });
+
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message.type === "INIT_SESSION") {
+      void bridge
+        .initSession({ sessionId: message.sessionId as string, wsUrl: message.wsUrl as string })
+        .then(() => {
+          sendResponse({ ok: true });
+        })
+        .catch((err: unknown) => {
+          sendResponse({ ok: false, error: String(err) });
+        });
+      return true; // keep channel open for async response
+    }
+
+    bridge.handleRuntimeMessage(message as RuntimeMessage);
+  });
+}
+
+// Top-level service-worker entry point — only runs in the actual extension context
+if (typeof chrome !== "undefined" && chrome.runtime?.id) {
+  startBackgroundServiceWorker();
 }

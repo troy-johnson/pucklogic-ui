@@ -39,8 +39,9 @@ export function extractLatestYahooPick(doc: Document): DetectedPick | null {
   let container: Element | null = null;
 
   for (const selector of PICK_CONTAINER_SELECTORS) {
-    container = doc.querySelector(selector);
-    if (container) {
+    const all = doc.querySelectorAll(selector);
+    if (all.length > 0) {
+      container = all[all.length - 1];
       break;
     }
   }
@@ -71,4 +72,60 @@ export function extractLatestYahooPick(doc: Document): DetectedPick | null {
   }
 
   return pick;
+}
+
+export function startYahooContentScript(
+  sendPickMessage: (playerName: string, pickNumber?: number) => void,
+  {
+    url = window.location.href,
+    doc = document,
+    onDesync,
+  }: { url?: string; doc?: Document; onDesync?: () => void } = {},
+): MutationObserver | null {
+  if (YAHOO_LAUNCH_POLICY.gated) {
+    return null;
+  }
+
+  if (!detectYahooDraftRoom(url)) {
+    return null;
+  }
+
+  let lastPlayerName: string | null = null;
+  let lastPickNumber: number | undefined;
+
+  const checkAndSend = () => {
+    const pick = extractLatestYahooPick(doc);
+    if (!pick) {
+      if (lastPlayerName !== null) {
+        onDesync?.();
+        lastPlayerName = null;
+        lastPickNumber = undefined;
+      }
+      return;
+    }
+    if (pick.playerName === lastPlayerName && pick.pickNumber === lastPickNumber) return;
+    lastPlayerName = pick.playerName;
+    lastPickNumber = pick.pickNumber;
+    sendPickMessage(pick.playerName, pick.pickNumber);
+  };
+
+  checkAndSend();
+
+  const observer = new MutationObserver(checkAndSend);
+  observer.observe(doc.body ?? doc.documentElement, { childList: true, subtree: true });
+  return observer;
+}
+
+// Top-level content-script entry point — only runs in the actual extension context
+if (typeof chrome !== "undefined" && chrome.runtime?.id) {
+  startYahooContentScript(
+    (playerName, pickNumber) => {
+      chrome.runtime.sendMessage({ type: "PICK_DETECTED", playerName, pickNumber });
+    },
+    {
+      onDesync: () => {
+        chrome.runtime.sendMessage({ type: "SYNC_DESYNC" });
+      },
+    },
+  );
 }

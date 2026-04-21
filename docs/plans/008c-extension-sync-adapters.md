@@ -7,8 +7,8 @@
 **Execution mode:** Dependency waves  
 **Acceptance tier:** ESPN required, Yahoo stretch acceptance before launch
 
-**Execution status (2026-04-19):** Implementation complete on `feat/008c-extension-sync-adapters`; Waves 1–5 landed and the focused extension test suite is passing.
-**Readiness:** Backend session/protocol dependency is satisfied and the adapter package has been bootstrapped with protocol, background bridge, ESPN/Yahoo adapters, manual fallback, and observability hooks. Remaining follow-up is launch-readiness work: season-blocked live draft-room verification, backend timeout-contract confirmation, and broader analytics/metrics planning. Yahoo remains non-blocking/stretch until manual verification succeeds.
+**Execution status (2026-04-20):** Helper layer complete; MV3 runtime wiring added. `background/index.ts`, `content/espn.ts`, and `content/yahoo.ts` now include top-level chrome entry points (`startBackgroundServiceWorker`, `startEspnContentScript`, `startYahooContentScript`). Unit tests cover protocol, pick extraction, background bridge, fallback, and content-script startup behavior (38 passing). **Real-world draft-room behavior is unverified and season-blocked.**
+**Readiness:** Backend session/protocol dependency is satisfied. The extension package is wired end-to-end: content scripts observe DOM mutations and forward picks to the background service worker via `chrome.runtime.sendMessage`; the background bridge relays them to the backend over WebSocket with exponential backoff reconnect. Remaining required step before launch: season-live manual verification of ESPN and Yahoo draft-room selectors. Yahoo remains gated (`YAHOO_LAUNCH_POLICY.gated = true`) until that verification succeeds.
 
 ## Infrastructure Assumptions
 

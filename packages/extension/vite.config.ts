@@ -1,6 +1,9 @@
 import { copyFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+// import.meta.dirname requires Node ≥21.2; safe given vite 7 peer requirement
+const __dirname = import.meta.dirname;
+
 import { defineConfig } from "vite";
 
 export default defineConfig({

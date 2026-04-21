@@ -202,6 +202,20 @@ describe("BackgroundSessionBridge", () => {
     expect(metrics).toContain("socket_attach_success");
   });
 
+  it("observability: emits sync_desync metric when SYNC_DESYNC message received", () => {
+    const metrics: string[] = [];
+
+    const bridge = new BackgroundSessionBridge({
+      WebSocketImpl: FakeWebSocket,
+      getToken: async () => undefined,
+      onMetric: (event) => metrics.push(event.type),
+    });
+
+    bridge.handleRuntimeMessage({ type: "SYNC_DESYNC" });
+
+    expect(metrics).toContain("sync_desync");
+  });
+
   it("observability: emits attach failure signal on socket error", async () => {
     const metrics: string[] = [];
 

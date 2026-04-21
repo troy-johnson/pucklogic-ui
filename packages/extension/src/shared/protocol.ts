@@ -51,5 +51,5 @@ export function isPickPayload(value: unknown): value is { player_name: string; p
     return true;
   }
 
-  return typeof value.pick_number === "number";
+  return typeof value.pick_number === "number" && Number.isFinite(value.pick_number);
 }
