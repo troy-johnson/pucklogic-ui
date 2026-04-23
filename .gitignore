@@ -49,3 +49,6 @@ apps/web/tsconfig.tsbuildinfo
 
 # Superpowers brainstorm sessions
 .superpowers/
+
+# Opencode
+opencode.json

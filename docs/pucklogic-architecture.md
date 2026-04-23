@@ -8,7 +8,7 @@
 - **[frontend-reference.md](frontend-reference.md)** — App Router pages, Zustand stores, components, auth flow, scoring UI
 - **[extension-reference.md](extension-reference.md)** — Platform adapters, WebSocket protocol, manifest, auth handoff
 
-*Phase scope and task tracking live in Notion, not in docs. Docs describe what and how; Notion cards describe when and scope.*
+*Phase scope and task tracking primarily live in Notion. `docs/ROADMAP.md` tracks milestone sequencing and launch prioritization, while `.agents/axon-state.md` tracks the active branch/phase and immediate next steps. Docs describe what and how; Notion cards remain the broader project board.*
 
 ---
 
@@ -35,13 +35,13 @@ PuckLogic is a fantasy hockey platform with three components:
 | State | Zustand | Lightweight, no boilerplate |
 | Data fetching | SWR or React Query (client), Server Components (SSR) | |
 | Backend | FastAPI (Python) on Railway/Fly.io | ML model + API in same process |
-| Database | Supabase (PostgreSQL + Auth + Storage) | Built-in auth, RLS, file storage |
-| Caching | Upstash Redis | 6-hour TTL on rankings |
-| Background jobs | Celery + Redis | Exports, nightly re-scoring |
+| Database | Supabase (PostgreSQL + Auth + Storage) | Built-in auth, RLS, durable app data |
+| Caching | Upstash Redis (deferred / optional) | Not required for current launch path |
+| Background jobs | In-process / scheduled jobs (current), queueing deferred | Nightly re-scoring now; export queueing can be added later if needed |
 | ML | XGBoost / LightGBM, SHAP for explainability | Interpretable, fast on tabular data |
 | Experiment tracking | MLflow (local → Fly.io) | |
 | Payments | Stripe Checkout (web app only) | Chrome Web Store compliance |
-| Extension | Chrome MV3, shadow DOM sidebar | ESPN + Yahoo via platform adapter pattern |
+| Extension | Chrome MV3 package with background bridge + content adapters | ESPN MVP, Yahoo gated, manual fallback required |
 | Frontend hosting | Vercel | |
 | Backend hosting | Railway or Fly.io | |
 
@@ -246,12 +246,13 @@ Content script: check window.location.hostname → load correct adapter
 
 ### 7.2 Component Map
 
-- **manifest.json** — MV3 manifest, host permissions for espncdn.com + Yahoo Fantasy
-- **content_script.js** — Injected into draft room, loads platform adapter, observes DOM
-- **sidebar.jsx** — React component (shadow DOM isolation)
-- **background.js** — Service worker, manages WebSocket to backend (reconnection with exponential backoff)
-- **popup.jsx** — Extension popup (login, kit selection, session start)
-- **shared/components** — From Turborepo packages/ui
+- **`packages/extension/manifest.json`** — MV3 manifest and host permissions
+- **`packages/extension/src/background/index.ts`** — background/session bridge for runtime messaging, reconnects, and observability hooks
+- **`packages/extension/src/content/espn.ts`** — ESPN draft-room adapter (launch-critical)
+- **`packages/extension/src/content/yahoo.ts`** — Yahoo draft-room adapter (gated / non-blocking)
+- **`packages/extension/src/content/manualFallback.ts`** — selector-failure/manual-mode escalation helper
+- **`packages/extension/src/shared/protocol.ts`** — shared message and event protocol
+- **`packages/ui`** — shared UI primitives available to the web app and extension surfaces when needed
 
 ### 7.3 Pick Detection
 
@@ -271,9 +272,10 @@ Content script: check window.location.hostname → load correct adapter
 
 - Extension free to install, requires auth
 - $2.99 per draft session (pay on web app via Stripe Checkout)
-- Web app writes active session token to Supabase
-- Extension polls for token at startup
+- Web app starts or resumes the authoritative backend draft session via the draft-session API surface
+- Extension resumes/attaches through explicit session handoff rather than polling Supabase for a token
 - No payment UI in extension (Chrome Web Store compliance)
+- Draft-session expiry is backend-owned and configurable; extension and web clients must not hardcode a timeout duration
 - A/B test $1.99 vs $3.99 post-launch
 
 ---
@@ -308,11 +310,11 @@ NHL.com and MoneyPuck write to `player_stats` only. Users get 2 custom projectio
 
 | Type | Library | Price | Delivery |
 |------|---------|-------|----------|
-| PDF cheat sheet | WeasyPrint | $1–2 | Supabase Storage (24hr TTL) |
-| Excel workbook | openpyxl | $1–2 | Supabase Storage (24hr TTL) |
-| Bundle (PDF + Excel) | Both | $2–3 | Both links |
+| PDF cheat sheet | WeasyPrint | $1–2 | Synchronous response from export endpoint |
+| Excel workbook | openpyxl | $1–2 | Synchronous response from export endpoint |
+| Bundle (PDF + Excel) | Both | $2–3 | Separate generated responses or future queued bundle flow |
 
-Generated async via Celery. Multi-tab Excel: master rankings, by-position, Trends tab with breakout/regression scores.
+Current launch-path export generation is synchronous from the backend export endpoint. If export latency or infrastructure needs grow, queued/background export delivery can be added later as a follow-up rather than assumed for the current implementation.
 
 ---
 

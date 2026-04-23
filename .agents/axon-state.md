@@ -1,15 +1,19 @@
 | Field | Value |
 |---|---|
-| Active Phase | Ready-for-merge: `008b` backend contract plus PR-review hardening are complete on the branch; next active execution shifts to `008c`, with `010a` limited to scaffold work until spec 010 is approved |
-| Active Branch | feat/live-draft-sync-backend-contract |
-| Open PR | #32 — https://github.com/troy-johnson/pucklogic-ui/pull/32 |
-| Current Focus | Hold `008b` in merge-ready state after websocket auth/manual-pick/session-recovery follow-up fixes; next implementation track is `docs/plans/008c-extension-sync-adapters.md`, while `010a` stays scaffold-only under `docs/specs/009-web-draft-kit-ux.md` / draft `docs/specs/010-web-ui-wireframes-design.md` |
-| Last Action | Committed and pushed `a2dbd9d` (`fix(api): harden live draft session auth and recovery`), updated PR #32, reconciled websocket query-token auth/manual-pick identity/session expiry-recovery behavior, and reran the focused draft-session backend suite in `apps/api/.venv313` (`87 passed`) |
+| Active Phase | `008c-extension-sync-adapters` complete and merged to `main`; next track is `008e` (optional pick_number) or `008d` review |
+| Active Branch | main |
+| Open PR | none |
+| Current Focus | 008c is done. Follow-up tracks: implement `008e` (optional pick_number in WS auto-ingestion), review `008d` plan before implementing, keep Yahoo gated pending season-live manual verification |
+| Last Action | Merged PR #33 (`feat/008c-extension-sync-adapters`): extension sync adapters complete, 41 tests passing, review passes done, plan `008e` added to track optional pick_number fix |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
 | Current Hypothesis | WebSocket-backed backend authority is the critical first implementation slice; ESPN is MVP, Yahoo is secondary, manual mode remains the launch fallback, and launch infra is Fly.io single-instance with Redis deferred |
-| Next Steps | 1. Merge PR #32 once final review is satisfied so `008b` can be treated as complete on `main` 2. Begin `008c-extension-sync-adapters` with Wave 1 bootstrap + shared protocol TDD after merge 3. Preserve the launch observability decision: backend logs + in-memory counters stay for now, while production metrics export remains a required pre-launch item in `008c` before go-live signoff 4. Review and approve `008d-draft-pass-session-lifecycle` before implementing pass consumption / completion hardening 5. Keep `010a-web-draft-kit-ui` limited to scaffold work until spec 010 is approved |
+| Next Steps | 1. Implement `008e`: make pick_number optional in WS auto-ingestion (backend + extension changes per plan) 2. Review `008d` plan (draft pass session lifecycle) before starting implementation 3. Keep Yahoo gated until season-live manual draft-room verification succeeds 4. Keep `010a-web-draft-kit-ui` scaffold-only until spec `010` is approved |
+| Next Session Entry | Resume at: pick up `008e` implementation or `008d` plan review. |
 
 ## Merge and code review outcome (2026-04-10)
+
+- PR #32 (`feat/live-draft-sync-backend-contract`) has now been merged to `main`, so `008b` is complete and no merge-ready PR remains open for that track.
+- Active execution focus shifts to `008c-extension-sync-adapters`, with branch creation deferred until the remaining spec/plan details and stale contract references are reconciled.
 
 ## Planning outcome (2026-04-10)
 
@@ -26,7 +30,7 @@
 - Updated `docs/plans/INDEX.md` to index the new plan set.
 - Planning assumption now locked: final implementation uses WebSocket transport; Yahoo remains stretch acceptance and must not delay ESPN MVP readiness.
 - Infra assumption now locked for launch planning: Fly.io single-instance backend, WebSocket primary, HTTP/manual fallback allowed, Redis deferred until scale requires it.
-- Activated execution sequence on 2026-04-11: `008b` is the first implementation track, `008c` follows backend protocol stabilization, and `010a` is restricted to scaffold work until spec `010` leaves draft.
+- Activated execution sequence on 2026-04-11: `008b` is the first implementation track, `008c` follows backend protocol stabilization, and `010a` is restricted to scaffold work until spec `010` leaves draft. As of 2026-04-18, `008b` is complete on `main` and `008c` is the active next track.
 
 - Merged `main` (`c34f36b` scraper data quality hardening) into `feat/live-draft-sync-spec`.
 - All conflicts resolved keeping HEAD: agent config paths (post-rename), `hockey_reference.py` stable dedup, `hockey_reference` test suite.
@@ -43,6 +47,19 @@
 - Durable architecture decisions now live under `docs/adrs/`, including `007-web-first-draft-session-and-temp-kit-lifecycle.md`.
 - Research docs now use their own numbered sequence with `docs/research/INDEX.md` as the folder guide.
 - `docs/README.md` now documents folder classification, canonical-source precedence, numbering policy, and the requirement to keep `.agents/axon-state.md` current when docs meaningfully change.
+
+## Documentation taxonomy update (2026-04-19)
+
+- `docs/README.md` now explicitly distinguishes the roles of `docs/ROADMAP.md`, `docs/pucklogic-architecture.md`, and the top-level backend/frontend/extension reference docs.
+- `ROADMAP.md` is treated as the milestone sequencing / launch-prioritization layer, not the canonical source for technical behavior.
+- `pucklogic-architecture.md` remains the cross-system blueprint, while the surface reference docs remain the canonical implementation references for their respective domains.
+- `docs/ROADMAP.md` was refreshed to match current execution reality: first real ML execution is complete, Milestone B scope approval landed early, `008b` is complete on `main`, `008c` is the active implementation track, and `010a` remains scaffold-only pending spec `010` approval.
+- Targeted consistency updates reconciled stale export-flow, route, extension-runtime, and active-PR wording across `docs/pucklogic-architecture.md`, `docs/frontend-reference.md`, `docs/extension-reference.md`, `docs/plans/008c-extension-sync-adapters.md`, and the top axon-state summary.
+- `docs/ROADMAP.md` now tracks blocked/pre-launch follow-ups for season-based live draft-room verification, backend-owned inactivity-timeout confirmation, and analytics/metrics planning; `docs/extension-reference.md` and `docs/plans/008c-extension-sync-adapters.md` now link those items as out-of-scope follow-ups rather than unfinished runtime implementation.
+- Notion task state was reconciled for the most relevant live-draft/extension cards: WebSocket draft session management, ESPN adapter, and Yahoo adapter now reflect implemented runtime work plus season-blocked verification; the popup/session-activation card remains backlog but now points to the current draft-session API model.
+- Second-pass Notion cleanup updated additional extension cards: MV3 scaffold is marked done; sidebar overlay and richer live suggestions remain backlog with current-scope notes; beta testing is marked blocked on season availability; Chrome Web Store submission remains backlog with updated launch-readiness dependencies.
+- `docs/README.md` now explicitly states Notion's role versus repo docs: Notion is for project-management/status tracking, `ROADMAP.md` is the repo milestone-priority layer, repo docs remain canonical for technical behavior, and `.agents/axon-state.md` remains the current-session tracker.
+- `docs/README.md` now also contains explicit agent instructions for when to update repo docs, `.agents/axon-state.md`, and Notion, including a required end-of-session sync checklist and minimum sync expectations by change type.
 
 ## Backfill/data quality completion status (current)
 
