@@ -60,8 +60,10 @@ export class BackgroundSessionBridge {
       this.socket.send(
         JSON.stringify({
           type: "pick",
-          player_name: message.playerName,
-          pick_number: message.pickNumber,
+          payload: {
+            player_name: message.playerName,
+            pick_number: message.pickNumber,
+          },
         }),
       );
     } else if (message.type === "SYNC_DESYNC") {

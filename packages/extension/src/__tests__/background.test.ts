@@ -74,7 +74,7 @@ describe("BackgroundSessionBridge", () => {
     });
 
     expect(socket.sent).toContain(
-      JSON.stringify({ type: "pick", player_name: "Connor McDavid", pick_number: 1 }),
+      JSON.stringify({ type: "pick", payload: { player_name: "Connor McDavid", pick_number: 1 } }),
     );
   });
 

@@ -12,8 +12,6 @@ type FallbackSignalInput = {
   source: FallbackSource;
 };
 
-type FallbackStateInput = FallbackSignalInput;
-
 export function shouldEscalateToManualFallback(input: EscalationInput): boolean {
   return input.selectorFailureCount > 0 || input.syncConfidence === "low";
 }
@@ -43,7 +41,7 @@ export function buildFallbackSignal(input: FallbackSignalInput): {
   };
 }
 
-export function toManualFallbackState(input: FallbackStateInput): {
+export function toManualFallbackState(input: FallbackSignalInput): {
   mode: "manual";
   indicator: "degraded";
   source: FallbackSource;
