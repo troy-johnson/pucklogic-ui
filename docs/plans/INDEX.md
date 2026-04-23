@@ -17,6 +17,7 @@
 | 008b | [live-draft-backend](008b-live-draft-backend.md) | Implemented | 2026-04-14 | Backend authority, websocket transport, entitlement enforcement, and schema/docs alignment shipped on the current branch |
 | 008c | [extension-sync-adapters](008c-extension-sync-adapters.md) | Approved | 2026-04-11 | Second implementation track after backend contract stabilization; ESPN MVP first, Yahoo stretch; includes pre-launch adapter observability |
 | 008d | [draft-pass-session-lifecycle](008d-draft-pass-session-lifecycle.md) | Draft | 2026-04-13 | Pass consumption, reconnect reuse, completion semantics, and anti-abuse lifecycle rules for live draft sessions |
+| 008e | [optional-pick-number](008e-optional-pick-number.md) | Draft | 2026-04-23 | Make pick_number optional in WS auto-ingestion; backend auto-derives from session cursor when absent |
 | 010a | [web-draft-kit-ui](010a-web-draft-kit-ui.md) | Draft | 2026-04-11 | UI implementation plan limited to scaffolding until spec 010 wireframe/design decisions are approved |
 
 ## Drafts
