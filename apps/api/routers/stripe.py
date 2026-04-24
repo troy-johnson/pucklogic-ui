@@ -61,13 +61,21 @@ async def stripe_webhook(
 
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
+        event_id = event.get("id")
         user_id = session.get("client_reference_id")
         logger.info(
-            "Checkout completed: session_id=%s user_id=%s",
+            "Checkout completed: event_id=%s session_id=%s user_id=%s",
+            event_id,
             session.get("id"),
             user_id,
         )
         if user_id:
-            repo.credit_draft_pass(user_id)
+            if event_id:
+                if repo.try_mark_stripe_event_processed(event_id):
+                    repo.credit_draft_pass(user_id)
+                else:
+                    logger.info("Stripe event %s already processed; skipping credit", event_id)
+            else:
+                repo.credit_draft_pass(user_id)
 
     return {"received": True}

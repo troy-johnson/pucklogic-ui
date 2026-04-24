@@ -252,3 +252,63 @@ class TestStripeWebhook:
             )
 
         mock_sub_repo.credit_draft_pass.assert_not_called()
+
+    def test_webhook_skips_credit_on_duplicate_event(
+        self, client: TestClient, mock_sub_repo: MagicMock
+    ) -> None:
+        mock_sub_repo.try_mark_stripe_event_processed.return_value = False
+
+        with (
+            patch("routers.stripe.settings") as mock_settings,
+            patch("routers.stripe.stripe") as mock_stripe,
+        ):
+            mock_settings.stripe_secret_key = "sk_test_123"
+            mock_settings.stripe_webhook_secret = "whsec_test"
+            mock_stripe.Webhook.construct_event.return_value = {
+                "id": "evt_duplicate",
+                "type": "checkout.session.completed",
+                "data": {
+                    "object": {
+                        "id": "cs_test_xyz",
+                        "client_reference_id": "user-abc-123",
+                    }
+                },
+            }
+            resp = client.post(
+                "/stripe/webhook",
+                content=b"{}",
+                headers={"stripe-signature": "t=123,v1=abc"},
+            )
+
+        assert resp.status_code == 200
+        mock_sub_repo.credit_draft_pass.assert_not_called()
+
+    def test_webhook_credits_when_try_mark_succeeds(
+        self, client: TestClient, mock_sub_repo: MagicMock
+    ) -> None:
+        mock_sub_repo.try_mark_stripe_event_processed.return_value = True
+
+        with (
+            patch("routers.stripe.settings") as mock_settings,
+            patch("routers.stripe.stripe") as mock_stripe,
+        ):
+            mock_settings.stripe_secret_key = "sk_test_123"
+            mock_settings.stripe_webhook_secret = "whsec_test"
+            mock_stripe.Webhook.construct_event.return_value = {
+                "id": "evt_new",
+                "type": "checkout.session.completed",
+                "data": {
+                    "object": {
+                        "id": "cs_test_xyz",
+                        "client_reference_id": "user-abc-123",
+                    }
+                },
+            }
+            client.post(
+                "/stripe/webhook",
+                content=b"{}",
+                headers={"stripe-signature": "t=123,v1=abc"},
+            )
+
+        mock_sub_repo.try_mark_stripe_event_processed.assert_called_once_with("evt_new")
+        mock_sub_repo.credit_draft_pass.assert_called_once_with("user-abc-123")

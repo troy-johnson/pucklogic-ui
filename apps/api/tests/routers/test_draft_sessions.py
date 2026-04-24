@@ -145,6 +145,18 @@ class TestResumeDraftSession:
 
         assert response.status_code == 404
 
+    def test_resume_returns_403_when_entitlement_inactive(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.resume_session.side_effect = PermissionError(
+            "active subscription required to reconnect"
+        )
+
+        response = client.post("/draft-sessions/ses_1/resume")
+
+        assert response.status_code == 403
+        assert "subscription" in response.json()["detail"]
+
 
 class TestEndDraftSession:
     def test_end_returns_204(self, client: TestClient, mock_service: MagicMock) -> None:

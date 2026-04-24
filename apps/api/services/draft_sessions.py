@@ -65,6 +65,9 @@ class DraftSessionService:
             "last_heartbeat_at": now_iso,
         }
         self._draft_session_repo.create_session(payload)
+        # Non-atomic: if deduct_draft_pass raises after create_session succeeds, the session
+        # exists but no pass was consumed. Acceptable for single-instance launch; would need
+        # a transaction or compensating job at scale.
         self._subscription_repo.deduct_draft_pass(user_id)
         return payload
 
@@ -77,6 +80,9 @@ class DraftSessionService:
         if active is None or active.get("session_id") != session_id:
             self._raise_if_terminal(session_id, user_id)
             raise LookupError("active session not found for user")
+
+        if not self._subscription_repo.is_active(user_id):
+            raise PermissionError("active subscription required to reconnect")
 
         self._draft_session_repo.resume_session(
             session_id=session_id,
@@ -118,6 +124,10 @@ class DraftSessionService:
         if active is None or active.get("session_id") != session_id:
             self._raise_if_terminal(session_id, user_id)
             raise LookupError("active session not found for user")
+
+        if not self._subscription_repo.is_active(user_id):
+            raise PermissionError("active subscription required to reconnect")
+
         return active.get("sync_state", {})
 
     def attach_socket(self, *, session_id: str, user_id: str, now: datetime) -> dict:

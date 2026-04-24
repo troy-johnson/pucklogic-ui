@@ -13,3 +13,12 @@ alter table draft_sessions
 alter table subscriptions
   add column if not exists draft_pass_balance integer not null default 0
     check (draft_pass_balance >= 0);
+
+-- Stripe webhook idempotency guard.
+-- Processed event IDs are stored here so duplicate webhook deliveries do not
+-- double-credit the user's draft pass balance.
+
+create table if not exists stripe_processed_events (
+    event_id   text        primary key,
+    processed_at timestamptz not null default now()
+);

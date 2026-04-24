@@ -172,3 +172,47 @@ class TestCreditDraftPass:
         assert insert_call["draft_pass_balance"] == 1
         assert insert_call["user_id"] == "user-1"
         assert insert_call["status"] == "active"
+
+    def test_reactivates_existing_inactive_row(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._select_chain(mock_db).data = {"id": "sub-1", "draft_pass_balance": 0}
+
+        repo.credit_draft_pass("user-1")
+
+        update_call = mock_db.table.return_value.update.call_args.args[0]
+        assert update_call["status"] == "active"
+
+    def test_clears_expires_at_on_existing_row(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._select_chain(mock_db).data = {"id": "sub-1", "draft_pass_balance": 0}
+
+        repo.credit_draft_pass("user-1")
+
+        update_call = mock_db.table.return_value.update.call_args.args[0]
+        assert update_call["expires_at"] is None
+
+
+class TestStripeEventIdempotency:
+    def _upsert_chain(self, mock_db: MagicMock) -> MagicMock:
+        return mock_db.table.return_value.upsert.return_value.execute.return_value
+
+    def test_try_mark_returns_true_when_newly_inserted(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._upsert_chain(mock_db).data = [{"event_id": "evt_abc"}]
+        assert repo.try_mark_stripe_event_processed("evt_abc") is True
+
+    def test_try_mark_returns_false_when_already_processed(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._upsert_chain(mock_db).data = []
+        assert repo.try_mark_stripe_event_processed("evt_abc") is False
+
+    def test_try_mark_uses_stripe_processed_events_table(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._upsert_chain(mock_db).data = [{"event_id": "evt_abc"}]
+        repo.try_mark_stripe_event_processed("evt_abc")
+        mock_db.table.assert_called_with("stripe_processed_events")

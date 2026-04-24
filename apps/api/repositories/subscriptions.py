@@ -93,10 +93,28 @@ class SubscriptionRepository:
             current = result.data.get("draft_pass_balance") or 0
             (
                 self._db.table("subscriptions")
-                .update({"draft_pass_balance": current + 1})
+                .update(
+                    {
+                        "draft_pass_balance": current + 1,
+                        "status": "active",
+                        "expires_at": None,
+                    }
+                )
                 .eq("id", result.data["id"])
                 .execute()
             )
+
+    def try_mark_stripe_event_processed(self, event_id: str) -> bool:
+        """Atomically claim a Stripe event. Returns True if newly inserted (credit should proceed).
+        Returns False if the event_id was already present (duplicate delivery — skip credit).
+        Uses INSERT ON CONFLICT DO NOTHING so concurrent duplicate deliveries cannot both win.
+        """
+        result = (
+            self._db.table("stripe_processed_events")
+            .upsert({"event_id": event_id}, on_conflict="event_id", ignore_duplicates=True)
+            .execute()
+        )
+        return bool(result.data)
 
     def is_active(self, user_id: str) -> bool:
         """Return True if user_id has an active, non-expired subscription."""

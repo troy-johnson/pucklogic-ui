@@ -314,6 +314,7 @@ class TestResumeSession:
             "last_heartbeat_at": now.isoformat(),
         }
         mock_repo.get_active_session.side_effect = [active, resumed]
+        mock_sub_repo.is_active.return_value = True
 
         result = service.resume_session(session_id="ses_1", user_id="usr_1", now=now)
 
@@ -323,6 +324,25 @@ class TestResumeSession:
             user_id="usr_1",
             now=now,
         )
+
+    def test_resume_raises_when_entitlement_inactive(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+        mock_repo.get_active_session.return_value = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "active",
+        }
+        mock_sub_repo.is_active.return_value = False
+
+        with pytest.raises(PermissionError, match="active subscription required"):
+            service.resume_session(session_id="ses_1", user_id="usr_1", now=now)
+
+        mock_repo.resume_session.assert_not_called()
 
 
 class TestInactivitySweep:
@@ -422,41 +442,40 @@ class TestEndAndSyncState:
         assert sync_state["sync_health"] == "healthy"
         assert sync_state["last_processed_pick"] == 14
 
-    def test_get_sync_state_allows_owned_session_without_active_entitlement(
+    def test_get_sync_state_raises_when_entitlement_inactive(
         self,
         service: DraftSessionService,
         mock_repo: MagicMock,
         mock_sub_repo: MagicMock,
     ) -> None:
         now = datetime.now(UTC)
-
         mock_repo.get_active_session.return_value = {
             "session_id": "ses_1",
             "user_id": "usr_1",
             "status": "active",
             "sync_state": {"sync_health": "healthy", "last_processed_pick": 14},
         }
+        mock_sub_repo.is_active.return_value = False
 
-        sync_state = service.get_sync_state(session_id="ses_1", user_id="usr_1", now=now)
-
-        assert sync_state == {"sync_health": "healthy", "last_processed_pick": 14}
+        with pytest.raises(PermissionError, match="active subscription required"):
+            service.get_sync_state(session_id="ses_1", user_id="usr_1", now=now)
 
 
 class TestReconnectSyncState:
-    def test_reconnect_sync_state_allows_owned_session_without_active_entitlement(
+    def test_reconnect_sync_state_returns_sync_state_when_entitled(
         self,
         service: DraftSessionService,
         mock_repo: MagicMock,
         mock_sub_repo: MagicMock,
     ) -> None:
         now = datetime.now(UTC)
-
         mock_repo.get_active_session.return_value = {
             "session_id": "ses_1",
             "user_id": "usr_1",
             "status": "active",
             "sync_state": {"sync_health": "healthy", "last_processed_pick": 14},
         }
+        mock_sub_repo.is_active.return_value = True
 
         sync_state = service.reconnect_sync_state(
             session_id="ses_1",
@@ -470,6 +489,24 @@ class TestReconnectSyncState:
             user_id="usr_1",
             now=now,
         )
+
+    def test_reconnect_sync_state_raises_when_entitlement_inactive(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+        mock_repo.get_active_session.return_value = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "active",
+            "sync_state": {"sync_health": "healthy", "last_processed_pick": 14},
+        }
+        mock_sub_repo.is_active.return_value = False
+
+        with pytest.raises(PermissionError, match="active subscription required"):
+            service.reconnect_sync_state(session_id="ses_1", user_id="usr_1", now=now)
 
     def test_get_sync_state_raises_when_session_missing(
         self,
