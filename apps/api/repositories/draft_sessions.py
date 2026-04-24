@@ -33,6 +33,18 @@ class DraftSessionRepository:
         result = query.maybe_single().execute()
         return result.data
 
+    def get_session_by_id(self, session_id: str, user_id: str) -> dict[str, Any] | None:
+        """Fetch a session regardless of status — used to distinguish terminal from not-found."""
+        result = (
+            self._db.table("draft_sessions")
+            .select("*")
+            .eq("session_id", session_id)
+            .eq("user_id", user_id)
+            .maybe_single()
+            .execute()
+        )
+        return result.data
+
     def resume_session(self, *, session_id: str, user_id: str, now: datetime) -> None:
         now_iso = now.astimezone(UTC).isoformat()
         (
@@ -73,6 +85,8 @@ class DraftSessionRepository:
             .update(
                 {
                     "status": "ended",
+                    "completion_reason": "user_ended",
+                    "completed_at": now_iso,
                     "updated_at": now_iso,
                 }
             )
@@ -114,6 +128,8 @@ class DraftSessionRepository:
             .update(
                 {
                     "status": "expired",
+                    "completion_reason": "inactivity_expired",
+                    "completed_at": now_iso,
                     "updated_at": now_iso,
                 }
             )

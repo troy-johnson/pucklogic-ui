@@ -1,10 +1,10 @@
 | Field | Value |
 |---|---|
-| Active Phase | `008c-extension-sync-adapters` complete and merged to `main`; next track is `008e` (optional pick_number) or `008d` review |
-| Active Branch | main |
+| Active Phase | `008d-draft-pass-session-lifecycle` — in progress; branch `feat/008d-draft-pass-session-lifecycle` created from main |
+| Active Branch | feat/008d-draft-pass-session-lifecycle |
 | Open PR | none |
-| Current Focus | 008c is done. Follow-up tracks: implement `008e` (optional pick_number in WS auto-ingestion), review `008d` plan before implementing, keep Yahoo gated pending season-live manual verification |
-| Last Action | Merged PR #33 (`feat/008c-extension-sync-adapters`): extension sync adapters complete, 41 tests passing, review passes done, plan `008e` added to track optional pick_number fix |
+| Current Focus | Implement draft pass session lifecycle: completion_reason + completed_at schema columns, entitlement_ref linkage on start, terminal state handling (completed/ended/expired), reconnect denial to closed sessions |
+| Last Action | Created branch `feat/008d-draft-pass-session-lifecycle` from main; plan branch reference and status updated |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
 | Current Hypothesis | WebSocket-backed backend authority is the critical first implementation slice; ESPN is MVP, Yahoo is secondary, manual mode remains the launch fallback, and launch infra is Fly.io single-instance with Redis deferred |
 | Next Steps | 1. Implement `008e`: make pick_number optional in WS auto-ingestion (backend + extension changes per plan) 2. Review `008d` plan (draft pass session lifecycle) before starting implementation 3. Keep Yahoo gated until season-live manual draft-room verification succeeds 4. Keep `010a-web-draft-kit-ui` scaffold-only until spec `010` is approved |

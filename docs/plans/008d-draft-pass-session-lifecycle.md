@@ -1,24 +1,23 @@
 # Plan: Draft Pass Session Lifecycle and Completion Policy
 
 **Spec basis:** `docs/specs/008-live-draft-sync-launch-required.md`, `docs/specs/009-web-draft-kit-ux.md`  
-**Branch:** `feat/live-draft-sync-backend-contract`  
+**Branch:** `feat/008d-draft-pass-session-lifecycle`  
 **Risk Tier:** 3 — entitlement enforcement, schema migration, reconnect lifecycle  
 **Scope:** Medium (~1–2 days, multi-session)  
 **Execution mode:** Dependency waves  
 **Key decisions:** a draft pass is consumed on first successful session start, reconnect never consumes another pass, closed sessions cannot be resumed onto the same pass  
-**Execution status:** Planned  
-**Readiness:** Awaiting implementation approval
+**Execution status:** In progress  
+**Readiness:** Approved — implementation started 2026-04-23
 
 ## Launch Decisions
 
 - A draft pass transitions from **available** to **active** on the first successful `POST /draft-sessions/start`.
 - Reconnect, websocket attach, resume, manual fallback, and sync recovery **must not consume an additional pass**.
 - A pass can back **exactly one active session** at a time.
-- A session is considered closed when it reaches one of four terminal outcomes:
-  - `completed` via platform-complete signal
-  - `completed` via pick-count completion
+- A session is considered closed when it reaches one of two launch-scope terminal outcomes:
   - `ended` via explicit user action
   - `expired` via inactivity timeout/grace expiry
+- Platform-complete DOM detection and pick-count completion are deferred post-launch (season-blocked verification required).
 - Any terminal outcome consumes/closes the pass for reuse protection.
 - Inactivity expiry is a fallback close path, not a clean completion signal.
 - The backend remains the authoritative source of pass/session linkage and allowed reconnect behavior.
@@ -135,23 +134,25 @@ Verify reconnect works with the same active pass/session while blocked second st
    Command: `source apps/api/.venv313/bin/activate && pytest apps/api/tests/services/test_draft_sessions.py -k "second start or concurrent" -q`  
    Expected: duplicate active starts are rejected without consuming another pass.
 
-### Wave 3 — completion and closure
+### Wave 3 — closure and reconnect denial
 
-8. **Add failing tests for terminal session outcomes.**  
-   Command: `source apps/api/.venv313/bin/activate && pytest apps/api/tests/services/test_draft_sessions.py -k "platform_complete or pick_count_complete or user_ended or inactivity_expired" -q`  
-   Expected: tests fail until terminal outcomes write status, reason, and completion timestamp consistently.
+**Scope note:** Platform-complete DOM detection and pick-count completion are deferred post-launch. Launch terminal paths are explicit user end and inactivity expiry only. No new WS message type from the extension is needed.
 
-9. **Implement completion policy and persistence.**  
-   Command: `source apps/api/.venv313/bin/activate && pytest apps/api/tests/services/test_draft_sessions.py -k "platform_complete or pick_count_complete or user_ended or inactivity_expired" -q`  
-   Expected: every terminal outcome closes the session and prevents reconnect reuse.
+8. **Add failing tests for terminal session outcomes writing completion_reason and completed_at.**  
+   Command: `source apps/api/.venv313/bin/activate && pytest apps/api/tests/services/test_draft_sessions.py -k "user_ended or inactivity_expired or completion_reason or completed_at" -q`  
+   Expected: tests fail until both terminal paths write completion_reason and completed_at consistently.
 
-10. **Add router/transport tests for the platform-complete signal and closed-session reconnect denial.**  
-   Command: `source apps/api/.venv313/bin/activate && pytest apps/api/tests/routers/test_draft_sessions.py -k "draft_complete or reconnect denied or end" -q`  
-   Expected: tests fail until the transport contract supports draft completion and denies reconnect to terminal sessions.
+9. **Implement completion audit field persistence on ended and expired paths.**  
+   Command: `source apps/api/.venv313/bin/activate && pytest apps/api/tests/services/test_draft_sessions.py -k "user_ended or inactivity_expired or completion_reason or completed_at" -q`  
+   Expected: both terminal paths close the session and record reason + timestamp.
 
-11. **Implement the HTTP/WS completion contract.**  
-   Command: `source apps/api/.venv313/bin/activate && pytest apps/api/tests/routers/test_draft_sessions.py -k "draft_complete or reconnect denied or end" -q`  
-   Expected: client-complete and explicit-end flows close the session with the correct terminal reason.
+10. **Add router tests for closed-session reconnect denial.**  
+   Command: `source apps/api/.venv313/bin/activate && pytest apps/api/tests/routers/test_draft_sessions.py -k "reconnect denied or terminal or closed" -q`  
+   Expected: tests fail until reconnect to ended/expired sessions is rejected.
+
+11. **Implement reconnect denial for terminal sessions.**  
+   Command: `source apps/api/.venv313/bin/activate && pytest apps/api/tests/routers/test_draft_sessions.py -k "reconnect denied or terminal or closed" -q`  
+   Expected: WS attach and resume requests to ended/expired sessions are rejected with a clear error.
 
 ### Wave 4 — launch verification
 
@@ -188,6 +189,6 @@ Verify reconnect works with the same active pass/session while blocked second st
 ## Open Questions
 
 1. Should `ended` and `expired` both consume the pass identically at the entitlement layer, or should reporting distinguish them only for analytics/support?
-2. Do we already have a stable `pass_id` / entitlement row identity in `subscriptions`, or does launch require a temporary entitlement reference strategy?
-3. Is expected total pick count available from launch-time league metadata, or should `pick_count_complete` remain optional behind platform support?
-4. Should platform-complete arrive as a websocket event, an HTTP call, or both for redundancy?
+2. ~~Do we already have a stable `pass_id` / entitlement row identity in `subscriptions`, or does launch require a temporary entitlement reference strategy?~~ **Resolved:** `subscriptions` is a simple active/inactive row with no consumable pass primitive. `entitlement_ref` stores the subscription `id` as an audit reference on session start. No pass token table needed for launch.
+3. ~~Is expected total pick count available from launch-time league metadata, or should `pick_count_complete` remain optional behind platform support?~~ **Resolved:** `DraftSessionStartRequest` only carries `platform` — no league profile or team count is available at session start. Pick-count completion deferred post-launch alongside platform-complete DOM detection.
+4. ~~Should platform-complete arrive as a websocket event, an HTTP call, or both for redundancy?~~ **Resolved:** Platform-complete DOM detection deferred post-launch (season-blocked). Launch terminal paths are user-explicit end and inactivity expiry only. No new extension WS message type needed.

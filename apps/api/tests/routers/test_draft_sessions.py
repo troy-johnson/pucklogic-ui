@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from core import dependencies
 from core.dependencies import get_current_user, get_draft_session_service
 from main import app
+from services.draft_sessions import TerminalSessionError
 
 MOCK_USER = {"id": "usr_123", "email": "user@example.com"}
 
@@ -95,6 +96,29 @@ class TestStartDraftSession:
         response = client.post("/draft-sessions/start", json={"platform": "espn"})
 
         assert response.status_code == 403
+
+
+class TestTerminalSessionReconnectDenial:
+    def test_resume_returns_409_for_terminal_session(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.resume_session.side_effect = TerminalSessionError("session is closed")
+
+        response = client.post("/draft-sessions/ses_1/resume")
+
+        assert response.status_code == 409
+        assert "closed" in response.json()["detail"]
+
+    def test_connect_emits_session_closed_error_when_terminal(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.attach_socket.side_effect = TerminalSessionError("session is closed")
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            event = ws.receive_json()
+
+        assert event["type"] == "error"
+        assert "closed" in event["payload"]["message"]
 
 
 class TestResumeDraftSession:

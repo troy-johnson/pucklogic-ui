@@ -12,6 +12,10 @@ from repositories.subscriptions import SubscriptionRepository
 logger = logging.getLogger(__name__)
 
 
+class TerminalSessionError(LookupError):
+    """Raised when an operation targets a session that has already reached a terminal state."""
+
+
 class DraftSessionService:
     def __init__(
         self,
@@ -47,6 +51,7 @@ class DraftSessionService:
             "user_id": user_id,
             "platform": platform,
             "status": "active",
+            "entitlement_ref": self._subscription_repo.get_subscription_id(user_id),
             "sync_state": {
                 "last_processed_pick": None,
                 "sync_health": "healthy",
@@ -68,6 +73,7 @@ class DraftSessionService:
             active_after=now - self._inactivity_timeout,
         )
         if active is None or active.get("session_id") != session_id:
+            self._raise_if_terminal(session_id, user_id)
             raise LookupError("active session not found for user")
 
         self._draft_session_repo.resume_session(
@@ -108,6 +114,7 @@ class DraftSessionService:
             active_after=now - self._inactivity_timeout,
         )
         if active is None or active.get("session_id") != session_id:
+            self._raise_if_terminal(session_id, user_id)
             raise LookupError("active session not found for user")
         return active.get("sync_state", {})
 
@@ -257,3 +264,9 @@ class DraftSessionService:
     def _require_active_pass(self, user_id: str) -> None:
         if not self._subscription_repo.is_active(user_id):
             raise PermissionError("active draft pass required")
+
+    def _raise_if_terminal(self, session_id: str, user_id: str) -> None:
+        """Raise TerminalSessionError if the session exists but is in a terminal state."""
+        row = self._draft_session_repo.get_session_by_id(session_id, user_id)
+        if row is not None and row.get("status") in ("ended", "expired"):
+            raise TerminalSessionError("session is closed")

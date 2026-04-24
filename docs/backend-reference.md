@@ -264,13 +264,15 @@ CREATE TABLE draft_sessions (
   user_id UUID NOT NULL REFERENCES auth.users(id),
   platform TEXT NOT NULL CHECK (platform IN ('espn', 'yahoo')),
   status TEXT NOT NULL DEFAULT 'active',   -- 'active', 'ended', 'expired'
-  entitlement_ref TEXT,                    -- draft-pass / entitlement linkage for this session
+  entitlement_ref TEXT,                    -- subscription id recorded at session start for audit
   sync_state JSONB NOT NULL DEFAULT '{"last_processed_pick": null, "sync_health": "healthy", "cursor": null}',
   accepted_picks JSONB NOT NULL DEFAULT '[]',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   last_heartbeat_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  recovered_at TIMESTAMPTZ
+  recovered_at TIMESTAMPTZ,
+  completion_reason TEXT CHECK (completion_reason IN ('user_ended', 'inactivity_expired')),
+  completed_at TIMESTAMPTZ                -- set when session reaches a terminal state
 );
 
 CREATE TABLE exports (
