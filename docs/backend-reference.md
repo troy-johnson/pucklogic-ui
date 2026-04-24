@@ -275,6 +275,14 @@ CREATE TABLE draft_sessions (
   completed_at TIMESTAMPTZ                -- set when session reaches a terminal state
 );
 
+CREATE UNIQUE INDEX draft_sessions_one_active_per_user_idx
+  ON draft_sessions (user_id)
+  WHERE status = 'active';
+
+CREATE UNIQUE INDEX draft_sessions_one_active_per_entitlement_idx
+  ON draft_sessions (entitlement_ref)
+  WHERE status = 'active' AND entitlement_ref IS NOT NULL;
+
 CREATE TABLE exports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id),
@@ -290,11 +298,23 @@ CREATE TABLE subscriptions (
   stripe_session_id TEXT,
   plan TEXT,
   status TEXT DEFAULT 'active',
-  expires_at TIMESTAMPTZ
+  expires_at TIMESTAMPTZ,
+  draft_pass_balance INTEGER NOT NULL DEFAULT 0 CHECK (draft_pass_balance >= 0)
+);
+
+CREATE TABLE stripe_processed_events (
+  event_id TEXT PRIMARY KEY,
+  processed_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 -- NOTE: For launch, session_id linkage is recorded via entitlement_ref on draft_sessions.
 -- No separate draft_tokens table is needed (008d resolution). Future multi-pass products
 -- may introduce a separate token table but are explicitly out of scope for launch.
+-- Launch pass/session rules are enforced by database helpers:
+--   * consume_draft_pass(user_id, now) atomically validates active/unexpired entitlement,
+--     decrements draft_pass_balance, and returns the backing subscription id.
+--   * restore_draft_pass(subscription_id) compensates a consumed pass when session creation fails.
+--   * credit_draft_pass_for_stripe_event(event_id, user_id) atomically claims Stripe webhook
+--     delivery and credits exactly one pass, preventing "processed but uncredited" retries.
 
 -- Injury tracking — one row per player (upserted daily via NHL.com injury feed).
 -- Feeds the Layer 2 "return from injury" signal in v2.0.

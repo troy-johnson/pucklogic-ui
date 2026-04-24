@@ -40,6 +40,10 @@ class FakeWebSocket {
   triggerError(): void {
     this.onerror?.();
   }
+
+  triggerMessage(data: unknown): void {
+    this.onmessage?.({ data: JSON.stringify(data) });
+  }
 }
 
 describe("BackgroundSessionBridge", () => {
@@ -143,6 +147,35 @@ describe("BackgroundSessionBridge", () => {
     vi.advanceTimersByTime(2000);
     await vi.runAllTimersAsync();
     expect(FakeWebSocket.instances).toHaveLength(3);
+  });
+
+  it("does not reconnect after terminal closed-session denial", async () => {
+    const metrics: string[] = [];
+
+    const bridge = new BackgroundSessionBridge({
+      WebSocketImpl: FakeWebSocket,
+      getToken: async () => "token-closed",
+      onMetric: (event) => metrics.push(event.type),
+    });
+
+    await bridge.initSession({
+      sessionId: "session-closed",
+      wsUrl: "wss://api.pucklogic.com/draft-sessions/session-closed/ws",
+    });
+
+    const socket = FakeWebSocket.instances[0];
+    socket.triggerOpen();
+    socket.triggerMessage({
+      type: "error",
+      payload: { message: "session is closed" },
+    });
+    socket.close();
+
+    vi.advanceTimersByTime(1000);
+    await vi.runAllTimersAsync();
+
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    expect(metrics).not.toContain("socket_reconnect_attempt");
   });
 
   it("observability: emits attach/open/close and reconnect recovery signals", async () => {

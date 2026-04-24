@@ -41,6 +41,7 @@ export class BackgroundSessionBridge {
   private wsUrl: string | null = null;
   private reconnectDelayMs = 1000;
   private hasConnected = false;
+  private stopReconnect = false;
 
   constructor(deps: BackgroundSessionBridgeDeps) {
     this.WebSocketImpl = deps.WebSocketImpl;
@@ -52,6 +53,7 @@ export class BackgroundSessionBridge {
   async initSession(params: { sessionId: string; wsUrl: string }): Promise<void> {
     this.sessionId = params.sessionId;
     this.wsUrl = params.wsUrl;
+    this.stopReconnect = false;
     await this.connect();
   }
 
@@ -82,6 +84,20 @@ export class BackgroundSessionBridge {
     const socket = new this.WebSocketImpl(socketUrl);
     this.socket = socket;
 
+    socket.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data) as {
+          type?: string;
+          payload?: { message?: string };
+        };
+        if (message.type === "error" && message.payload?.message?.includes("session is closed")) {
+          this.stopReconnect = true;
+        }
+      } catch {
+        // Ignore non-JSON messages; reconnect policy only cares about structured terminal denial.
+      }
+    };
+
     socket.onopen = () => {
       this.reconnectDelayMs = 1000;
       this.onMetric({ type: "socket_attach_success" });
@@ -101,6 +117,10 @@ export class BackgroundSessionBridge {
     socket.onclose = () => {
       this.socket = null;
       this.onMetric({ type: "socket_close" });
+
+      if (this.stopReconnect) {
+        return;
+      }
 
       const currentDelay = this.reconnectDelayMs;
       this.onMetric({ type: "socket_reconnect_attempt", detail: currentDelay });

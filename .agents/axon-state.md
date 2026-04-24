@@ -3,12 +3,12 @@
 | Active Phase | `008d-draft-pass-session-lifecycle` — in progress; branch `feat/008d-draft-pass-session-lifecycle` created from main |
 | Active Branch | feat/008d-draft-pass-session-lifecycle |
 | Open PR | none |
-| Current Focus | Implement draft pass session lifecycle: completion_reason + completed_at schema columns, entitlement_ref linkage on start, terminal state handling (completed/ended/expired), reconnect denial to closed sessions |
-| Last Action | Created branch `feat/008d-draft-pass-session-lifecycle` from main; plan branch reference and status updated |
+| Current Focus | Close 008d review fixes: atomic draft-pass consume on start, DB active-session invariants, atomic Stripe pass crediting, and terminal-session reconnect suppression |
+| Last Action | Implemented 008d remediation edits across API, migration, extension, and tests; doc/state sync and verification remain pending in this session |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
 | Current Hypothesis | WebSocket-backed backend authority is the critical first implementation slice; ESPN is MVP, Yahoo is secondary, manual mode remains the launch fallback, and launch infra is Fly.io single-instance with Redis deferred |
-| Next Steps | 1. Implement `008e`: make pick_number optional in WS auto-ingestion (backend + extension changes per plan) 2. Review `008d` plan (draft pass session lifecycle) before starting implementation 3. Keep Yahoo gated until season-live manual draft-room verification succeeds 4. Keep `010a-web-draft-kit-ui` scaffold-only until spec `010` is approved |
-| Next Session Entry | Resume at: pick up `008e` implementation or `008d` plan review. |
+| Next Steps | 1. Run focused verification for 008d backend + extension fixes once execution harness is available 2. Re-review 008d against spec/plan AC with updated docs 3. Then resume `008e` optional pick_number follow-up 4. Keep Yahoo gated until season-live manual draft-room verification succeeds |
+| Next Session Entry | Resume at: verify and review the 008d remediation branch, then return to 008e. |
 
 ## Merge and code review outcome (2026-04-10)
 
