@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from services.draft_sessions import DraftSessionService
+from services.draft_sessions import DraftSessionService, TerminalSessionError
 
 
 @pytest.fixture
@@ -674,6 +674,64 @@ class TestAcceptPick:
         assert update_kwargs["user_id"] == "usr_1"
         assert update_kwargs["sync_state"]["last_processed_pick"] == 11
         assert update_kwargs["accepted_picks"][-1]["pick_number"] == 11
+
+
+class TestAcceptPickTerminalSession:
+    def test_accept_pick_raises_terminal_error_for_ended_session(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+        mock_repo.get_active_session.return_value = None
+        mock_repo.get_session_by_id.return_value = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "ended",
+            "completion_reason": "user_ended",
+        }
+
+        with pytest.raises(TerminalSessionError, match="closed"):
+            service.accept_pick(session_id="ses_1", user_id="usr_1", pick_number=1, now=now)
+
+        mock_repo.update_session_progress.assert_not_called()
+
+    def test_accept_pick_raises_terminal_error_for_expired_session(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+        mock_repo.get_active_session.return_value = None
+        mock_repo.get_session_by_id.return_value = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "expired",
+            "completion_reason": "inactivity_expired",
+        }
+
+        with pytest.raises(TerminalSessionError, match="closed"):
+            service.accept_pick(session_id="ses_1", user_id="usr_1", pick_number=1, now=now)
+
+        mock_repo.update_session_progress.assert_not_called()
+
+    def test_accept_pick_raises_generic_lookup_for_truly_missing_session(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+        mock_repo.get_active_session.return_value = None
+        mock_repo.get_session_by_id.return_value = None
+
+        with pytest.raises(LookupError, match="session not found") as exc_info:
+            service.accept_pick(session_id="ses_1", user_id="usr_1", pick_number=1, now=now)
+
+        assert not isinstance(exc_info.value, TerminalSessionError)
+        mock_repo.update_session_progress.assert_not_called()
 
 
 class TestObservability:

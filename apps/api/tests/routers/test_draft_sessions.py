@@ -118,6 +118,39 @@ class TestTerminalSessionReconnectDenial:
             event = ws.receive_json()
 
         assert event["type"] == "error"
+        assert event["payload"]["code"] == "SESSION_CLOSED"
+        assert "closed" in event["payload"]["message"]
+
+
+class TestWebSocketTerminalInLoop:
+    def test_pick_event_sends_session_closed_code_and_closes_socket(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.attach_socket.return_value = {"sync_health": "healthy"}
+        mock_service.accept_pick.side_effect = TerminalSessionError("session is closed")
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            ws.receive_json()
+            ws.send_json({"type": "pick", "payload": {"pick_number": 1}})
+            event = ws.receive_json()
+
+        assert event["type"] == "error"
+        assert event["payload"]["code"] == "SESSION_CLOSED"
+        assert "closed" in event["payload"]["message"]
+
+    def test_sync_state_event_sends_session_closed_code_and_closes_socket(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.attach_socket.return_value = {"sync_health": "healthy"}
+        mock_service.reconnect_sync_state.side_effect = TerminalSessionError("session is closed")
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            ws.receive_json()
+            ws.send_json({"type": "sync_state"})
+            event = ws.receive_json()
+
+        assert event["type"] == "error"
+        assert event["payload"]["code"] == "SESSION_CLOSED"
         assert "closed" in event["payload"]["message"]
 
 

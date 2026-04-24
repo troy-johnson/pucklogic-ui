@@ -143,7 +143,13 @@ async def draft_session_ws(
             now=datetime.now(UTC),
         )
         await websocket.send_json({"type": "sync_state", "payload": sync_state})
-    except (HTTPException, PermissionError, TerminalSessionError, LookupError) as exc:
+    except TerminalSessionError as exc:
+        await websocket.send_json(
+            {"type": "error", "payload": {"code": "SESSION_CLOSED", "message": str(exc)}}
+        )
+        await websocket.close(code=1008)
+        return
+    except (HTTPException, PermissionError, LookupError) as exc:
         message = exc.detail if isinstance(exc, HTTPException) else str(exc)
         await websocket.send_json({"type": "error", "payload": {"message": message}})
         await websocket.close(code=1008)
@@ -181,6 +187,12 @@ async def draft_session_ws(
                     player_name=payload.get("player_name"),
                     player_lookup=payload.get("player_lookup"),
                 )
+            except TerminalSessionError as exc:
+                await websocket.send_json(
+                    {"type": "error", "payload": {"code": "SESSION_CLOSED", "message": str(exc)}}
+                )
+                await websocket.close(code=1008)
+                return
             except (ValueError, LookupError, PermissionError) as exc:
                 await websocket.send_json(
                     {
@@ -210,6 +222,12 @@ async def draft_session_ws(
                     user_id=user["id"],
                     now=datetime.now(UTC),
                 )
+            except TerminalSessionError as exc:
+                await websocket.send_json(
+                    {"type": "error", "payload": {"code": "SESSION_CLOSED", "message": str(exc)}}
+                )
+                await websocket.close(code=1008)
+                return
             except (PermissionError, LookupError) as exc:
                 await websocket.send_json({"type": "error", "payload": {"message": str(exc)}})
                 continue

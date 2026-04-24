@@ -167,7 +167,7 @@ describe("BackgroundSessionBridge", () => {
     socket.triggerOpen();
     socket.triggerMessage({
       type: "error",
-      payload: { message: "session is closed" },
+      payload: { code: "SESSION_CLOSED", message: "session is closed" },
     });
     socket.close();
 
@@ -176,6 +176,56 @@ describe("BackgroundSessionBridge", () => {
 
     expect(FakeWebSocket.instances).toHaveLength(1);
     expect(metrics).not.toContain("socket_reconnect_attempt");
+  });
+
+  it("repeated INIT_SESSION closes the old socket and opens one for the new session", async () => {
+    const bridge = new BackgroundSessionBridge({
+      WebSocketImpl: FakeWebSocket,
+      getToken: async () => "token-reinit",
+    });
+
+    await bridge.initSession({
+      sessionId: "session-1",
+      wsUrl: "wss://api.pucklogic.com/draft-sessions/session-1/ws",
+    });
+    const firstSocket = FakeWebSocket.instances[0];
+    firstSocket.triggerOpen();
+
+    await bridge.initSession({
+      sessionId: "session-2",
+      wsUrl: "wss://api.pucklogic.com/draft-sessions/session-2/ws",
+    });
+
+    expect(firstSocket.readyState).toBe(FakeWebSocket.CLOSED);
+    expect(FakeWebSocket.instances).toHaveLength(2);
+    expect(FakeWebSocket.instances[1].url).toContain("session-2");
+  });
+
+  it("old socket reconnect loop does not fire after repeated INIT_SESSION", async () => {
+    const bridge = new BackgroundSessionBridge({
+      WebSocketImpl: FakeWebSocket,
+      getToken: async () => "token-reinit2",
+    });
+
+    await bridge.initSession({
+      sessionId: "session-1",
+      wsUrl: "wss://api.pucklogic.com/draft-sessions/session-1/ws",
+    });
+    const firstSocket = FakeWebSocket.instances[0];
+    firstSocket.triggerOpen();
+    firstSocket.close();
+
+    await bridge.initSession({
+      sessionId: "session-2",
+      wsUrl: "wss://api.pucklogic.com/draft-sessions/session-2/ws",
+    });
+
+    expect(FakeWebSocket.instances).toHaveLength(2);
+
+    vi.advanceTimersByTime(2000);
+    await vi.runAllTimersAsync();
+
+    expect(FakeWebSocket.instances).toHaveLength(2);
   });
 
   it("observability: emits attach/open/close and reconnect recovery signals", async () => {

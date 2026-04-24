@@ -201,6 +201,7 @@ class DraftSessionService:
             active_after=now - self._inactivity_timeout,
         )
         if active is None or active.get("session_id") != session_id:
+            self._raise_if_terminal(session_id, user_id)
             raise LookupError("active session not found for user")
 
         sync_state = dict(active.get("sync_state") or {})

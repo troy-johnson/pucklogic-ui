@@ -42,6 +42,7 @@ export class BackgroundSessionBridge {
   private reconnectDelayMs = 1000;
   private hasConnected = false;
   private stopReconnect = false;
+  private _cancelCurrentReconnect: (() => void) | null = null;
 
   constructor(deps: BackgroundSessionBridgeDeps) {
     this.WebSocketImpl = deps.WebSocketImpl;
@@ -51,8 +52,12 @@ export class BackgroundSessionBridge {
   }
 
   async initSession(params: { sessionId: string; wsUrl: string }): Promise<void> {
+    this._cancelCurrentReconnect?.();
+    this.socket?.close();
     this.sessionId = params.sessionId;
     this.wsUrl = params.wsUrl;
+    this.reconnectDelayMs = 1000;
+    this.hasConnected = false;
     this.stopReconnect = false;
     await this.connect();
   }
@@ -84,13 +89,18 @@ export class BackgroundSessionBridge {
     const socket = new this.WebSocketImpl(socketUrl);
     this.socket = socket;
 
+    let cancelled = false;
+    this._cancelCurrentReconnect = () => {
+      cancelled = true;
+    };
+
     socket.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data) as {
           type?: string;
-          payload?: { message?: string };
+          payload?: { message?: string; code?: string };
         };
-        if (message.type === "error" && message.payload?.message?.includes("session is closed")) {
+        if (message.type === "error" && message.payload?.code === "SESSION_CLOSED") {
           this.stopReconnect = true;
         }
       } catch {
@@ -118,13 +128,16 @@ export class BackgroundSessionBridge {
       this.socket = null;
       this.onMetric({ type: "socket_close" });
 
-      if (this.stopReconnect) {
+      if (this.stopReconnect || cancelled) {
         return;
       }
 
       const currentDelay = this.reconnectDelayMs;
       this.onMetric({ type: "socket_reconnect_attempt", detail: currentDelay });
       this.setTimeoutImpl(() => {
+        if (cancelled) {
+          return;
+        }
         void this.connect();
       }, currentDelay);
 
