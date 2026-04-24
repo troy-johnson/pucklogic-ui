@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -21,8 +22,6 @@ class SubscriptionRepository:
 
     def get_subscription_id(self, user_id: str) -> str | None:
         """Return the id of the active subscription row for *user_id*, or None."""
-        from datetime import UTC, datetime
-
         result = (
             self._db.table("subscriptions")
             .select("id, expires_at")
@@ -42,7 +41,7 @@ class SubscriptionRepository:
         """Return True if user_id has at least one unconsumed draft pass."""
         result = (
             self._db.table("subscriptions")
-            .select("draft_pass_balance")
+            .select("draft_pass_balance, expires_at")
             .eq("user_id", user_id)
             .eq("status", "active")
             .maybe_single()
@@ -50,26 +49,28 @@ class SubscriptionRepository:
         )
         if result.data is None:
             return False
+        expires_at = result.data.get("expires_at")
+        if expires_at is not None and datetime.fromisoformat(expires_at) <= datetime.now(UTC):
+            return False
         return (result.data.get("draft_pass_balance") or 0) > 0
 
-    def deduct_draft_pass(self, user_id: str) -> None:
-        """Decrement draft_pass_balance by 1. Raises PermissionError if balance is 0."""
-        result = (
-            self._db.table("subscriptions")
-            .select("id, draft_pass_balance")
-            .eq("user_id", user_id)
-            .eq("status", "active")
-            .maybe_single()
-            .execute()
-        )
-        if result.data is None or (result.data.get("draft_pass_balance") or 0) <= 0:
+    def consume_draft_pass(self, user_id: str, *, now: datetime) -> str:
+        """Atomically consume one eligible draft pass and return its subscription id."""
+        result = self._db.rpc(
+            "consume_draft_pass",
+            {"p_user_id": user_id, "p_now": now.astimezone(UTC).isoformat()},
+        ).execute()
+        rows = result.data or []
+        if not rows:
             raise PermissionError("active draft pass required")
-        (
-            self._db.table("subscriptions")
-            .update({"draft_pass_balance": result.data["draft_pass_balance"] - 1})
-            .eq("id", result.data["id"])
-            .execute()
-        )
+        return rows[0]["subscription_id"]
+
+    def restore_draft_pass(self, subscription_id: str) -> None:
+        """Restore a previously consumed draft pass when session creation fails."""
+        self._db.rpc(
+            "restore_draft_pass",
+            {"p_subscription_id": subscription_id},
+        ).execute()
 
     def credit_draft_pass(self, user_id: str) -> None:
         """Increment draft_pass_balance by 1, creating the subscription row if needed."""
@@ -104,22 +105,16 @@ class SubscriptionRepository:
                 .execute()
             )
 
-    def try_mark_stripe_event_processed(self, event_id: str) -> bool:
-        """Atomically claim a Stripe event. Returns True if newly inserted (credit should proceed).
-        Returns False if the event_id was already present (duplicate delivery — skip credit).
-        Uses INSERT ON CONFLICT DO NOTHING so concurrent duplicate deliveries cannot both win.
-        """
-        result = (
-            self._db.table("stripe_processed_events")
-            .upsert({"event_id": event_id}, on_conflict="event_id", ignore_duplicates=True)
-            .execute()
-        )
+    def credit_draft_pass_for_stripe_event(self, event_id: str, user_id: str) -> bool:
+        """Atomically claim a Stripe event and credit one pass when newly processed."""
+        result = self._db.rpc(
+            "credit_draft_pass_for_stripe_event",
+            {"p_event_id": event_id, "p_user_id": user_id},
+        ).execute()
         return bool(result.data)
 
     def is_active(self, user_id: str) -> bool:
         """Return True if user_id has an active, non-expired subscription."""
-        from datetime import UTC, datetime
-
         result = (
             self._db.table("subscriptions")
             .select("status, expires_at")

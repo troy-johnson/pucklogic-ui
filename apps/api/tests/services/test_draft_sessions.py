@@ -37,7 +37,21 @@ class TestStartSession:
         mock_sub_repo: MagicMock,
     ) -> None:
         mock_repo.get_active_session.return_value = None
-        mock_sub_repo.has_draft_pass.return_value = False
+        mock_sub_repo.consume_draft_pass.side_effect = PermissionError("active draft pass required")
+
+        with pytest.raises(PermissionError, match="active draft pass"):
+            service.start_session(user_id="usr_1", platform="espn", now=datetime.now(UTC))
+
+        mock_repo.create_session.assert_not_called()
+
+    def test_rejects_expired_subscription_even_with_positive_pass_balance(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        mock_repo.get_active_session.return_value = None
+        mock_sub_repo.consume_draft_pass.side_effect = PermissionError("active draft pass required")
 
         with pytest.raises(PermissionError, match="active draft pass"):
             service.start_session(user_id="usr_1", platform="espn", now=datetime.now(UTC))
@@ -58,8 +72,7 @@ class TestStartSession:
 
         assert result == existing
         mock_repo.create_session.assert_not_called()
-        mock_sub_repo.has_draft_pass.assert_not_called()
-        mock_sub_repo.deduct_draft_pass.assert_not_called()
+        mock_sub_repo.consume_draft_pass.assert_not_called()
 
     def test_creates_new_session_when_none_active(
         self,
@@ -69,16 +82,17 @@ class TestStartSession:
     ) -> None:
         now = datetime.now(UTC)
         mock_repo.get_active_session.return_value = None
-        mock_sub_repo.has_draft_pass.return_value = True
+        mock_sub_repo.consume_draft_pass.return_value = "sub_abc123"
 
         result = service.start_session(user_id="usr_1", platform="espn", now=now)
 
         assert result["user_id"] == "usr_1"
         assert result["platform"] == "espn"
         assert result["status"] == "active"
+        assert result["entitlement_ref"] == "sub_abc123"
         assert result["sync_state"]["sync_health"] == "healthy"
         mock_repo.create_session.assert_called_once()
-        mock_sub_repo.deduct_draft_pass.assert_called_once_with("usr_1")
+        mock_sub_repo.consume_draft_pass.assert_called_once_with("usr_1", now=now)
 
     def test_start_session_expires_inactive_rows_before_lookup(
         self,
@@ -88,7 +102,7 @@ class TestStartSession:
     ) -> None:
         now = datetime.now(UTC)
         mock_repo.get_active_session.return_value = None
-        mock_sub_repo.has_draft_pass.return_value = True
+        mock_sub_repo.consume_draft_pass.return_value = "sub_abc123"
 
         service.start_session(user_id="usr_1", platform="espn", now=now)
 
@@ -103,13 +117,47 @@ class TestStartSession:
     ) -> None:
         now = datetime.now(UTC)
         mock_repo.get_active_session.return_value = None
-        mock_sub_repo.has_draft_pass.return_value = True
-        mock_sub_repo.get_subscription_id.return_value = "sub_abc123"
+        mock_sub_repo.consume_draft_pass.return_value = "sub_abc123"
 
         service.start_session(user_id="usr_1", platform="espn", now=now)
 
         payload = mock_repo.create_session.call_args.args[0]
         assert payload["entitlement_ref"] == "sub_abc123"
+
+    def test_restores_pass_if_session_create_fails(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+        mock_repo.get_active_session.side_effect = [None, None]
+        mock_sub_repo.consume_draft_pass.return_value = "sub_abc123"
+        mock_repo.create_session.side_effect = RuntimeError("insert failed")
+
+        with pytest.raises(RuntimeError, match="insert failed"):
+            service.start_session(user_id="usr_1", platform="espn", now=now)
+
+        mock_sub_repo.restore_draft_pass.assert_called_once_with("sub_abc123")
+
+    def test_returns_raced_active_session_when_create_loses_race(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        """If create_session fails after consume (uniqueness violation) and a raced session
+        exists, restore the pass and return the winner's session rather than raising."""
+        now = datetime.now(UTC)
+        raced_active = {"session_id": "ses_1", "user_id": "usr_1", "status": "active"}
+        mock_repo.get_active_session.side_effect = [None, raced_active]
+        mock_sub_repo.consume_draft_pass.return_value = "sub_abc123"
+        mock_repo.create_session.side_effect = RuntimeError("unique constraint violation")
+
+        result = service.start_session(user_id="usr_1", platform="espn", now=now)
+
+        assert result == raced_active
+        mock_sub_repo.restore_draft_pass.assert_called_once_with("sub_abc123")
 
 
 class TestPassConsumptionInvariants:
@@ -133,9 +181,7 @@ class TestPassConsumptionInvariants:
 
         assert result is existing
         mock_repo.create_session.assert_not_called()
-        mock_sub_repo.has_draft_pass.assert_not_called()
-        mock_sub_repo.deduct_draft_pass.assert_not_called()
-        mock_sub_repo.get_subscription_id.assert_not_called()
+        mock_sub_repo.consume_draft_pass.assert_not_called()
 
     def test_reconnect_does_not_consume_pass(
         self,
@@ -151,9 +197,7 @@ class TestPassConsumptionInvariants:
 
         service.resume_session(session_id="ses_1", user_id="usr_1", now=now)
 
-        mock_sub_repo.has_draft_pass.assert_not_called()
-        mock_sub_repo.deduct_draft_pass.assert_not_called()
-        mock_sub_repo.get_subscription_id.assert_not_called()
+        mock_sub_repo.consume_draft_pass.assert_not_called()
         mock_repo.create_session.assert_not_called()
 
     def test_same_pass_cannot_back_two_active_sessions(
@@ -176,7 +220,7 @@ class TestPassConsumptionInvariants:
 
         assert result["session_id"] == "ses_1"
         mock_repo.create_session.assert_not_called()
-        mock_sub_repo.deduct_draft_pass.assert_not_called()
+        mock_sub_repo.consume_draft_pass.assert_not_called()
 
 
 class TestSecondStartAntiAbuse:
@@ -196,7 +240,7 @@ class TestSecondStartAntiAbuse:
 
         assert first["session_id"] == second["session_id"] == "ses_1"
         mock_repo.create_session.assert_not_called()
-        mock_sub_repo.deduct_draft_pass.assert_not_called()
+        mock_sub_repo.consume_draft_pass.assert_not_called()
 
     def test_concurrent_start_never_calls_create_session_twice(
         self,
@@ -206,8 +250,7 @@ class TestSecondStartAntiAbuse:
     ) -> None:
         """Even repeated start calls must not result in more than one create_session call."""
         now = datetime.now(UTC)
-        mock_sub_repo.has_draft_pass.return_value = True
-        mock_sub_repo.get_subscription_id.return_value = "sub_abc123"
+        mock_sub_repo.consume_draft_pass.return_value = "sub_abc123"
         # First call: no active session → creates one. Second call: session exists → returns it.
         mock_repo.get_active_session.side_effect = [
             None,
@@ -218,7 +261,23 @@ class TestSecondStartAntiAbuse:
         service.start_session(user_id="usr_1", platform="espn", now=now)
 
         mock_repo.create_session.assert_called_once()
-        mock_sub_repo.deduct_draft_pass.assert_called_once()
+        mock_sub_repo.consume_draft_pass.assert_called_once_with("usr_1", now=now)
+
+    def test_returns_raced_active_session_when_atomic_consume_loses_race(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+        raced_active = {"session_id": "ses_1", "user_id": "usr_1", "status": "active"}
+        mock_repo.get_active_session.side_effect = [None, raced_active]
+        mock_sub_repo.consume_draft_pass.side_effect = PermissionError("active draft pass required")
+
+        result = service.start_session(user_id="usr_1", platform="espn", now=now)
+
+        assert result == raced_active
+        mock_repo.create_session.assert_not_called()
 
 
 class TestTerminalSessionDenial:

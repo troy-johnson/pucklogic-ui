@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from core.dependencies import get_subscription_repository
+from core.dependencies import get_current_user, get_subscription_repository
 from main import app
 
 CHECKOUT_BODY = {
@@ -15,10 +15,7 @@ CHECKOUT_BODY = {
     "cancel_url": "http://localhost:3000/cancel",
 }
 
-CHECKOUT_BODY_WITH_USER = {
-    **CHECKOUT_BODY,
-    "user_id": "user-abc-123",
-}
+AUTHED_USER = {"id": "user-abc-123", "email": "user@example.com"}
 
 
 @pytest.fixture
@@ -28,8 +25,9 @@ def mock_sub_repo() -> MagicMock:
 
 
 @pytest.fixture(autouse=True)
-def override_sub_repo(mock_sub_repo: MagicMock) -> None:
+def override_deps(mock_sub_repo: MagicMock) -> None:
     app.dependency_overrides[get_subscription_repository] = lambda: mock_sub_repo
+    app.dependency_overrides[get_current_user] = lambda: AUTHED_USER
     yield
     app.dependency_overrides.clear()
 
@@ -56,6 +54,13 @@ class TestCreateCheckoutSession:
             resp = client.post("/stripe/create-checkout-session", json=CHECKOUT_BODY)
 
         assert resp.status_code == 200
+
+    def test_returns_401_when_unauthenticated(self, client: TestClient) -> None:
+        app.dependency_overrides.pop(get_current_user, None)
+        with patch("routers.stripe.settings") as mock_settings:
+            mock_settings.stripe_secret_key = "sk_test_123"
+            resp = client.post("/stripe/create-checkout-session", json=CHECKOUT_BODY)
+        assert resp.status_code == 401
 
     def test_response_has_checkout_url(self, client: TestClient) -> None:
         mock_session = MagicMock()
@@ -92,26 +97,7 @@ class TestCreateCheckoutSession:
         assert call_kwargs["success_url"] == CHECKOUT_BODY["success_url"]
         assert call_kwargs["cancel_url"] == CHECKOUT_BODY["cancel_url"]
 
-    def test_stripe_session_passes_client_reference_id_when_user_id_provided(
-        self, client: TestClient
-    ) -> None:
-        mock_session = MagicMock()
-        mock_session.url = "https://checkout.stripe.com/pay/cs_test_abc"
-        mock_session.id = "cs_test_abc"
-
-        with (
-            patch("routers.stripe.settings") as mock_settings,
-            patch("routers.stripe.stripe") as mock_stripe,
-        ):
-            mock_settings.stripe_secret_key = "sk_test_123"
-            mock_settings.stripe_price_id = "price_123"
-            mock_stripe.checkout.Session.create.return_value = mock_session
-            client.post("/stripe/create-checkout-session", json=CHECKOUT_BODY_WITH_USER)
-
-        call_kwargs = mock_stripe.checkout.Session.create.call_args.kwargs
-        assert call_kwargs.get("client_reference_id") == "user-abc-123"
-
-    def test_stripe_session_omits_client_reference_id_when_no_user_id(
+    def test_stripe_session_always_uses_authed_user_as_client_reference_id(
         self, client: TestClient
     ) -> None:
         mock_session = MagicMock()
@@ -128,7 +114,7 @@ class TestCreateCheckoutSession:
             client.post("/stripe/create-checkout-session", json=CHECKOUT_BODY)
 
         call_kwargs = mock_stripe.checkout.Session.create.call_args.kwargs
-        assert "client_reference_id" not in call_kwargs
+        assert call_kwargs.get("client_reference_id") == AUTHED_USER["id"]
 
 
 class TestStripeWebhook:
@@ -186,6 +172,8 @@ class TestStripeWebhook:
     def test_webhook_credits_draft_pass_on_checkout_completed(
         self, client: TestClient, mock_sub_repo: MagicMock
     ) -> None:
+        mock_sub_repo.credit_draft_pass_for_stripe_event.return_value = True
+
         with (
             patch("routers.stripe.settings") as mock_settings,
             patch("routers.stripe.stripe") as mock_stripe,
@@ -193,6 +181,7 @@ class TestStripeWebhook:
             mock_settings.stripe_secret_key = "sk_test_123"
             mock_settings.stripe_webhook_secret = "whsec_test"
             mock_stripe.Webhook.construct_event.return_value = {
+                "id": "evt_new",
                 "type": "checkout.session.completed",
                 "data": {
                     "object": {
@@ -208,7 +197,9 @@ class TestStripeWebhook:
             )
 
         assert resp.status_code == 200
-        mock_sub_repo.credit_draft_pass.assert_called_once_with("user-abc-123")
+        mock_sub_repo.credit_draft_pass_for_stripe_event.assert_called_once_with(
+            "evt_new", "user-abc-123"
+        )
 
     def test_webhook_skips_credit_when_no_client_reference_id(
         self, client: TestClient, mock_sub_repo: MagicMock
@@ -230,7 +221,7 @@ class TestStripeWebhook:
             )
 
         assert resp.status_code == 200
-        mock_sub_repo.credit_draft_pass.assert_not_called()
+        mock_sub_repo.credit_draft_pass_for_stripe_event.assert_not_called()
 
     def test_webhook_ignores_other_event_types(
         self, client: TestClient, mock_sub_repo: MagicMock
@@ -251,12 +242,12 @@ class TestStripeWebhook:
                 headers={"stripe-signature": "t=123,v1=abc"},
             )
 
-        mock_sub_repo.credit_draft_pass.assert_not_called()
+        mock_sub_repo.credit_draft_pass_for_stripe_event.assert_not_called()
 
     def test_webhook_skips_credit_on_duplicate_event(
         self, client: TestClient, mock_sub_repo: MagicMock
     ) -> None:
-        mock_sub_repo.try_mark_stripe_event_processed.return_value = False
+        mock_sub_repo.credit_draft_pass_for_stripe_event.return_value = False
 
         with (
             patch("routers.stripe.settings") as mock_settings,
@@ -281,12 +272,14 @@ class TestStripeWebhook:
             )
 
         assert resp.status_code == 200
-        mock_sub_repo.credit_draft_pass.assert_not_called()
+        mock_sub_repo.credit_draft_pass_for_stripe_event.assert_called_once_with(
+            "evt_duplicate", "user-abc-123"
+        )
 
-    def test_webhook_credits_when_try_mark_succeeds(
+    def test_webhook_credits_when_atomic_event_credit_succeeds(
         self, client: TestClient, mock_sub_repo: MagicMock
     ) -> None:
-        mock_sub_repo.try_mark_stripe_event_processed.return_value = True
+        mock_sub_repo.credit_draft_pass_for_stripe_event.return_value = True
 
         with (
             patch("routers.stripe.settings") as mock_settings,
@@ -310,5 +303,6 @@ class TestStripeWebhook:
                 headers={"stripe-signature": "t=123,v1=abc"},
             )
 
-        mock_sub_repo.try_mark_stripe_event_processed.assert_called_once_with("evt_new")
-        mock_sub_repo.credit_draft_pass.assert_called_once_with("user-abc-123")
+        mock_sub_repo.credit_draft_pass_for_stripe_event.assert_called_once_with(
+            "evt_new", "user-abc-123"
+        )

@@ -6,7 +6,7 @@
 **Scope:** Medium (~1–2 days, multi-session)  
 **Execution mode:** Dependency waves  
 **Key decisions:** a draft pass is consumed on first successful session start, reconnect never consumes another pass, closed sessions cannot be resumed onto the same pass  
-**Execution status:** In progress  
+**Execution status:** Implementation complete  
 **Readiness:** Approved — implementation started 2026-04-23
 
 ## Launch Decisions
@@ -160,9 +160,24 @@ Verify reconnect works with the same active pass/session while blocked second st
    Command: `source apps/api/.venv313/bin/activate && pytest apps/api/tests/repositories/test_draft_sessions.py apps/api/tests/services/test_draft_sessions.py apps/api/tests/routers/test_draft_sessions.py -q`  
    Expected: all draft-session lifecycle tests pass.
 
-13. **Record manual verification evidence for start → attach → reconnect → complete/expire boundaries.**  
-   Command: `gh pr comment <pr-number> --body-file <prepared-note>`  
-   Expected: PR includes explicit evidence that reconnect reuses the same pass and closed sessions cannot be reopened.
+13. **Manual draft-room verification — deferred (seasonal blocker).**  
+   Real ESPN/Yahoo live draft-room verification requires an active draft season and is not possible in the off-season. This step is explicitly deferred until a live draft environment is available. This branch is approved for implementation correctness; launch-readiness remains blocked on seasonal manual verification.  
+   See known limitations note below.
+
+---
+
+## Known Limitations
+
+**Real ESPN/Yahoo draft-room verification is deferred until draft season due to environment availability.**  
+This branch is approved for implementation correctness; launch-readiness remains blocked on seasonal manual verification.
+
+The following lifecycle paths are covered by automated tests only and have not been exercised against a live draft room:
+- Session start → WS attach → manual pick ingestion
+- Reconnect and sync_state recovery after disconnect
+- Terminal denial (closed session) preventing reconnect
+- Extension reconnect suppression on terminal denial
+
+Manual verification evidence must be recorded before promoting to production when a live draft environment is available.
 
 ---
 

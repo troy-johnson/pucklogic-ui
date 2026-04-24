@@ -44,8 +44,16 @@ class DraftSessionService:
         if active is not None:
             return active
 
-        if not self._subscription_repo.has_draft_pass(user_id):
-            raise PermissionError("active draft pass required")
+        try:
+            entitlement_ref = self._subscription_repo.consume_draft_pass(user_id, now=now)
+        except PermissionError:
+            raced_active = self._draft_session_repo.get_active_session(
+                user_id,
+                active_after=now - self._inactivity_timeout,
+            )
+            if raced_active is not None:
+                return raced_active
+            raise
 
         now_iso = now.astimezone(UTC).isoformat()
         payload = {
@@ -53,7 +61,7 @@ class DraftSessionService:
             "user_id": user_id,
             "platform": platform,
             "status": "active",
-            "entitlement_ref": self._subscription_repo.get_subscription_id(user_id),
+            "entitlement_ref": entitlement_ref,
             "sync_state": {
                 "last_processed_pick": None,
                 "sync_health": "healthy",
@@ -64,11 +72,17 @@ class DraftSessionService:
             "updated_at": now_iso,
             "last_heartbeat_at": now_iso,
         }
-        self._draft_session_repo.create_session(payload)
-        # Non-atomic: if deduct_draft_pass raises after create_session succeeds, the session
-        # exists but no pass was consumed. Acceptable for single-instance launch; would need
-        # a transaction or compensating job at scale.
-        self._subscription_repo.deduct_draft_pass(user_id)
+        try:
+            self._draft_session_repo.create_session(payload)
+        except Exception:
+            self._subscription_repo.restore_draft_pass(entitlement_ref)
+            raced_active = self._draft_session_repo.get_active_session(
+                user_id,
+                active_after=now - self._inactivity_timeout,
+            )
+            if raced_active is not None:
+                return raced_active
+            raise
         return payload
 
     def resume_session(self, *, session_id: str, user_id: str, now: datetime) -> dict:
