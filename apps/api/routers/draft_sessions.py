@@ -87,6 +87,8 @@ async def get_sync_state(
             user_id=user["id"],
             now=datetime.now(UTC),
         )
+    except TerminalSessionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except LookupError as exc:

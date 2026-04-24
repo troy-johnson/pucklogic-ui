@@ -181,6 +181,16 @@ class TestSyncState:
         assert response.status_code == 404
         assert response.json()["detail"] == "active session not found for user"
 
+    def test_get_sync_state_returns_409_for_terminal_session(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.get_sync_state.side_effect = TerminalSessionError("session is closed")
+
+        response = client.get("/draft-sessions/ses_1/sync-state")
+
+        assert response.status_code == 409
+        assert "closed" in response.json()["detail"]
+
 
 class TestManualPickEndpoint:
     def test_manual_pick_returns_state_update_payload(

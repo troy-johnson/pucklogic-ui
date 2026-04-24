@@ -98,6 +98,17 @@ class TestDraftSessionRepositoryLifecycle:
         assert update_call["completion_reason"] == "user_ended"
         assert update_call["completed_at"] == now.astimezone(UTC).isoformat()
 
+    def test_end_session_scopes_write_to_active_status(
+        self, repo: DraftSessionRepository, mock_db: MagicMock
+    ) -> None:
+        now = datetime.now(UTC)
+
+        repo.end_session(session_id="ses_1", user_id="usr_1", now=now)
+
+        # Traverse the eq() chain: update().eq().eq().eq()
+        third_eq = mock_db.table.return_value.update.return_value.eq.return_value.eq.return_value.eq
+        assert third_eq.call_args.args == ("status", "active")
+
     def test_create_session_stores_entitlement_ref(
         self, repo: DraftSessionRepository, mock_db: MagicMock
     ) -> None:

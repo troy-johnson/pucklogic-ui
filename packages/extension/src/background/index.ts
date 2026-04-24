@@ -120,7 +120,7 @@ export class BackgroundSessionBridge {
 
 export function startBackgroundServiceWorker(): void {
   const bridge = new BackgroundSessionBridge({
-    WebSocketImpl: WebSocket,
+    WebSocketImpl: WebSocket as unknown as SocketConstructor,
     getToken: async () => {
       const result = await chrome.storage.local.get("authToken");
       return result.authToken as string | undefined;
