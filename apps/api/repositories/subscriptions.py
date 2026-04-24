@@ -38,6 +38,66 @@ class SubscriptionRepository:
             return None
         return result.data.get("id")
 
+    def has_draft_pass(self, user_id: str) -> bool:
+        """Return True if user_id has at least one unconsumed draft pass."""
+        result = (
+            self._db.table("subscriptions")
+            .select("draft_pass_balance")
+            .eq("user_id", user_id)
+            .eq("status", "active")
+            .maybe_single()
+            .execute()
+        )
+        if result.data is None:
+            return False
+        return (result.data.get("draft_pass_balance") or 0) > 0
+
+    def deduct_draft_pass(self, user_id: str) -> None:
+        """Decrement draft_pass_balance by 1. Raises PermissionError if balance is 0."""
+        result = (
+            self._db.table("subscriptions")
+            .select("id, draft_pass_balance")
+            .eq("user_id", user_id)
+            .eq("status", "active")
+            .maybe_single()
+            .execute()
+        )
+        if result.data is None or (result.data.get("draft_pass_balance") or 0) <= 0:
+            raise PermissionError("active draft pass required")
+        (
+            self._db.table("subscriptions")
+            .update({"draft_pass_balance": result.data["draft_pass_balance"] - 1})
+            .eq("id", result.data["id"])
+            .execute()
+        )
+
+    def credit_draft_pass(self, user_id: str) -> None:
+        """Increment draft_pass_balance by 1, creating the subscription row if needed."""
+        result = (
+            self._db.table("subscriptions")
+            .select("id, draft_pass_balance")
+            .eq("user_id", user_id)
+            .maybe_single()
+            .execute()
+        )
+        if result.data is None:
+            self._db.table("subscriptions").insert(
+                {
+                    "user_id": user_id,
+                    "plan": "draft_pass",
+                    "status": "active",
+                    "draft_pass_balance": 1,
+                }
+            ).execute()
+        else:
+            current = result.data.get("draft_pass_balance") or 0
+            (
+                self._db.table("subscriptions")
+                .update({"draft_pass_balance": current + 1})
+                .eq("id", result.data["id"])
+                .execute()
+            )
+
     def is_active(self, user_id: str) -> bool:
         """Return True if user_id has an active, non-expired subscription."""
         from datetime import UTC, datetime

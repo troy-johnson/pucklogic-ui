@@ -36,7 +36,6 @@ class DraftSessionService:
 
     def start_session(self, *, user_id: str, platform: str, now: datetime) -> dict:
         self.expire_inactive_sessions(now)
-        self._require_active_pass(user_id)
 
         active = self._draft_session_repo.get_active_session(
             user_id,
@@ -44,6 +43,9 @@ class DraftSessionService:
         )
         if active is not None:
             return active
+
+        if not self._subscription_repo.has_draft_pass(user_id):
+            raise PermissionError("active draft pass required")
 
         now_iso = now.astimezone(UTC).isoformat()
         payload = {
@@ -63,11 +65,11 @@ class DraftSessionService:
             "last_heartbeat_at": now_iso,
         }
         self._draft_session_repo.create_session(payload)
+        self._subscription_repo.deduct_draft_pass(user_id)
         return payload
 
     def resume_session(self, *, session_id: str, user_id: str, now: datetime) -> dict:
         self.expire_inactive_sessions(now)
-        self._require_active_pass(user_id)
         active = self._draft_session_repo.get_active_session(
             user_id,
             active_after=now - self._inactivity_timeout,
@@ -170,7 +172,6 @@ class DraftSessionService:
         player_lookup: dict[str, str | int | float | bool] | None = None,
     ) -> dict[str, dict | list]:
         self.expire_inactive_sessions(now)
-        self._require_active_pass(user_id)
         active = self._draft_session_repo.get_active_session(
             user_id,
             active_after=now - self._inactivity_timeout,
@@ -260,10 +261,6 @@ class DraftSessionService:
 
     def _increment_counter(self, name: str) -> None:
         self._observability_counters[name] = self._observability_counters.get(name, 0) + 1
-
-    def _require_active_pass(self, user_id: str) -> None:
-        if not self._subscription_repo.is_active(user_id):
-            raise PermissionError("active draft pass required")
 
     def _raise_if_terminal(self, session_id: str, user_id: str) -> None:
         """Raise TerminalSessionError if the session exists but is in a terminal state."""

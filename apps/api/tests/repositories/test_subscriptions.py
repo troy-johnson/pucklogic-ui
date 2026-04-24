@@ -95,3 +95,80 @@ class TestIsActive:
         self._chain(mock_db).data = None
         repo.is_active("user-1")
         mock_db.table.assert_called_with("subscriptions")
+
+
+class TestHasDraftPass:
+    def _chain(self, mock_db: MagicMock) -> MagicMock:
+        return mock_db.table.return_value.select.return_value.eq.return_value.eq.return_value.maybe_single.return_value.execute.return_value  # noqa: E501
+
+    def test_returns_true_when_balance_positive(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._chain(mock_db).data = {"draft_pass_balance": 2}
+        assert repo.has_draft_pass("user-1") is True
+
+    def test_returns_false_when_balance_zero(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._chain(mock_db).data = {"draft_pass_balance": 0}
+        assert repo.has_draft_pass("user-1") is False
+
+    def test_returns_false_when_no_row(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._chain(mock_db).data = None
+        assert repo.has_draft_pass("user-1") is False
+
+
+class TestDeductDraftPass:
+    def _select_chain(self, mock_db: MagicMock) -> MagicMock:
+        return mock_db.table.return_value.select.return_value.eq.return_value.eq.return_value.maybe_single.return_value.execute.return_value  # noqa: E501
+
+    def test_decrements_balance(self, repo: SubscriptionRepository, mock_db: MagicMock) -> None:
+        self._select_chain(mock_db).data = {"id": "sub-1", "draft_pass_balance": 3}
+
+        repo.deduct_draft_pass("user-1")
+
+        update_call = mock_db.table.return_value.update.call_args.args[0]
+        assert update_call["draft_pass_balance"] == 2
+
+    def test_raises_when_balance_zero(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._select_chain(mock_db).data = {"id": "sub-1", "draft_pass_balance": 0}
+
+        with pytest.raises(PermissionError, match="active draft pass"):
+            repo.deduct_draft_pass("user-1")
+
+    def test_raises_when_no_row(self, repo: SubscriptionRepository, mock_db: MagicMock) -> None:
+        self._select_chain(mock_db).data = None
+
+        with pytest.raises(PermissionError, match="active draft pass"):
+            repo.deduct_draft_pass("user-1")
+
+
+class TestCreditDraftPass:
+    def _select_chain(self, mock_db: MagicMock) -> MagicMock:
+        return mock_db.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value  # noqa: E501
+
+    def test_increments_existing_balance(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._select_chain(mock_db).data = {"id": "sub-1", "draft_pass_balance": 1}
+
+        repo.credit_draft_pass("user-1")
+
+        update_call = mock_db.table.return_value.update.call_args.args[0]
+        assert update_call["draft_pass_balance"] == 2
+
+    def test_inserts_row_when_none_exists(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._select_chain(mock_db).data = None
+
+        repo.credit_draft_pass("user-1")
+
+        insert_call = mock_db.table.return_value.insert.call_args.args[0]
+        assert insert_call["draft_pass_balance"] == 1
+        assert insert_call["user_id"] == "user-1"
+        assert insert_call["status"] == "active"

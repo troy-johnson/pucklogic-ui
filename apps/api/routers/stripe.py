@@ -68,6 +68,6 @@ async def stripe_webhook(
             user_id,
         )
         if user_id:
-            repo.upsert(user_id=user_id, plan="draft_kit")
+            repo.credit_draft_pass(user_id)
 
     return {"received": True}

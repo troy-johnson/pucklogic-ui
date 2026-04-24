@@ -292,9 +292,9 @@ CREATE TABLE subscriptions (
   status TEXT DEFAULT 'active',
   expires_at TIMESTAMPTZ
 );
--- NOTE: This table will be refactored in Milestone C to support the kit pass + draft pass
--- entitlement model defined in docs/specs/009-web-draft-kit-ux.md. A draft_tokens table
--- will be added to track purchased-but-unconsumed draft passes. See docs/ROADMAP.md.
+-- NOTE: For launch, session_id linkage is recorded via entitlement_ref on draft_sessions.
+-- No separate draft_tokens table is needed (008d resolution). Future multi-pass products
+-- may introduce a separate token table but are explicitly out of scope for launch.
 
 -- Injury tracking — one row per player (upserted daily via NHL.com injury feed).
 -- Feeds the Layer 2 "return from injury" signal in v2.0.

@@ -36,7 +36,8 @@ class TestStartSession:
         mock_repo: MagicMock,
         mock_sub_repo: MagicMock,
     ) -> None:
-        mock_sub_repo.is_active.return_value = False
+        mock_repo.get_active_session.return_value = None
+        mock_sub_repo.has_draft_pass.return_value = False
 
         with pytest.raises(PermissionError, match="active draft pass"):
             service.start_session(user_id="usr_1", platform="espn", now=datetime.now(UTC))
@@ -51,13 +52,14 @@ class TestStartSession:
     ) -> None:
         now = datetime.now(UTC)
         existing = {"session_id": "ses_1", "user_id": "usr_1", "status": "active"}
-        mock_sub_repo.is_active.return_value = True
         mock_repo.get_active_session.return_value = existing
 
         result = service.start_session(user_id="usr_1", platform="espn", now=now)
 
         assert result == existing
         mock_repo.create_session.assert_not_called()
+        mock_sub_repo.has_draft_pass.assert_not_called()
+        mock_sub_repo.deduct_draft_pass.assert_not_called()
 
     def test_creates_new_session_when_none_active(
         self,
@@ -66,8 +68,8 @@ class TestStartSession:
         mock_sub_repo: MagicMock,
     ) -> None:
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = True
         mock_repo.get_active_session.return_value = None
+        mock_sub_repo.has_draft_pass.return_value = True
 
         result = service.start_session(user_id="usr_1", platform="espn", now=now)
 
@@ -76,6 +78,7 @@ class TestStartSession:
         assert result["status"] == "active"
         assert result["sync_state"]["sync_health"] == "healthy"
         mock_repo.create_session.assert_called_once()
+        mock_sub_repo.deduct_draft_pass.assert_called_once_with("usr_1")
 
     def test_start_session_expires_inactive_rows_before_lookup(
         self,
@@ -84,8 +87,8 @@ class TestStartSession:
         mock_sub_repo: MagicMock,
     ) -> None:
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = True
         mock_repo.get_active_session.return_value = None
+        mock_sub_repo.has_draft_pass.return_value = True
 
         service.start_session(user_id="usr_1", platform="espn", now=now)
 
@@ -99,9 +102,9 @@ class TestStartSession:
         mock_sub_repo: MagicMock,
     ) -> None:
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = True
-        mock_sub_repo.get_subscription_id.return_value = "sub_abc123"
         mock_repo.get_active_session.return_value = None
+        mock_sub_repo.has_draft_pass.return_value = True
+        mock_sub_repo.get_subscription_id.return_value = "sub_abc123"
 
         service.start_session(user_id="usr_1", platform="espn", now=now)
 
@@ -116,7 +119,7 @@ class TestPassConsumptionInvariants:
         mock_repo: MagicMock,
         mock_sub_repo: MagicMock,
     ) -> None:
-        """Returning an existing session must not re-record entitlement_ref."""
+        """Returning an existing session must not check balance or deduct a pass."""
         now = datetime.now(UTC)
         existing = {
             "session_id": "ses_1",
@@ -124,13 +127,14 @@ class TestPassConsumptionInvariants:
             "status": "active",
             "entitlement_ref": "sub_old",
         }
-        mock_sub_repo.is_active.return_value = True
         mock_repo.get_active_session.return_value = existing
 
         result = service.start_session(user_id="usr_1", platform="espn", now=now)
 
         assert result is existing
         mock_repo.create_session.assert_not_called()
+        mock_sub_repo.has_draft_pass.assert_not_called()
+        mock_sub_repo.deduct_draft_pass.assert_not_called()
         mock_sub_repo.get_subscription_id.assert_not_called()
 
     def test_reconnect_does_not_consume_pass(
@@ -139,15 +143,16 @@ class TestPassConsumptionInvariants:
         mock_repo: MagicMock,
         mock_sub_repo: MagicMock,
     ) -> None:
-        """resume_session must not call get_subscription_id — reconnect never re-consumes."""
+        """resume_session must not check balance or deduct — reconnect never re-consumes."""
         now = datetime.now(UTC)
         active = {"session_id": "ses_1", "user_id": "usr_1", "status": "active"}
         resumed = {**active, "last_heartbeat_at": now.isoformat()}
-        mock_sub_repo.is_active.return_value = True
         mock_repo.get_active_session.side_effect = [active, resumed]
 
         service.resume_session(session_id="ses_1", user_id="usr_1", now=now)
 
+        mock_sub_repo.has_draft_pass.assert_not_called()
+        mock_sub_repo.deduct_draft_pass.assert_not_called()
         mock_sub_repo.get_subscription_id.assert_not_called()
         mock_repo.create_session.assert_not_called()
 
@@ -157,7 +162,7 @@ class TestPassConsumptionInvariants:
         mock_repo: MagicMock,
         mock_sub_repo: MagicMock,
     ) -> None:
-        """Active session for this user/pass: start returns it without creating a second."""
+        """Active session for this user: start returns it without creating a second."""
         now = datetime.now(UTC)
         existing = {
             "session_id": "ses_1",
@@ -165,14 +170,13 @@ class TestPassConsumptionInvariants:
             "status": "active",
             "entitlement_ref": "sub_abc123",
         }
-        mock_sub_repo.is_active.return_value = True
-        mock_sub_repo.get_subscription_id.return_value = "sub_abc123"
         mock_repo.get_active_session.return_value = existing
 
         result = service.start_session(user_id="usr_1", platform="espn", now=now)
 
         assert result["session_id"] == "ses_1"
         mock_repo.create_session.assert_not_called()
+        mock_sub_repo.deduct_draft_pass.assert_not_called()
 
 
 class TestSecondStartAntiAbuse:
@@ -185,7 +189,6 @@ class TestSecondStartAntiAbuse:
         """A second start attempt while a session is active returns the existing session."""
         now = datetime.now(UTC)
         existing = {"session_id": "ses_1", "user_id": "usr_1", "status": "active"}
-        mock_sub_repo.is_active.return_value = True
         mock_repo.get_active_session.return_value = existing
 
         first = service.start_session(user_id="usr_1", platform="espn", now=now)
@@ -193,6 +196,7 @@ class TestSecondStartAntiAbuse:
 
         assert first["session_id"] == second["session_id"] == "ses_1"
         mock_repo.create_session.assert_not_called()
+        mock_sub_repo.deduct_draft_pass.assert_not_called()
 
     def test_concurrent_start_never_calls_create_session_twice(
         self,
@@ -202,7 +206,7 @@ class TestSecondStartAntiAbuse:
     ) -> None:
         """Even repeated start calls must not result in more than one create_session call."""
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = True
+        mock_sub_repo.has_draft_pass.return_value = True
         mock_sub_repo.get_subscription_id.return_value = "sub_abc123"
         # First call: no active session → creates one. Second call: session exists → returns it.
         mock_repo.get_active_session.side_effect = [
@@ -214,6 +218,7 @@ class TestSecondStartAntiAbuse:
         service.start_session(user_id="usr_1", platform="espn", now=now)
 
         mock_repo.create_session.assert_called_once()
+        mock_sub_repo.deduct_draft_pass.assert_called_once()
 
 
 class TestTerminalSessionDenial:
@@ -225,7 +230,6 @@ class TestTerminalSessionDenial:
     ) -> None:
         """Reconnecting to an explicitly ended session must raise a closed-session error."""
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = True
         mock_repo.get_active_session.return_value = None
         mock_repo.get_session_by_id.return_value = {
             "session_id": "ses_1",
@@ -245,7 +249,6 @@ class TestTerminalSessionDenial:
     ) -> None:
         """Reconnecting to an inactivity-expired session must raise a closed-session error."""
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = True
         mock_repo.get_active_session.return_value = None
         mock_repo.get_session_by_id.return_value = {
             "session_id": "ses_1",
@@ -265,7 +268,6 @@ class TestTerminalSessionDenial:
     ) -> None:
         """WS attach to a terminal session must raise a closed-session error."""
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = True
         mock_repo.get_active_session.return_value = None
         mock_repo.get_session_by_id.return_value = {
             "session_id": "ses_1",
@@ -279,23 +281,6 @@ class TestTerminalSessionDenial:
 
 
 class TestResumeSession:
-    def test_resume_requires_active_entitlement(
-        self,
-        service: DraftSessionService,
-        mock_repo: MagicMock,
-        mock_sub_repo: MagicMock,
-    ) -> None:
-        mock_sub_repo.is_active.return_value = False
-
-        with pytest.raises(PermissionError, match="active draft pass"):
-            service.resume_session(
-                session_id="ses_1",
-                user_id="usr_1",
-                now=datetime.now(UTC),
-            )
-
-        mock_repo.resume_session.assert_not_called()
-
     def test_resume_rejects_missing_or_non_owned_session(
         self,
         service: DraftSessionService,
@@ -303,7 +288,6 @@ class TestResumeSession:
         mock_sub_repo: MagicMock,
     ) -> None:
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = True
         mock_repo.get_active_session.return_value = {
             "session_id": "ses_other",
             "user_id": "usr_1",
@@ -329,7 +313,6 @@ class TestResumeSession:
             "status": "active",
             "last_heartbeat_at": now.isoformat(),
         }
-        mock_sub_repo.is_active.return_value = True
         mock_repo.get_active_session.side_effect = [active, resumed]
 
         result = service.resume_session(session_id="ses_1", user_id="usr_1", now=now)
@@ -363,7 +346,7 @@ class TestEndAndSyncState:
         mock_sub_repo: MagicMock,
     ) -> None:
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = True
+
         mock_repo.get_active_session.return_value = {
             "session_id": "ses_other",
             "user_id": "usr_1",
@@ -382,7 +365,7 @@ class TestEndAndSyncState:
         mock_sub_repo: MagicMock,
     ) -> None:
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = True
+
         mock_repo.get_active_session.return_value = {
             "session_id": "ses_1",
             "user_id": "usr_1",
@@ -404,7 +387,7 @@ class TestEndAndSyncState:
         mock_sub_repo: MagicMock,
     ) -> None:
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = False
+
         mock_repo.get_active_session.return_value = {
             "session_id": "ses_1",
             "user_id": "usr_1",
@@ -426,7 +409,7 @@ class TestEndAndSyncState:
         mock_sub_repo: MagicMock,
     ) -> None:
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = True
+
         mock_repo.get_active_session.return_value = {
             "session_id": "ses_1",
             "user_id": "usr_1",
@@ -446,7 +429,7 @@ class TestEndAndSyncState:
         mock_sub_repo: MagicMock,
     ) -> None:
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = False
+
         mock_repo.get_active_session.return_value = {
             "session_id": "ses_1",
             "user_id": "usr_1",
@@ -467,7 +450,7 @@ class TestReconnectSyncState:
         mock_sub_repo: MagicMock,
     ) -> None:
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = False
+
         mock_repo.get_active_session.return_value = {
             "session_id": "ses_1",
             "user_id": "usr_1",
@@ -495,7 +478,7 @@ class TestReconnectSyncState:
         mock_sub_repo: MagicMock,
     ) -> None:
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = True
+
         mock_repo.get_active_session.return_value = None
 
         with pytest.raises(LookupError, match="session not found"):
@@ -510,7 +493,7 @@ class TestAcceptPick:
         mock_sub_repo: MagicMock,
     ) -> None:
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = True
+
         mock_repo.get_active_session.return_value = {
             "session_id": "ses_1",
             "user_id": "usr_1",
@@ -532,7 +515,7 @@ class TestAcceptPick:
         mock_sub_repo: MagicMock,
     ) -> None:
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = True
+
         mock_repo.get_active_session.return_value = {
             "session_id": "ses_1",
             "user_id": "usr_1",
@@ -554,7 +537,7 @@ class TestAcceptPick:
         mock_sub_repo: MagicMock,
     ) -> None:
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = True
+
         mock_repo.get_active_session.return_value = {
             "session_id": "ses_1",
             "user_id": "usr_1",
@@ -606,7 +589,7 @@ class TestObservability:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = True
+
         mock_repo.get_active_session.return_value = {
             "session_id": "ses_1",
             "user_id": "usr_1",
@@ -640,7 +623,7 @@ class TestObservability:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = True
+
         mock_repo.get_active_session.return_value = {
             "session_id": "ses_1",
             "user_id": "usr_1",
@@ -678,7 +661,7 @@ class TestObservability:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = True
+
         mock_repo.get_active_session.return_value = {
             "session_id": "ses_1",
             "user_id": "usr_1",
@@ -710,7 +693,7 @@ class TestObservability:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         now = datetime.now(UTC)
-        mock_sub_repo.is_active.return_value = True
+
         mock_repo.get_active_session.return_value = {
             "session_id": "ses_1",
             "user_id": "usr_1",

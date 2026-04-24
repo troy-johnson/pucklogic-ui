@@ -183,7 +183,7 @@ class TestStripeWebhook:
         assert resp.status_code == 200
         assert resp.json() == {"received": True}
 
-    def test_webhook_upserts_subscription_on_checkout_completed(
+    def test_webhook_credits_draft_pass_on_checkout_completed(
         self, client: TestClient, mock_sub_repo: MagicMock
     ) -> None:
         with (
@@ -208,9 +208,9 @@ class TestStripeWebhook:
             )
 
         assert resp.status_code == 200
-        mock_sub_repo.upsert.assert_called_once_with(user_id="user-abc-123", plan="draft_kit")
+        mock_sub_repo.credit_draft_pass.assert_called_once_with("user-abc-123")
 
-    def test_webhook_skips_upsert_when_no_client_reference_id(
+    def test_webhook_skips_credit_when_no_client_reference_id(
         self, client: TestClient, mock_sub_repo: MagicMock
     ) -> None:
         with (
@@ -230,7 +230,7 @@ class TestStripeWebhook:
             )
 
         assert resp.status_code == 200
-        mock_sub_repo.upsert.assert_not_called()
+        mock_sub_repo.credit_draft_pass.assert_not_called()
 
     def test_webhook_ignores_other_event_types(
         self, client: TestClient, mock_sub_repo: MagicMock
@@ -251,4 +251,4 @@ class TestStripeWebhook:
                 headers={"stripe-signature": "t=123,v1=abc"},
             )
 
-        mock_sub_repo.upsert.assert_not_called()
+        mock_sub_repo.credit_draft_pass.assert_not_called()
