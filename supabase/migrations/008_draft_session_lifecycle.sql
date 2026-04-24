@@ -14,6 +14,22 @@ alter table subscriptions
   add column if not exists draft_pass_balance integer not null default 0
     check (draft_pass_balance >= 0);
 
+-- Deduplicate subscriptions per user before adding the unique index.
+-- Expected to be a no-op in pre-launch deployments (no real payments processed yet).
+-- In the unlikely event duplicates exist (from concurrent credit_draft_pass() non-atomic
+-- fallback calls), keep the row with the highest draft_pass_balance.
+delete from subscriptions
+where id not in (
+  select distinct on (user_id) id
+  from subscriptions
+  order by user_id, draft_pass_balance desc, created_at desc, id desc
+);
+
+-- ON CONFLICT (user_id) in credit_draft_pass_for_stripe_event requires a unique index.
+-- CREATE UNIQUE INDEX IF NOT EXISTS is idempotent; ADD CONSTRAINT has no IF NOT EXISTS form in PostgreSQL.
+create unique index if not exists subscriptions_user_id_unique
+  on subscriptions (user_id);
+
 -- Stripe webhook idempotency guard.
 -- Processed event IDs are stored here so duplicate webhook deliveries do not
 -- double-credit the user's draft pass balance.
@@ -22,10 +38,6 @@ create table if not exists stripe_processed_events (
     event_id   text        primary key,
     processed_at timestamptz not null default now()
 );
-
-create unique index if not exists draft_sessions_one_active_per_user_idx
-  on draft_sessions (user_id)
-  where status = 'active';
 
 create unique index if not exists draft_sessions_one_active_per_entitlement_idx
   on draft_sessions (entitlement_ref)

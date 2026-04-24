@@ -34,7 +34,7 @@ apps/api/
                      #   upsert_custom, delete_custom, count_custom, get_seasons_for_source
     scoring_configs.py  # ScoringConfigRepository — list, get, create, list_presets
     league_profiles.py  # LeagueProfileRepository — list, get, create
-    subscriptions.py    # SubscriptionRepository — is_active(user_id)
+    subscriptions.py    # SubscriptionRepository — is_active(user_id); one row per user_id (enforced by subscriptions_user_id_unique index from migration 008)
   routers/
     health.py        # GET /health
     sources.py       # GET /sources · GET /sources/custom · POST /sources/upload · DELETE /sources/{id}
