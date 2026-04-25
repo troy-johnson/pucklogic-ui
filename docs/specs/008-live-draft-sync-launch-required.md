@@ -116,7 +116,7 @@ Launch assumes a single FastAPI instance on Fly.io, WebSocket primary transport,
 
 ### D7. Live draft sessions require authentication and paid entitlement
 
-Users must be authenticated. Session start must enforce a paid draft-pass entitlement. Reconnect revalidates entitlement and ownership but does not re-consume a pass.
+Users must be authenticated. Session start must enforce a paid draft-pass entitlement. Reconnect revalidates entitlement and ownership but does not re-consume a pass. Reconnect is only valid for active sessions; once a session is `ended` or `expired`, reconnect must be rejected and the consumed pass/session linkage cannot be reused.
 
 **Rationale:** The product model is per-session paid access, and reconnect must be reversible.
 
@@ -238,6 +238,7 @@ Advanced live suggestion behavior is deferred outside `008c`. Whether launch use
 - [x] Draft-session ownership and auth checks are enforced server-side.
 - [x] Session start enforces paid draft-pass entitlement.
 - [x] Reconnect revalidates entitlement/ownership without consuming an additional pass.
+- [x] Terminal sessions (`ended` / `expired`) reject reconnect and cannot be resumed on the same consumed pass.
 - [x] One active session per user is enforced.
 - [x] Reconnect restores authoritative session state well enough to continue drafting.
 - [x] Duplicate and missed pick handling are defined against the authoritative session model.

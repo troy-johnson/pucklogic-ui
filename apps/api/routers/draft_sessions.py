@@ -15,7 +15,7 @@ from fastapi import (
 
 from core.dependencies import get_current_user, get_draft_session_service
 from models.schemas import DraftManualPickRequest, DraftSessionStartRequest
-from services.draft_sessions import DraftSessionService
+from services.draft_sessions import DraftSessionService, TerminalSessionError
 
 router = APIRouter(prefix="/draft-sessions", tags=["draft-sessions"])
 
@@ -48,6 +48,8 @@ async def resume_draft_session(
             user_id=user["id"],
             now=datetime.now(UTC),
         )
+    except TerminalSessionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except LookupError as exc:
@@ -67,6 +69,8 @@ async def end_draft_session(
             now=datetime.now(UTC),
         )
         return Response(status_code=204)
+    except TerminalSessionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except LookupError as exc:
@@ -85,6 +89,8 @@ async def get_sync_state(
             user_id=user["id"],
             now=datetime.now(UTC),
         )
+    except TerminalSessionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except LookupError as exc:
@@ -108,6 +114,8 @@ async def add_manual_pick(
             player_name=req.player_name,
             player_lookup=req.player_lookup,
         )
+    except TerminalSessionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except LookupError as exc:
@@ -139,6 +147,12 @@ async def draft_session_ws(
             now=datetime.now(UTC),
         )
         await websocket.send_json({"type": "sync_state", "payload": sync_state})
+    except TerminalSessionError as exc:
+        await websocket.send_json(
+            {"type": "error", "payload": {"code": "SESSION_CLOSED", "message": str(exc)}}
+        )
+        await websocket.close(code=1008)
+        return
     except (HTTPException, PermissionError, LookupError) as exc:
         message = exc.detail if isinstance(exc, HTTPException) else str(exc)
         await websocket.send_json({"type": "error", "payload": {"message": message}})
@@ -177,6 +191,12 @@ async def draft_session_ws(
                     player_name=payload.get("player_name"),
                     player_lookup=payload.get("player_lookup"),
                 )
+            except TerminalSessionError as exc:
+                await websocket.send_json(
+                    {"type": "error", "payload": {"code": "SESSION_CLOSED", "message": str(exc)}}
+                )
+                await websocket.close(code=1008)
+                return
             except (ValueError, LookupError, PermissionError) as exc:
                 await websocket.send_json(
                     {
@@ -206,6 +226,12 @@ async def draft_session_ws(
                     user_id=user["id"],
                     now=datetime.now(UTC),
                 )
+            except TerminalSessionError as exc:
+                await websocket.send_json(
+                    {"type": "error", "payload": {"code": "SESSION_CLOSED", "message": str(exc)}}
+                )
+                await websocket.close(code=1008)
+                return
             except (PermissionError, LookupError) as exc:
                 await websocket.send_json({"type": "error", "payload": {"message": str(exc)}})
                 continue

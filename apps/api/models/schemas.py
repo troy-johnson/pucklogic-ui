@@ -204,7 +204,6 @@ class ExportJobResponse(BaseModel):
 class CheckoutSessionRequest(BaseModel):
     success_url: str
     cancel_url: str
-    user_id: str | None = None
 
 
 class CheckoutSessionResponse(BaseModel):
@@ -345,6 +344,8 @@ class DraftSession(BaseModel):
     updated_at: datetime
     last_heartbeat_at: datetime | None = None
     recovered_at: datetime | None = None
+    completion_reason: str | None = None
+    completed_at: datetime | None = None
 
 
 class DraftSessionStartRequest(BaseModel):

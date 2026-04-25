@@ -1,14 +1,14 @@
 | Field | Value |
 |---|---|
-| Active Phase | `008c-extension-sync-adapters` complete and merged to `main`; next track is `008e` (optional pick_number) or `008d` review |
-| Active Branch | main |
-| Open PR | none |
-| Current Focus | 008c is done. Follow-up tracks: implement `008e` (optional pick_number in WS auto-ingestion), review `008d` plan before implementing, keep Yahoo gated pending season-live manual verification |
-| Last Action | Merged PR #33 (`feat/008c-extension-sync-adapters`): extension sync adapters complete, 41 tests passing, review passes done, plan `008e` added to track optional pick_number fix |
+| Active Phase | `008d-draft-pass-session-lifecycle` — implementation complete on branch `feat/008d-draft-pass-session-lifecycle`; PR #34 is approved/mergeable and awaiting merge |
+| Active Branch | feat/008d-draft-pass-session-lifecycle |
+| Open PR | #34 — `feat(api): draft pass session lifecycle and terminal reconnect denial (008d)` |
+| Current Focus | Finalize 008d docs/ADR/Serena sync for merge-ready PR #34, then merge and resume 008e |
+| Last Action | Added the final `/end` terminal-session 409 fix, re-ran the branch review, and replied to the remaining open GitHub review thread; branch is now merge-ready |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
 | Current Hypothesis | WebSocket-backed backend authority is the critical first implementation slice; ESPN is MVP, Yahoo is secondary, manual mode remains the launch fallback, and launch infra is Fly.io single-instance with Redis deferred |
-| Next Steps | 1. Implement `008e`: make pick_number optional in WS auto-ingestion (backend + extension changes per plan) 2. Review `008d` plan (draft pass session lifecycle) before starting implementation 3. Keep Yahoo gated until season-live manual draft-room verification succeeds 4. Keep `010a-web-draft-kit-ui` scaffold-only until spec `010` is approved |
-| Next Session Entry | Resume at: pick up `008e` implementation or `008d` plan review. |
+| Next Steps | 1. Merge PR #34 after the final doc/state sync and operator migration check 2. Reconcile any post-merge status surfaces still pointing at branch work 3. Resume `008e` optional pick_number follow-up 4. Keep Yahoo gated until season-live manual draft-room verification succeeds |
+| Next Session Entry | Resume at: merge PR #34; if already merged, switch back to `main` and pick up `008e`. |
 
 ## Merge and code review outcome (2026-04-10)
 

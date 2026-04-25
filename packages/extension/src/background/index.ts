@@ -41,6 +41,8 @@ export class BackgroundSessionBridge {
   private wsUrl: string | null = null;
   private reconnectDelayMs = 1000;
   private hasConnected = false;
+  private stopReconnect = false;
+  private _cancelCurrentReconnect: (() => void) | null = null;
 
   constructor(deps: BackgroundSessionBridgeDeps) {
     this.WebSocketImpl = deps.WebSocketImpl;
@@ -50,8 +52,13 @@ export class BackgroundSessionBridge {
   }
 
   async initSession(params: { sessionId: string; wsUrl: string }): Promise<void> {
+    this._cancelCurrentReconnect?.();
+    this.socket?.close();
     this.sessionId = params.sessionId;
     this.wsUrl = params.wsUrl;
+    this.reconnectDelayMs = 1000;
+    this.hasConnected = false;
+    this.stopReconnect = false;
     await this.connect();
   }
 
@@ -82,6 +89,26 @@ export class BackgroundSessionBridge {
     const socket = new this.WebSocketImpl(socketUrl);
     this.socket = socket;
 
+    let cancelled = false;
+    this._cancelCurrentReconnect = () => {
+      cancelled = true;
+    };
+
+    socket.onmessage = (event) => {
+      if (cancelled) return;
+      try {
+        const message = JSON.parse(event.data) as {
+          type?: string;
+          payload?: { message?: string; code?: string };
+        };
+        if (message.type === "error" && message.payload?.code === "SESSION_CLOSED") {
+          this.stopReconnect = true;
+        }
+      } catch {
+        // Ignore non-JSON messages; reconnect policy only cares about structured terminal denial.
+      }
+    };
+
     socket.onopen = () => {
       this.reconnectDelayMs = 1000;
       this.onMetric({ type: "socket_attach_success" });
@@ -99,12 +126,19 @@ export class BackgroundSessionBridge {
     };
 
     socket.onclose = () => {
-      this.socket = null;
+      if (this.socket === socket) this.socket = null;
       this.onMetric({ type: "socket_close" });
+
+      if (this.stopReconnect || cancelled) {
+        return;
+      }
 
       const currentDelay = this.reconnectDelayMs;
       this.onMetric({ type: "socket_reconnect_attempt", detail: currentDelay });
       this.setTimeoutImpl(() => {
+        if (cancelled) {
+          return;
+        }
         void this.connect();
       }, currentDelay);
 
@@ -120,7 +154,7 @@ export class BackgroundSessionBridge {
 
 export function startBackgroundServiceWorker(): void {
   const bridge = new BackgroundSessionBridge({
-    WebSocketImpl: WebSocket,
+    WebSocketImpl: WebSocket as unknown as SocketConstructor,
     getToken: async () => {
       const result = await chrome.storage.local.get("authToken");
       return result.authToken as string | undefined;

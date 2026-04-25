@@ -264,14 +264,24 @@ CREATE TABLE draft_sessions (
   user_id UUID NOT NULL REFERENCES auth.users(id),
   platform TEXT NOT NULL CHECK (platform IN ('espn', 'yahoo')),
   status TEXT NOT NULL DEFAULT 'active',   -- 'active', 'ended', 'expired'
-  entitlement_ref TEXT,                    -- draft-pass / entitlement linkage for this session
+  entitlement_ref TEXT,                    -- subscription id recorded at session start for audit
   sync_state JSONB NOT NULL DEFAULT '{"last_processed_pick": null, "sync_health": "healthy", "cursor": null}',
   accepted_picks JSONB NOT NULL DEFAULT '[]',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   last_heartbeat_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  recovered_at TIMESTAMPTZ
+  recovered_at TIMESTAMPTZ,
+  completion_reason TEXT CHECK (completion_reason IN ('user_ended', 'inactivity_expired')),
+  completed_at TIMESTAMPTZ                -- set when session reaches a terminal state
 );
+
+CREATE UNIQUE INDEX draft_sessions_one_active_per_user_idx
+  ON draft_sessions (user_id)
+  WHERE status = 'active';
+
+CREATE UNIQUE INDEX draft_sessions_one_active_per_entitlement_idx
+  ON draft_sessions (entitlement_ref)
+  WHERE status = 'active' AND entitlement_ref IS NOT NULL;
 
 CREATE TABLE exports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -288,11 +298,37 @@ CREATE TABLE subscriptions (
   stripe_session_id TEXT,
   plan TEXT,
   status TEXT DEFAULT 'active',
-  expires_at TIMESTAMPTZ
+  expires_at TIMESTAMPTZ,
+  draft_pass_balance INTEGER NOT NULL DEFAULT 0 CHECK (draft_pass_balance >= 0)
 );
--- NOTE: This table will be refactored in Milestone C to support the kit pass + draft pass
--- entitlement model defined in docs/specs/009-web-draft-kit-ux.md. A draft_tokens table
--- will be added to track purchased-but-unconsumed draft passes. See docs/ROADMAP.md.
+
+CREATE UNIQUE INDEX subscriptions_user_id_unique
+  ON subscriptions (user_id);
+
+CREATE TABLE stripe_processed_events (
+  event_id TEXT PRIMARY KEY,
+  processed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+-- NOTE: For launch, session_id linkage is recorded via entitlement_ref on draft_sessions.
+-- No separate draft_tokens table is needed (008d resolution). Future multi-pass products
+-- may introduce a separate token table but are explicitly out of scope for launch.
+-- Launch pass/session rules are enforced by database helpers:
+--   * consume_draft_pass(user_id, now) atomically validates active/unexpired entitlement,
+--     decrements draft_pass_balance, and returns the backing subscription id.
+--   * restore_draft_pass(subscription_id) compensates a consumed pass when session creation fails.
+--   * credit_draft_pass_for_stripe_event(event_id, user_id) atomically claims Stripe webhook
+--     delivery and credits exactly one pass using `subscriptions_user_id_unique`, preventing
+--     duplicate delivery from double-crediting or failing its `ON CONFLICT (user_id)` path.
+-- Migration 008 also deduplicates historical `subscriptions.user_id` rows before creating
+-- `subscriptions_user_id_unique`, making the launch invariant explicit: one subscription row
+-- per user backs draft-pass balance and Stripe fulfillment.
+
+### Live draft transport notes
+
+- WebSocket attach plus in-loop `pick` / `sync_state` recovery reject terminal sessions with a
+  structured payload of the form `{"type":"error","payload":{"code":"SESSION_CLOSED","message":"session is closed"}}`.
+- Terminal WS denial closes the socket with close code `1008`, allowing clients to suppress
+  reconnect loops for ended/expired sessions while still surfacing a user-visible error.
 
 -- Injury tracking — one row per player (upserted daily via NHL.com injury feed).
 -- Feeds the Layer 2 "return from injury" signal in v2.0.

@@ -14,6 +14,7 @@ Current extension responsibilities:
 - Connect background service worker to draft-session WebSocket
 - Forward detected picks from content runtime to the backend session
 - Trigger sync recovery (`sync_state`) on connect/reconnect
+- Stop reconnect attempts after the backend explicitly denies a terminal closed session
 - Emit observability signals for socket lifecycle and fallback behavior
 - Detect draft-room context and parse latest picks for ESPN + Yahoo helpers
 - Keep Yahoo explicitly launch-gated (non-blocking) pending manual verification
@@ -102,6 +103,9 @@ A Vite plugin copies `manifest.json` into `dist/manifest.json` after bundle.
 - `handleRuntimeMessage` forwarding `PICK_DETECTED` → WS `pick` only when socket is open (`readyState === 1`)
 - `sync_state` request on every successful open
 - exponential reconnect backoff from 1s up to 30s
+- repeated `initSession(...)` cancels the prior connection's reconnect loop and closes the old socket before opening a fresh one
+- structured backend error handling so `{"type":"error","payload":{"code":"SESSION_CLOSED","message":"session is closed"}}`
+  plus WebSocket close code `1008` disables reconnect for terminal sessions instead of retry-looping forever
 - observability signals:
   - `socket_attach_success`
   - `socket_attach_failure`

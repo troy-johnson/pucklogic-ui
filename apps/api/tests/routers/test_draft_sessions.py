@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from core import dependencies
 from core.dependencies import get_current_user, get_draft_session_service
 from main import app
+from services.draft_sessions import TerminalSessionError
 
 MOCK_USER = {"id": "usr_123", "email": "user@example.com"}
 
@@ -97,6 +98,62 @@ class TestStartDraftSession:
         assert response.status_code == 403
 
 
+class TestTerminalSessionReconnectDenial:
+    def test_resume_returns_409_for_terminal_session(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.resume_session.side_effect = TerminalSessionError("session is closed")
+
+        response = client.post("/draft-sessions/ses_1/resume")
+
+        assert response.status_code == 409
+        assert "closed" in response.json()["detail"]
+
+    def test_connect_emits_session_closed_error_when_terminal(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.attach_socket.side_effect = TerminalSessionError("session is closed")
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            event = ws.receive_json()
+
+        assert event["type"] == "error"
+        assert event["payload"]["code"] == "SESSION_CLOSED"
+        assert "closed" in event["payload"]["message"]
+
+
+class TestWebSocketTerminalInLoop:
+    def test_pick_event_sends_session_closed_code_and_closes_socket(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.attach_socket.return_value = {"sync_health": "healthy"}
+        mock_service.accept_pick.side_effect = TerminalSessionError("session is closed")
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            ws.receive_json()
+            ws.send_json({"type": "pick", "payload": {"pick_number": 1}})
+            event = ws.receive_json()
+
+        assert event["type"] == "error"
+        assert event["payload"]["code"] == "SESSION_CLOSED"
+        assert "closed" in event["payload"]["message"]
+
+    def test_sync_state_event_sends_session_closed_code_and_closes_socket(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.attach_socket.return_value = {"sync_health": "healthy"}
+        mock_service.reconnect_sync_state.side_effect = TerminalSessionError("session is closed")
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            ws.receive_json()
+            ws.send_json({"type": "sync_state"})
+            event = ws.receive_json()
+
+        assert event["type"] == "error"
+        assert event["payload"]["code"] == "SESSION_CLOSED"
+        assert "closed" in event["payload"]["message"]
+
+
 class TestResumeDraftSession:
     def test_resume_returns_200(self, client: TestClient, mock_service: MagicMock) -> None:
         mock_service.resume_session.return_value = {
@@ -120,6 +177,18 @@ class TestResumeDraftSession:
         response = client.post("/draft-sessions/ses_1/resume")
 
         assert response.status_code == 404
+
+    def test_resume_returns_403_when_entitlement_inactive(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.resume_session.side_effect = PermissionError(
+            "active subscription required to reconnect"
+        )
+
+        response = client.post("/draft-sessions/ses_1/resume")
+
+        assert response.status_code == 403
+        assert "subscription" in response.json()["detail"]
 
 
 class TestEndDraftSession:
@@ -156,6 +225,16 @@ class TestSyncState:
 
         assert response.status_code == 404
         assert response.json()["detail"] == "active session not found for user"
+
+    def test_get_sync_state_returns_409_for_terminal_session(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.get_sync_state.side_effect = TerminalSessionError("session is closed")
+
+        response = client.get("/draft-sessions/ses_1/sync-state")
+
+        assert response.status_code == 409
+        assert "closed" in response.json()["detail"]
 
 
 class TestManualPickEndpoint:
@@ -249,6 +328,18 @@ class TestManualPickEndpoint:
         )
 
         assert response.status_code == 403
+
+    def test_manual_pick_returns_409_for_terminal_session(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.accept_pick.side_effect = TerminalSessionError("session is closed")
+
+        response = client.post(
+            "/draft-sessions/ses_1/manual-picks",
+            json={"pick_number": 19, "player_name": "Skater"},
+        )
+
+        assert response.status_code == 409
 
 
 class TestDraftSessionWebSocket:

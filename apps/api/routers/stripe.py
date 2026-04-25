@@ -6,7 +6,7 @@ import stripe
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from core.config import settings
-from core.dependencies import get_subscription_repository
+from core.dependencies import get_current_user, get_subscription_repository
 from models.schemas import CheckoutSessionRequest, CheckoutSessionResponse
 from repositories.subscriptions import SubscriptionRepository
 
@@ -18,6 +18,7 @@ router = APIRouter(prefix="/stripe", tags=["stripe"])
 @router.post("/create-checkout-session", response_model=CheckoutSessionResponse)
 async def create_checkout_session(
     req: CheckoutSessionRequest,
+    current_user: dict = Depends(get_current_user),
 ) -> CheckoutSessionResponse:
     """Create a Stripe Checkout session for a one-time draft-kit purchase."""
     if not settings.stripe_secret_key:
@@ -25,16 +26,12 @@ async def create_checkout_session(
 
     stripe.api_key = settings.stripe_secret_key
 
-    extra: dict = {}
-    if req.user_id:
-        extra["client_reference_id"] = req.user_id
-
     session = stripe.checkout.Session.create(
         mode="payment",
         line_items=[{"price": settings.stripe_price_id, "quantity": 1}],
         success_url=req.success_url,
         cancel_url=req.cancel_url,
-        **extra,
+        client_reference_id=current_user["id"],
     )
     return CheckoutSessionResponse(checkout_url=session.url, session_id=session.id)
 
@@ -61,13 +58,33 @@ async def stripe_webhook(
 
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
+        event_id = event.get("id")
         user_id = session.get("client_reference_id")
+        payment_status = session.get("payment_status")
         logger.info(
-            "Checkout completed: session_id=%s user_id=%s",
+            "Checkout completed: event_id=%s session_id=%s user_id=%s payment_status=%s",
+            event_id,
             session.get("id"),
             user_id,
+            payment_status,
         )
+        if payment_status != "paid":
+            logger.info(
+                "Skipping draft pass credit: payment_status=%s for event %s",
+                payment_status,
+                event_id,
+            )
+            return {"received": True}
         if user_id:
-            repo.upsert(user_id=user_id, plan="draft_kit")
+            if event_id:
+                if repo.credit_draft_pass_for_stripe_event(event_id, user_id):
+                    logger.info("Stripe event %s credited draft pass", event_id)
+                else:
+                    logger.info("Stripe event %s already processed; skipping credit", event_id)
+            else:
+                logger.error(
+                    "checkout.session.completed missing event id for user %s; skipping credit",
+                    user_id,
+                )
 
     return {"received": True}

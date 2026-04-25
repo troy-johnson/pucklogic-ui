@@ -40,6 +40,10 @@ class FakeWebSocket {
   triggerError(): void {
     this.onerror?.();
   }
+
+  triggerMessage(data: unknown): void {
+    this.onmessage?.({ data: JSON.stringify(data) });
+  }
 }
 
 describe("BackgroundSessionBridge", () => {
@@ -143,6 +147,120 @@ describe("BackgroundSessionBridge", () => {
     vi.advanceTimersByTime(2000);
     await vi.runAllTimersAsync();
     expect(FakeWebSocket.instances).toHaveLength(3);
+  });
+
+  it("does not reconnect after terminal closed-session denial", async () => {
+    const metrics: string[] = [];
+
+    const bridge = new BackgroundSessionBridge({
+      WebSocketImpl: FakeWebSocket,
+      getToken: async () => "token-closed",
+      onMetric: (event) => metrics.push(event.type),
+    });
+
+    await bridge.initSession({
+      sessionId: "session-closed",
+      wsUrl: "wss://api.pucklogic.com/draft-sessions/session-closed/ws",
+    });
+
+    const socket = FakeWebSocket.instances[0];
+    socket.triggerOpen();
+    socket.triggerMessage({
+      type: "error",
+      payload: { code: "SESSION_CLOSED", message: "session is closed" },
+    });
+    socket.close();
+
+    vi.advanceTimersByTime(1000);
+    await vi.runAllTimersAsync();
+
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    expect(metrics).not.toContain("socket_reconnect_attempt");
+  });
+
+  it("repeated INIT_SESSION closes the old socket and opens one for the new session", async () => {
+    const bridge = new BackgroundSessionBridge({
+      WebSocketImpl: FakeWebSocket,
+      getToken: async () => "token-reinit",
+    });
+
+    await bridge.initSession({
+      sessionId: "session-1",
+      wsUrl: "wss://api.pucklogic.com/draft-sessions/session-1/ws",
+    });
+    const firstSocket = FakeWebSocket.instances[0];
+    firstSocket.triggerOpen();
+
+    await bridge.initSession({
+      sessionId: "session-2",
+      wsUrl: "wss://api.pucklogic.com/draft-sessions/session-2/ws",
+    });
+
+    expect(firstSocket.readyState).toBe(FakeWebSocket.CLOSED);
+    expect(FakeWebSocket.instances).toHaveLength(2);
+    expect(FakeWebSocket.instances[1].url).toContain("session-2");
+  });
+
+  it("old socket reconnect loop does not fire after repeated INIT_SESSION", async () => {
+    const bridge = new BackgroundSessionBridge({
+      WebSocketImpl: FakeWebSocket,
+      getToken: async () => "token-reinit2",
+    });
+
+    await bridge.initSession({
+      sessionId: "session-1",
+      wsUrl: "wss://api.pucklogic.com/draft-sessions/session-1/ws",
+    });
+    const firstSocket = FakeWebSocket.instances[0];
+    firstSocket.triggerOpen();
+    firstSocket.close();
+
+    await bridge.initSession({
+      sessionId: "session-2",
+      wsUrl: "wss://api.pucklogic.com/draft-sessions/session-2/ws",
+    });
+
+    expect(FakeWebSocket.instances).toHaveLength(2);
+
+    vi.advanceTimersByTime(2000);
+    await vi.runAllTimersAsync();
+
+    expect(FakeWebSocket.instances).toHaveLength(2);
+  });
+
+  it("late-firing old onclose does not null the new socket", async () => {
+    const bridge = new BackgroundSessionBridge({
+      WebSocketImpl: FakeWebSocket,
+      getToken: async () => "token-late-close",
+    });
+
+    await bridge.initSession({
+      sessionId: "session-1",
+      wsUrl: "wss://api.pucklogic.com/draft-sessions/session-1/ws",
+    });
+    const firstSocket = FakeWebSocket.instances[0];
+    firstSocket.triggerOpen();
+
+    // Capture the old onclose before initSession closes it, then detach so
+    // FakeWebSocket.close() does not fire it synchronously — simulating async close.
+    const oldOnClose = firstSocket.onclose;
+    firstSocket.onclose = null;
+
+    await bridge.initSession({
+      sessionId: "session-2",
+      wsUrl: "wss://api.pucklogic.com/draft-sessions/session-2/ws",
+    });
+    const secondSocket = FakeWebSocket.instances[1];
+    secondSocket.triggerOpen();
+
+    // Simulate async late-arrive of the old socket's close event.
+    oldOnClose?.();
+
+    // The new socket should still be alive — picks must be forwarded.
+    bridge.handleRuntimeMessage({ type: "PICK_DETECTED", playerName: "McDavid", pickNumber: 1 });
+    expect(secondSocket.sent).toContain(
+      JSON.stringify({ type: "pick", payload: { player_name: "McDavid", pick_number: 1 } }),
+    );
   });
 
   it("observability: emits attach/open/close and reconnect recovery signals", async () => {

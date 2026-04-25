@@ -12,6 +12,10 @@ from repositories.subscriptions import SubscriptionRepository
 logger = logging.getLogger(__name__)
 
 
+class TerminalSessionError(LookupError):
+    """Raised when an operation targets a session that has already reached a terminal state."""
+
+
 class DraftSessionService:
     def __init__(
         self,
@@ -32,7 +36,6 @@ class DraftSessionService:
 
     def start_session(self, *, user_id: str, platform: str, now: datetime) -> dict:
         self.expire_inactive_sessions(now)
-        self._require_active_pass(user_id)
 
         active = self._draft_session_repo.get_active_session(
             user_id,
@@ -41,12 +44,24 @@ class DraftSessionService:
         if active is not None:
             return active
 
+        try:
+            entitlement_ref = self._subscription_repo.consume_draft_pass(user_id, now=now)
+        except PermissionError:
+            raced_active = self._draft_session_repo.get_active_session(
+                user_id,
+                active_after=now - self._inactivity_timeout,
+            )
+            if raced_active is not None:
+                return raced_active
+            raise
+
         now_iso = now.astimezone(UTC).isoformat()
         payload = {
             "session_id": f"ses_{uuid4().hex}",
             "user_id": user_id,
             "platform": platform,
             "status": "active",
+            "entitlement_ref": entitlement_ref,
             "sync_state": {
                 "last_processed_pick": None,
                 "sync_health": "healthy",
@@ -57,18 +72,35 @@ class DraftSessionService:
             "updated_at": now_iso,
             "last_heartbeat_at": now_iso,
         }
-        self._draft_session_repo.create_session(payload)
+        try:
+            self._draft_session_repo.create_session(payload)
+        except Exception:
+            active_after_failure = self._draft_session_repo.get_active_session(
+                user_id,
+                active_after=now - self._inactivity_timeout,
+            )
+            if active_after_failure is not None:
+                if active_after_failure.get("session_id") == payload["session_id"]:
+                    return active_after_failure
+                self._subscription_repo.restore_draft_pass(entitlement_ref)
+                return active_after_failure
+
+            self._subscription_repo.restore_draft_pass(entitlement_ref)
+            raise
         return payload
 
     def resume_session(self, *, session_id: str, user_id: str, now: datetime) -> dict:
         self.expire_inactive_sessions(now)
-        self._require_active_pass(user_id)
         active = self._draft_session_repo.get_active_session(
             user_id,
             active_after=now - self._inactivity_timeout,
         )
         if active is None or active.get("session_id") != session_id:
+            self._raise_if_terminal(session_id, user_id)
             raise LookupError("active session not found for user")
+
+        if not self._subscription_repo.is_active(user_id):
+            raise PermissionError("active subscription required to reconnect")
 
         self._draft_session_repo.resume_session(
             session_id=session_id,
@@ -94,6 +126,7 @@ class DraftSessionService:
             active_after=now - self._inactivity_timeout,
         )
         if active is None or active.get("session_id") != session_id:
+            self._raise_if_terminal(session_id, user_id)
             raise LookupError("active session not found for user")
         self._draft_session_repo.end_session(
             session_id=session_id,
@@ -108,7 +141,12 @@ class DraftSessionService:
             active_after=now - self._inactivity_timeout,
         )
         if active is None or active.get("session_id") != session_id:
+            self._raise_if_terminal(session_id, user_id)
             raise LookupError("active session not found for user")
+
+        if not self._subscription_repo.is_active(user_id):
+            raise PermissionError("active subscription required")
+
         return active.get("sync_state", {})
 
     def attach_socket(self, *, session_id: str, user_id: str, now: datetime) -> dict:
@@ -131,7 +169,6 @@ class DraftSessionService:
         return sync_state
 
     def reconnect_sync_state(self, *, session_id: str, user_id: str, now: datetime) -> dict:
-        self.expire_inactive_sessions(now)
         sync_state = self.get_sync_state(session_id=session_id, user_id=user_id, now=now)
         self._draft_session_repo.touch_heartbeat(
             session_id=session_id,
@@ -163,13 +200,16 @@ class DraftSessionService:
         player_lookup: dict[str, str | int | float | bool] | None = None,
     ) -> dict[str, dict | list]:
         self.expire_inactive_sessions(now)
-        self._require_active_pass(user_id)
         active = self._draft_session_repo.get_active_session(
             user_id,
             active_after=now - self._inactivity_timeout,
         )
         if active is None or active.get("session_id") != session_id:
+            self._raise_if_terminal(session_id, user_id)
             raise LookupError("active session not found for user")
+
+        if not self._subscription_repo.is_active(user_id):
+            raise PermissionError("active subscription required to submit picks")
 
         sync_state = dict(active.get("sync_state") or {})
         last_processed_pick = sync_state.get("last_processed_pick")
@@ -254,6 +294,8 @@ class DraftSessionService:
     def _increment_counter(self, name: str) -> None:
         self._observability_counters[name] = self._observability_counters.get(name, 0) + 1
 
-    def _require_active_pass(self, user_id: str) -> None:
-        if not self._subscription_repo.is_active(user_id):
-            raise PermissionError("active draft pass required")
+    def _raise_if_terminal(self, session_id: str, user_id: str) -> None:
+        """Raise TerminalSessionError if the session exists but is in a terminal state."""
+        row = self._draft_session_repo.get_session_by_id(session_id, user_id)
+        if row is not None and row.get("status") in ("ended", "expired"):
+            raise TerminalSessionError("session is closed")

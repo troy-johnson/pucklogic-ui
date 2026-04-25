@@ -109,9 +109,9 @@ PuckLogic is a fantasy hockey platform with three components:
 - **user_kits** — named source-weight presets only (user_id OR session_token, source_weights JSONB, name). Not a full league config — see league_profiles.
 - **league_profiles** — complete league configuration (user_id, name, platform, num_teams, roster_slots JSONB, scoring_config_id FK). Used for VORP computation.
 - **scoring_configs** — fantasy scoring presets and custom configs (id, name, stat_weights JSONB, is_preset, user_id)
-- **draft_sessions** — live draft state (user_id, platform, league_config, picks[], available[], kit_id, status)
+- **draft_sessions** — live draft authority state (user_id, platform, league_config, sync_state, accepted_picks, entitlement_ref, status, last_heartbeat_at, completion_reason, completed_at)
 - **exports** — export job records (user_id, type, status, storage_url)
-- **subscriptions** — Stripe subscription state (user_id, stripe_session_id, plan, status, expires_at)
+- **subscriptions** — Stripe subscription + draft pass state (one row per user_id, stripe_session_id, plan, status, expires_at, draft_pass_balance)
 
 ### Security Enforcement Model
 

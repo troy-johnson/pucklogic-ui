@@ -83,6 +83,48 @@ class TestDraftSessionRepositoryLifecycle:
         assert update_call["status"] == "ended"
         assert update_call["updated_at"] == now.isoformat()
 
+    def test_end_session_writes_completion_reason_and_completed_at(
+        self, repo: DraftSessionRepository, mock_db: MagicMock
+    ) -> None:
+        now = datetime.now(UTC)
+
+        repo.end_session(session_id="ses_1", user_id="usr_1", now=now)
+
+        update_call = (
+            mock_db.table.return_value.update.call_args.args[0]
+            if mock_db.table.return_value.update.call_args.args
+            else mock_db.table.return_value.update.call_args.kwargs.get("json", {})
+        )
+        assert update_call["completion_reason"] == "user_ended"
+        assert update_call["completed_at"] == now.astimezone(UTC).isoformat()
+
+    def test_end_session_scopes_write_to_active_status(
+        self, repo: DraftSessionRepository, mock_db: MagicMock
+    ) -> None:
+        now = datetime.now(UTC)
+
+        repo.end_session(session_id="ses_1", user_id="usr_1", now=now)
+
+        # Traverse the eq() chain: update().eq().eq().eq()
+        third_eq = mock_db.table.return_value.update.return_value.eq.return_value.eq.return_value.eq
+        assert third_eq.call_args.args == ("status", "active")
+
+    def test_create_session_stores_entitlement_ref(
+        self, repo: DraftSessionRepository, mock_db: MagicMock
+    ) -> None:
+        payload = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "platform": "espn",
+            "status": "active",
+            "entitlement_ref": "sub_abc123",
+        }
+
+        repo.create_session(payload)
+
+        insert_call = mock_db.table.return_value.insert.call_args.args[0]
+        assert insert_call["entitlement_ref"] == "sub_abc123"
+
     def test_touch_heartbeat_updates_heartbeat_and_updated_at(
         self, repo: DraftSessionRepository, mock_db: MagicMock
     ) -> None:
@@ -167,3 +209,21 @@ class TestDraftSessionRepositoryExpiry:
         assert update_call["status"] == "expired"
         assert "updated_at" in update_call
         assert expired_count == 2
+
+    def test_expire_inactive_sessions_writes_completion_reason_and_completed_at(
+        self, repo: DraftSessionRepository, mock_db: MagicMock
+    ) -> None:
+        cutoff = datetime(2026, 4, 11, tzinfo=UTC)
+        table = mock_db.table.return_value
+        result = table.update.return_value.eq.return_value.lt.return_value.execute.return_value
+        result.data = [{"session_id": "ses_1"}]
+
+        repo.expire_inactive_sessions(cutoff)
+
+        update_call = (
+            mock_db.table.return_value.update.call_args.args[0]
+            if mock_db.table.return_value.update.call_args.args
+            else mock_db.table.return_value.update.call_args.kwargs.get("json", {})
+        )
+        assert update_call["completion_reason"] == "inactivity_expired"
+        assert "completed_at" in update_call

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -95,3 +96,66 @@ class TestIsActive:
         self._chain(mock_db).data = None
         repo.is_active("user-1")
         mock_db.table.assert_called_with("subscriptions")
+
+
+class TestConsumeDraftPass:
+    def _rpc_chain(self, mock_db: MagicMock) -> MagicMock:
+        return mock_db.rpc.return_value.execute.return_value
+
+    def test_returns_subscription_id_when_pass_consumed(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        now = datetime(2026, 4, 24, tzinfo=UTC)
+        self._rpc_chain(mock_db).data = [{"subscription_id": "sub-1"}]
+
+        subscription_id = repo.consume_draft_pass("user-1", now=now)
+
+        assert subscription_id == "sub-1"
+        mock_db.rpc.assert_called_once_with(
+            "consume_draft_pass",
+            {"p_user_id": "user-1", "p_now": now.astimezone(UTC).isoformat()},
+        )
+
+    def test_raises_when_no_eligible_pass_exists(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._rpc_chain(mock_db).data = []
+
+        with pytest.raises(PermissionError, match="active draft pass"):
+            repo.consume_draft_pass("user-1", now=datetime.now(UTC))
+
+
+class TestRestoreDraftPass:
+    def test_calls_restore_rpc_with_subscription_id(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        repo.restore_draft_pass("sub-1")
+
+        mock_db.rpc.assert_called_once_with(
+            "restore_draft_pass",
+            {"p_subscription_id": "sub-1"},
+        )
+        mock_db.rpc.return_value.execute.assert_called_once()
+
+
+class TestCreditDraftPassForStripeEvent:
+    def _rpc_chain(self, mock_db: MagicMock) -> MagicMock:
+        return mock_db.rpc.return_value.execute.return_value
+
+    def test_returns_true_when_event_credit_applied(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._rpc_chain(mock_db).data = True
+
+        assert repo.credit_draft_pass_for_stripe_event("evt_1", "user-1") is True
+        mock_db.rpc.assert_called_once_with(
+            "credit_draft_pass_for_stripe_event",
+            {"p_event_id": "evt_1", "p_user_id": "user-1"},
+        )
+
+    def test_returns_false_when_event_already_processed(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._rpc_chain(mock_db).data = False
+
+        assert repo.credit_draft_pass_for_stripe_event("evt_1", "user-1") is False
