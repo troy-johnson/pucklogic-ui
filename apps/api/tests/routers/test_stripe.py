@@ -187,6 +187,7 @@ class TestStripeWebhook:
                     "object": {
                         "id": "cs_test_xyz",
                         "client_reference_id": "user-abc-123",
+                        "payment_status": "paid",
                     }
                 },
             }
@@ -211,8 +212,11 @@ class TestStripeWebhook:
             mock_settings.stripe_secret_key = "sk_test_123"
             mock_settings.stripe_webhook_secret = "whsec_test"
             mock_stripe.Webhook.construct_event.return_value = {
+                "id": "evt_no_ref",
                 "type": "checkout.session.completed",
-                "data": {"object": {"id": "cs_test_xyz"}},  # no client_reference_id
+                "data": {
+                    "object": {"id": "cs_test_xyz", "payment_status": "paid"}
+                },  # no client_reference_id
             }
             resp = client.post(
                 "/stripe/webhook",
@@ -262,6 +266,7 @@ class TestStripeWebhook:
                     "object": {
                         "id": "cs_test_xyz",
                         "client_reference_id": "user-abc-123",
+                        "payment_status": "paid",
                     }
                 },
             }
@@ -275,6 +280,64 @@ class TestStripeWebhook:
         mock_sub_repo.credit_draft_pass_for_stripe_event.assert_called_once_with(
             "evt_duplicate", "user-abc-123"
         )
+
+    def test_webhook_skips_credit_when_event_id_missing(
+        self, client: TestClient, mock_sub_repo: MagicMock
+    ) -> None:
+        with (
+            patch("routers.stripe.settings") as mock_settings,
+            patch("routers.stripe.stripe") as mock_stripe,
+        ):
+            mock_settings.stripe_secret_key = "sk_test_123"
+            mock_settings.stripe_webhook_secret = "whsec_test"
+            mock_stripe.Webhook.construct_event.return_value = {
+                # no "id" field — simulates malformed/unexpected Stripe payload
+                "type": "checkout.session.completed",
+                "data": {
+                    "object": {
+                        "id": "cs_test_xyz",
+                        "client_reference_id": "user-abc-123",
+                        "payment_status": "paid",
+                    }
+                },
+            }
+            resp = client.post(
+                "/stripe/webhook",
+                content=b"{}",
+                headers={"stripe-signature": "t=123,v1=abc"},
+            )
+
+        assert resp.status_code == 200
+        mock_sub_repo.credit_draft_pass_for_stripe_event.assert_not_called()
+
+    def test_webhook_skips_credit_when_payment_not_completed(
+        self, client: TestClient, mock_sub_repo: MagicMock
+    ) -> None:
+        with (
+            patch("routers.stripe.settings") as mock_settings,
+            patch("routers.stripe.stripe") as mock_stripe,
+        ):
+            mock_settings.stripe_secret_key = "sk_test_123"
+            mock_settings.stripe_webhook_secret = "whsec_test"
+            mock_stripe.Webhook.construct_event.return_value = {
+                "id": "evt_unpaid",
+                "type": "checkout.session.completed",
+                "data": {
+                    "object": {
+                        "id": "cs_test_xyz",
+                        "client_reference_id": "user-abc-123",
+                        "payment_status": "unpaid",
+                    }
+                },
+            }
+            resp = client.post(
+                "/stripe/webhook",
+                content=b"{}",
+                headers={"stripe-signature": "t=123,v1=abc"},
+            )
+
+        assert resp.status_code == 200
+        mock_sub_repo.credit_draft_pass_for_stripe_event.assert_not_called()
 
     def test_webhook_credits_when_atomic_event_credit_succeeds(
         self, client: TestClient, mock_sub_repo: MagicMock
@@ -294,6 +357,7 @@ class TestStripeWebhook:
                     "object": {
                         "id": "cs_test_xyz",
                         "client_reference_id": "user-abc-123",
+                        "payment_status": "paid",
                     }
                 },
             }

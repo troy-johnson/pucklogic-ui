@@ -60,12 +60,21 @@ async def stripe_webhook(
         session = event["data"]["object"]
         event_id = event.get("id")
         user_id = session.get("client_reference_id")
+        payment_status = session.get("payment_status")
         logger.info(
-            "Checkout completed: event_id=%s session_id=%s user_id=%s",
+            "Checkout completed: event_id=%s session_id=%s user_id=%s payment_status=%s",
             event_id,
             session.get("id"),
             user_id,
+            payment_status,
         )
+        if payment_status != "paid":
+            logger.info(
+                "Skipping draft pass credit: payment_status=%s for event %s",
+                payment_status,
+                event_id,
+            )
+            return {"received": True}
         if user_id:
             if event_id:
                 if repo.credit_draft_pass_for_stripe_event(event_id, user_id):
@@ -73,6 +82,9 @@ async def stripe_webhook(
                 else:
                     logger.info("Stripe event %s already processed; skipping credit", event_id)
             else:
-                repo.credit_draft_pass(user_id)
+                logger.error(
+                    "checkout.session.completed missing event id for user %s; skipping credit",
+                    user_id,
+                )
 
     return {"received": True}

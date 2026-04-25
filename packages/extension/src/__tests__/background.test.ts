@@ -228,6 +228,41 @@ describe("BackgroundSessionBridge", () => {
     expect(FakeWebSocket.instances).toHaveLength(2);
   });
 
+  it("late-firing old onclose does not null the new socket", async () => {
+    const bridge = new BackgroundSessionBridge({
+      WebSocketImpl: FakeWebSocket,
+      getToken: async () => "token-late-close",
+    });
+
+    await bridge.initSession({
+      sessionId: "session-1",
+      wsUrl: "wss://api.pucklogic.com/draft-sessions/session-1/ws",
+    });
+    const firstSocket = FakeWebSocket.instances[0];
+    firstSocket.triggerOpen();
+
+    // Capture the old onclose before initSession closes it, then detach so
+    // FakeWebSocket.close() does not fire it synchronously — simulating async close.
+    const oldOnClose = firstSocket.onclose;
+    firstSocket.onclose = null;
+
+    await bridge.initSession({
+      sessionId: "session-2",
+      wsUrl: "wss://api.pucklogic.com/draft-sessions/session-2/ws",
+    });
+    const secondSocket = FakeWebSocket.instances[1];
+    secondSocket.triggerOpen();
+
+    // Simulate async late-arrive of the old socket's close event.
+    oldOnClose?.();
+
+    // The new socket should still be alive — picks must be forwarded.
+    bridge.handleRuntimeMessage({ type: "PICK_DETECTED", playerName: "McDavid", pickNumber: 1 });
+    expect(secondSocket.sent).toContain(
+      JSON.stringify({ type: "pick", payload: { player_name: "McDavid", pick_number: 1 } }),
+    );
+  });
+
   it("observability: emits attach/open/close and reconnect recovery signals", async () => {
     const metrics: string[] = [];
 

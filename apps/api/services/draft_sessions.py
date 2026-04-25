@@ -168,7 +168,6 @@ class DraftSessionService:
         return sync_state
 
     def reconnect_sync_state(self, *, session_id: str, user_id: str, now: datetime) -> dict:
-        self.expire_inactive_sessions(now)
         sync_state = self.get_sync_state(session_id=session_id, user_id=user_id, now=now)
         self._draft_session_repo.touch_heartbeat(
             session_id=session_id,

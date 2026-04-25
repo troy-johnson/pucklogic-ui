@@ -72,55 +72,6 @@ class SubscriptionRepository:
             {"p_subscription_id": subscription_id},
         ).execute()
 
-    def credit_draft_pass(self, user_id: str) -> None:
-        """Increment draft_pass_balance by 1, creating the subscription row if needed."""
-        result = (
-            self._db.table("subscriptions")
-            .select("id, draft_pass_balance")
-            .eq("user_id", user_id)
-            .maybe_single()
-            .execute()
-        )
-        row = result.data
-        if row is None:
-            try:
-                self._db.table("subscriptions").insert(
-                    {
-                        "user_id": user_id,
-                        "plan": "draft_pass",
-                        "status": "active",
-                        "draft_pass_balance": 1,
-                    }
-                ).execute()
-                return
-            except Exception:
-                # Race: another request inserted the row between SELECT and INSERT.
-                # The subscriptions_user_id_unique constraint (migration 008) causes
-                # this INSERT to fail. Re-fetch and fall through to the UPDATE path.
-                result = (
-                    self._db.table("subscriptions")
-                    .select("id, draft_pass_balance")
-                    .eq("user_id", user_id)
-                    .maybe_single()
-                    .execute()
-                )
-                row = result.data
-
-        if row is not None:
-            current = row.get("draft_pass_balance") or 0
-            (
-                self._db.table("subscriptions")
-                .update(
-                    {
-                        "draft_pass_balance": current + 1,
-                        "status": "active",
-                        "expires_at": None,
-                    }
-                )
-                .eq("id", row["id"])
-                .execute()
-            )
-
     def credit_draft_pass_for_stripe_event(self, event_id: str, user_id: str) -> bool:
         """Atomically claim a Stripe event and credit one pass when newly processed."""
         result = self._db.rpc(

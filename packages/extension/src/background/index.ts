@@ -95,6 +95,7 @@ export class BackgroundSessionBridge {
     };
 
     socket.onmessage = (event) => {
+      if (cancelled) return;
       try {
         const message = JSON.parse(event.data) as {
           type?: string;
@@ -125,7 +126,7 @@ export class BackgroundSessionBridge {
     };
 
     socket.onclose = () => {
-      this.socket = null;
+      if (this.socket === socket) this.socket = null;
       this.onMetric({ type: "socket_close" });
 
       if (this.stopReconnect || cancelled) {
