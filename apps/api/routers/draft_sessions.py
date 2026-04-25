@@ -112,6 +112,8 @@ async def add_manual_pick(
             player_name=req.player_name,
             player_lookup=req.player_lookup,
         )
+    except TerminalSessionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except LookupError as exc:

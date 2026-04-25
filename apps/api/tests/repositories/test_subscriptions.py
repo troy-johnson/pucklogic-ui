@@ -249,6 +249,25 @@ class TestCreditDraftPass:
         update_call = mock_db.table.return_value.update.call_args.args[0]
         assert update_call["expires_at"] is None
 
+    def test_falls_through_to_update_when_insert_hits_unique_constraint(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        first_result = MagicMock()
+        first_result.data = None
+        second_result = MagicMock()
+        second_result.data = {"id": "sub-1", "draft_pass_balance": 0}
+
+        execute_mock = mock_db.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute  # noqa: E501
+        execute_mock.side_effect = [first_result, second_result]
+        mock_db.table.return_value.insert.return_value.execute.side_effect = Exception(
+            "duplicate key value violates unique constraint"
+        )
+
+        repo.credit_draft_pass("user-1")
+
+        update_call = mock_db.table.return_value.update.call_args.args[0]
+        assert update_call["draft_pass_balance"] == 1
+
 
 class TestCreditDraftPassForStripeEvent:
     def _rpc_chain(self, mock_db: MagicMock) -> MagicMock:

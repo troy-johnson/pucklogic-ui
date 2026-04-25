@@ -329,6 +329,18 @@ class TestManualPickEndpoint:
 
         assert response.status_code == 403
 
+    def test_manual_pick_returns_409_for_terminal_session(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.accept_pick.side_effect = TerminalSessionError("session is closed")
+
+        response = client.post(
+            "/draft-sessions/ses_1/manual-picks",
+            json={"pick_number": 19, "player_name": "Skater"},
+        )
+
+        assert response.status_code == 409
+
 
 class TestDraftSessionWebSocket:
     def test_connect_emits_sync_state_event(

@@ -75,13 +75,17 @@ class DraftSessionService:
         try:
             self._draft_session_repo.create_session(payload)
         except Exception:
-            self._subscription_repo.restore_draft_pass(entitlement_ref)
-            raced_active = self._draft_session_repo.get_active_session(
+            active_after_failure = self._draft_session_repo.get_active_session(
                 user_id,
                 active_after=now - self._inactivity_timeout,
             )
-            if raced_active is not None:
-                return raced_active
+            if active_after_failure is not None:
+                if active_after_failure.get("session_id") == payload["session_id"]:
+                    return active_after_failure
+                self._subscription_repo.restore_draft_pass(entitlement_ref)
+                return active_after_failure
+
+            self._subscription_repo.restore_draft_pass(entitlement_ref)
             raise
         return payload
 
@@ -203,6 +207,9 @@ class DraftSessionService:
         if active is None or active.get("session_id") != session_id:
             self._raise_if_terminal(session_id, user_id)
             raise LookupError("active session not found for user")
+
+        if not self._subscription_repo.is_active(user_id):
+            raise PermissionError("active subscription required to submit picks")
 
         sync_state = dict(active.get("sync_state") or {})
         last_processed_pick = sync_state.get("last_processed_pick")

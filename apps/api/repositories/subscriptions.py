@@ -81,17 +81,33 @@ class SubscriptionRepository:
             .maybe_single()
             .execute()
         )
-        if result.data is None:
-            self._db.table("subscriptions").insert(
-                {
-                    "user_id": user_id,
-                    "plan": "draft_pass",
-                    "status": "active",
-                    "draft_pass_balance": 1,
-                }
-            ).execute()
-        else:
-            current = result.data.get("draft_pass_balance") or 0
+        row = result.data
+        if row is None:
+            try:
+                self._db.table("subscriptions").insert(
+                    {
+                        "user_id": user_id,
+                        "plan": "draft_pass",
+                        "status": "active",
+                        "draft_pass_balance": 1,
+                    }
+                ).execute()
+                return
+            except Exception:
+                # Race: another request inserted the row between SELECT and INSERT.
+                # The subscriptions_user_id_unique constraint (migration 008) causes
+                # this INSERT to fail. Re-fetch and fall through to the UPDATE path.
+                result = (
+                    self._db.table("subscriptions")
+                    .select("id, draft_pass_balance")
+                    .eq("user_id", user_id)
+                    .maybe_single()
+                    .execute()
+                )
+                row = result.data
+
+        if row is not None:
+            current = row.get("draft_pass_balance") or 0
             (
                 self._db.table("subscriptions")
                 .update(
@@ -101,7 +117,7 @@ class SubscriptionRepository:
                         "expires_at": None,
                     }
                 )
-                .eq("id", result.data["id"])
+                .eq("id", row["id"])
                 .execute()
             )
 

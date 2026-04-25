@@ -159,6 +159,37 @@ class TestStartSession:
         assert result == raced_active
         mock_sub_repo.restore_draft_pass.assert_called_once_with("sub_abc123")
 
+    def test_does_not_restore_pass_when_create_error_arrives_after_own_insert_commits(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+        mock_repo.get_active_session.side_effect = [
+            None,
+            {
+                "session_id": "ses_committed",
+                "user_id": "usr_1",
+                "status": "active",
+                "entitlement_ref": "sub_abc123",
+            },
+        ]
+        mock_sub_repo.consume_draft_pass.return_value = "sub_abc123"
+        mock_repo.create_session.side_effect = RuntimeError("post-commit timeout")
+
+        original_uuid4 = DraftSessionService.start_session.__globals__["uuid4"]
+        DraftSessionService.start_session.__globals__["uuid4"] = lambda: type(
+            "FixedUuid", (), {"hex": "committed"}
+        )()
+        try:
+            result = service.start_session(user_id="usr_1", platform="espn", now=now)
+        finally:
+            DraftSessionService.start_session.__globals__["uuid4"] = original_uuid4
+
+        assert result["session_id"] == "ses_committed"
+        mock_sub_repo.restore_draft_pass.assert_not_called()
+
 
 class TestPassConsumptionInvariants:
     def test_start_does_not_consume_pass_on_existing_active_session(
@@ -674,6 +705,30 @@ class TestAcceptPick:
         assert update_kwargs["user_id"] == "usr_1"
         assert update_kwargs["sync_state"]["last_processed_pick"] == 11
         assert update_kwargs["accepted_picks"][-1]["pick_number"] == 11
+
+
+class TestAcceptPickSubscriptionGate:
+    def test_accept_pick_raises_permission_error_when_subscription_inactive(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+        mock_repo.get_active_session.return_value = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "active",
+            "platform": "espn",
+            "sync_state": {"sync_health": "healthy", "last_processed_pick": 10, "cursor": None},
+            "accepted_picks": [],
+        }
+        mock_sub_repo.is_active.return_value = False
+
+        with pytest.raises(PermissionError, match="subscription"):
+            service.accept_pick(session_id="ses_1", user_id="usr_1", pick_number=11, now=now)
+
+        mock_repo.update_session_progress.assert_not_called()
 
 
 class TestAcceptPickTerminalSession:
