@@ -103,8 +103,9 @@ A Vite plugin copies `manifest.json` into `dist/manifest.json` after bundle.
 - `handleRuntimeMessage` forwarding `PICK_DETECTED` → WS `pick` only when socket is open (`readyState === 1`)
 - `sync_state` request on every successful open
 - exponential reconnect backoff from 1s up to 30s
-- structured backend error handling so `{"type":"error","payload":{"message":"session is closed"}}`
-  disables reconnect for terminal sessions instead of retry-looping forever
+- repeated `initSession(...)` cancels the prior connection's reconnect loop and closes the old socket before opening a fresh one
+- structured backend error handling so `{"type":"error","payload":{"code":"SESSION_CLOSED","message":"session is closed"}}`
+  plus WebSocket close code `1008` disables reconnect for terminal sessions instead of retry-looping forever
 - observability signals:
   - `socket_attach_success`
   - `socket_attach_failure`

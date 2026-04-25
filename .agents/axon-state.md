@@ -1,14 +1,14 @@
 | Field | Value |
 |---|---|
-| Active Phase | `008d-draft-pass-session-lifecycle` — in progress; branch `feat/008d-draft-pass-session-lifecycle` created from main |
+| Active Phase | `008d-draft-pass-session-lifecycle` — implementation complete on branch `feat/008d-draft-pass-session-lifecycle`; review/doc sync in progress |
 | Active Branch | feat/008d-draft-pass-session-lifecycle |
 | Open PR | none |
-| Current Focus | Close 008d review fixes: atomic draft-pass consume on start, DB active-session invariants, atomic Stripe pass crediting, and terminal-session reconnect suppression |
-| Last Action | Implemented 008d remediation edits across API, migration, extension, and tests; doc/state sync and verification remain pending in this session |
+| Current Focus | Finalize 008d documentation/state sync after pushed review-fix commits; prepare for review/PR handoff and then resume 008e |
+| Last Action | Pushed 008d remediation commits covering migration invariants, terminal-session WS denial with `SESSION_CLOSED`, and extension reconnect hardening; syncing docs/state/Serena now |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
 | Current Hypothesis | WebSocket-backed backend authority is the critical first implementation slice; ESPN is MVP, Yahoo is secondary, manual mode remains the launch fallback, and launch infra is Fly.io single-instance with Redis deferred |
-| Next Steps | 1. Run focused verification for 008d backend + extension fixes once execution harness is available 2. Re-review 008d against spec/plan AC with updated docs 3. Then resume `008e` optional pick_number follow-up 4. Keep Yahoo gated until season-live manual draft-room verification succeeds |
-| Next Session Entry | Resume at: verify and review the 008d remediation branch, then return to 008e. |
+| Next Steps | 1. Re-review 008d against spec/plan AC with updated docs and pushed fixes 2. Complete PR/status sync for branch `feat/008d-draft-pass-session-lifecycle` 3. Resume `008e` optional pick_number follow-up after 008d review disposition 4. Keep Yahoo gated until season-live manual draft-room verification succeeds |
+| Next Session Entry | Resume at: review the pushed 008d remediation branch, then complete PR sync or return to 008e based on the review outcome. |
 
 ## Merge and code review outcome (2026-04-10)
 

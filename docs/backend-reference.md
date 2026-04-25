@@ -302,6 +302,9 @@ CREATE TABLE subscriptions (
   draft_pass_balance INTEGER NOT NULL DEFAULT 0 CHECK (draft_pass_balance >= 0)
 );
 
+CREATE UNIQUE INDEX subscriptions_user_id_unique
+  ON subscriptions (user_id);
+
 CREATE TABLE stripe_processed_events (
   event_id TEXT PRIMARY KEY,
   processed_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -314,7 +317,18 @@ CREATE TABLE stripe_processed_events (
 --     decrements draft_pass_balance, and returns the backing subscription id.
 --   * restore_draft_pass(subscription_id) compensates a consumed pass when session creation fails.
 --   * credit_draft_pass_for_stripe_event(event_id, user_id) atomically claims Stripe webhook
---     delivery and credits exactly one pass, preventing "processed but uncredited" retries.
+--     delivery and credits exactly one pass using `subscriptions_user_id_unique`, preventing
+--     duplicate delivery from double-crediting or failing its `ON CONFLICT (user_id)` path.
+-- Migration 008 also deduplicates historical `subscriptions.user_id` rows before creating
+-- `subscriptions_user_id_unique`, making the launch invariant explicit: one subscription row
+-- per user backs draft-pass balance and Stripe fulfillment.
+
+### Live draft transport notes
+
+- WebSocket attach plus in-loop `pick` / `sync_state` recovery reject terminal sessions with a
+  structured payload of the form `{"type":"error","payload":{"code":"SESSION_CLOSED","message":"session is closed"}}`.
+- Terminal WS denial closes the socket with close code `1008`, allowing clients to suppress
+  reconnect loops for ended/expired sessions while still surfacing a user-visible error.
 
 -- Injury tracking — one row per player (upserted daily via NHL.com injury feed).
 -- Feeds the Layer 2 "return from injury" signal in v2.0.
