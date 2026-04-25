@@ -69,6 +69,8 @@ async def end_draft_session(
             now=datetime.now(UTC),
         )
         return Response(status_code=204)
+    except TerminalSessionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except LookupError as exc:
