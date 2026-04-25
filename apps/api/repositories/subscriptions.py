@@ -20,40 +20,6 @@ class SubscriptionRepository:
             on_conflict="user_id",
         ).execute()
 
-    def get_subscription_id(self, user_id: str) -> str | None:
-        """Return the id of the active subscription row for *user_id*, or None."""
-        result = (
-            self._db.table("subscriptions")
-            .select("id, expires_at")
-            .eq("user_id", user_id)
-            .eq("status", "active")
-            .maybe_single()
-            .execute()
-        )
-        if result.data is None:
-            return None
-        expires_at = result.data.get("expires_at")
-        if expires_at is not None and datetime.fromisoformat(expires_at) <= datetime.now(UTC):
-            return None
-        return result.data.get("id")
-
-    def has_draft_pass(self, user_id: str) -> bool:
-        """Return True if user_id has at least one unconsumed draft pass."""
-        result = (
-            self._db.table("subscriptions")
-            .select("draft_pass_balance, expires_at")
-            .eq("user_id", user_id)
-            .eq("status", "active")
-            .maybe_single()
-            .execute()
-        )
-        if result.data is None:
-            return False
-        expires_at = result.data.get("expires_at")
-        if expires_at is not None and datetime.fromisoformat(expires_at) <= datetime.now(UTC):
-            return False
-        return (result.data.get("draft_pass_balance") or 0) > 0
-
     def consume_draft_pass(self, user_id: str, *, now: datetime) -> str:
         """Atomically consume one eligible draft pass and return its subscription id."""
         result = self._db.rpc(

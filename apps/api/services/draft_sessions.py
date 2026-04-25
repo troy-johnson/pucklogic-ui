@@ -126,6 +126,7 @@ class DraftSessionService:
             active_after=now - self._inactivity_timeout,
         )
         if active is None or active.get("session_id") != session_id:
+            self._raise_if_terminal(session_id, user_id)
             raise LookupError("active session not found for user")
         self._draft_session_repo.end_session(
             session_id=session_id,
@@ -144,7 +145,7 @@ class DraftSessionService:
             raise LookupError("active session not found for user")
 
         if not self._subscription_repo.is_active(user_id):
-            raise PermissionError("active subscription required to reconnect")
+            raise PermissionError("active subscription required")
 
         return active.get("sync_state", {})
 

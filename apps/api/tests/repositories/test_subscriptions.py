@@ -98,71 +98,6 @@ class TestIsActive:
         mock_db.table.assert_called_with("subscriptions")
 
 
-class TestGetSubscriptionId:
-    def _chain(self, mock_db: MagicMock) -> MagicMock:
-        return mock_db.table.return_value.select.return_value.eq.return_value.eq.return_value.maybe_single.return_value.execute.return_value  # noqa: E501
-
-    def test_returns_subscription_id_when_active_and_unexpired(
-        self, repo: SubscriptionRepository, mock_db: MagicMock
-    ) -> None:
-        self._chain(mock_db).data = {
-            "id": "sub-1",
-            "expires_at": "2099-01-01T00:00:00+00:00",
-        }
-
-        assert repo.get_subscription_id("user-1") == "sub-1"
-
-    def test_returns_none_when_subscription_expired(
-        self, repo: SubscriptionRepository, mock_db: MagicMock
-    ) -> None:
-        self._chain(mock_db).data = {
-            "id": "sub-1",
-            "expires_at": "2000-01-01T00:00:00+00:00",
-        }
-
-        assert repo.get_subscription_id("user-1") is None
-
-    def test_returns_none_when_no_active_subscription(
-        self, repo: SubscriptionRepository, mock_db: MagicMock
-    ) -> None:
-        self._chain(mock_db).data = None
-
-        assert repo.get_subscription_id("user-1") is None
-
-
-class TestHasDraftPass:
-    def _chain(self, mock_db: MagicMock) -> MagicMock:
-        return mock_db.table.return_value.select.return_value.eq.return_value.eq.return_value.maybe_single.return_value.execute.return_value  # noqa: E501
-
-    def test_returns_true_when_balance_positive(
-        self, repo: SubscriptionRepository, mock_db: MagicMock
-    ) -> None:
-        self._chain(mock_db).data = {"draft_pass_balance": 2}
-        assert repo.has_draft_pass("user-1") is True
-
-    def test_returns_false_when_balance_zero(
-        self, repo: SubscriptionRepository, mock_db: MagicMock
-    ) -> None:
-        self._chain(mock_db).data = {"draft_pass_balance": 0}
-        assert repo.has_draft_pass("user-1") is False
-
-    def test_returns_false_when_no_row(
-        self, repo: SubscriptionRepository, mock_db: MagicMock
-    ) -> None:
-        self._chain(mock_db).data = None
-        assert repo.has_draft_pass("user-1") is False
-
-    def test_returns_false_when_subscription_expired(
-        self, repo: SubscriptionRepository, mock_db: MagicMock
-    ) -> None:
-        self._chain(mock_db).data = {
-            "draft_pass_balance": 2,
-            "expires_at": "2000-01-01T00:00:00+00:00",
-        }
-
-        assert repo.has_draft_pass("user-1") is False
-
-
 class TestConsumeDraftPass:
     def _rpc_chain(self, mock_db: MagicMock) -> MagicMock:
         return mock_db.rpc.return_value.execute.return_value
@@ -178,7 +113,7 @@ class TestConsumeDraftPass:
         assert subscription_id == "sub-1"
         mock_db.rpc.assert_called_once_with(
             "consume_draft_pass",
-            {"p_user_id": "user-1", "p_now": now.isoformat()},
+            {"p_user_id": "user-1", "p_now": now.astimezone(UTC).isoformat()},
         )
 
     def test_raises_when_no_eligible_pass_exists(

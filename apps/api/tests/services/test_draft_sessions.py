@@ -611,6 +611,25 @@ class TestReconnectSyncState:
         with pytest.raises(LookupError, match="session not found"):
             service.get_sync_state(session_id="ses_1", user_id="usr_1", now=now)
 
+    def test_reconnect_sync_state_calls_expire_inactive_sessions(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+        mock_repo.get_active_session.return_value = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "active",
+            "sync_state": {},
+        }
+        mock_sub_repo.is_active.return_value = True
+
+        service.reconnect_sync_state(session_id="ses_1", user_id="usr_1", now=now)
+
+        mock_repo.expire_inactive_sessions.assert_called_once()
+
 
 class TestAcceptPick:
     def test_accept_pick_rejects_duplicate_pick_number(
