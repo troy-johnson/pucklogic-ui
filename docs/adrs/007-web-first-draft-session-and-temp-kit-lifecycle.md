@@ -1,8 +1,8 @@
 # ADR 007 — Web-First Draft Session and Temporary Kit Lifecycle
 
-**Status:** Draft  
+**Status:** Accepted  
 **Date:** 2026-04-06  
-**Related:** `docs/specs/009-web-draft-kit-ux.md`, `docs/research/002-web-draft-kit-ux-brainstorm.md`, `docs/specs/008-live-draft-sync-launch-required.md`
+**Related:** `docs/specs/009-web-draft-kit-ux.md`, `docs/research/002-web-draft-kit-ux-brainstorm.md`, `docs/specs/008-live-draft-sync-launch-required.md`, `docs/plans/008d-draft-pass-session-lifecycle.md`
 
 ## Context
 
@@ -13,13 +13,14 @@ The product needs a stable launch architecture for web-first draft prep and live
 1. **Web is the primary launch surface** for draft prep, saved kits, rankings, export, and live draft session control.
 2. **Backend draft session state is authoritative** for live draft and recovery flows.
 3. **Anonymous users may explore** by creating temporary kits and viewing rankings.
-4. **Authentication is required** for durable saved kits, export/print, and starting a live draft.
+4. **Authentication is required** for durable saved kits, export/print, and starting a live draft; the first successful live-draft start consumes one paid draft pass.
 5. **Temporary anonymous kits follow a two-window lifecycle**:
    - directly resumable for 24 hours based on last activity
    - recoverable by normal sign-in through day 7
 6. **Temporary kits auto-migrate to `user_id` on authentication**.
-7. **Launch supports one active live draft session per user**.
-8. **Reconnect/resume and guided recovery are authenticated session behaviors**; manual fallback remains first-class if reconciliation fails.
+7. **Launch supports one active live draft session per user**, with backend-audited pass/session linkage for the active entitlement.
+8. **Reconnect/resume and guided recovery are authenticated session behaviors**; they revalidate ownership and entitlement without re-consuming a pass, and manual fallback remains first-class if reconciliation fails.
+9. **Explicit end and inactivity expiry are terminal session outcomes**; once a session is closed, reconnect must be rejected and the consumed pass cannot be reused.
 
 ## Consequences
 
@@ -61,3 +62,4 @@ The product needs a stable launch architecture for web-first draft prep and live
 - The web app should visually distinguish temporary anonymous work from account-saved work
 - Auth transition flows should preserve user progress by migrating temporary kits automatically
 - Live draft wireframes and implementation should assume one active session per user and authoritative backend reconciliation
+- Clients should treat backend terminal-session denial as authoritative and stop reconnecting once a session is closed

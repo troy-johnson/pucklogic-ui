@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Status update — 2026-04-25:** Implemented on PR #34 / branch `feat/008d-draft-pass-session-lifecycle`. The targeted remediation scope landed, including the migration uniqueness fix, terminal-session handling across HTTP + WS paths, extension reconnect suppression keyed off `SESSION_CLOSED`, and the final `/end` HTTP 409 follow-up. This document is retained as the historical execution checklist.
+
 **Goal:** Fix five issues from two code reviews on PR #34: a runtime SQL error in `credit_draft_pass_for_stripe_event`, missing terminal-session check in `accept_pick`, missing socket-close on in-loop WS terminal errors, overlapping sockets on repeated `initSession`, and brittle string-coupled terminal denial.
 
 **Architecture:** Five targeted fixes, no structural changes. (1) Migration 008 gains a `UNIQUE` constraint on `subscriptions.user_id` and drops a redundant index already created in 006. (2) `accept_pick` gets a `_raise_if_terminal` call before its generic `LookupError`. (3) The WS `pick` and `sync_state` in-loop handlers catch `TerminalSessionError` separately and close the socket. (4) `BackgroundSessionBridge.initSession()` cancels the previous socket's reconnect loop via a per-connection `cancelled` closure before opening a fresh socket. (5) Terminal denial WS errors gain a stable `code: "SESSION_CLOSED"` field; the extension keys off the code, not the message string.

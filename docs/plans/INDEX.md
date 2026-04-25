@@ -16,8 +16,8 @@
 | 008a | [draft-season-readiness](008a-draft-season-readiness.md) | Reference | 2026-04-11 | Launch-readiness roadmap retained for context; active execution now runs through 008b/008c/010a |
 | 008b | [live-draft-backend](008b-live-draft-backend.md) | Implemented | 2026-04-14 | Backend authority, websocket transport, entitlement enforcement, and schema/docs alignment shipped on the current branch |
 | 008c | [extension-sync-adapters](008c-extension-sync-adapters.md) | Approved | 2026-04-11 | Second implementation track after backend contract stabilization; ESPN MVP first, Yahoo stretch; includes pre-launch adapter observability |
-| 008d | [draft-pass-session-lifecycle](008d-draft-pass-session-lifecycle.md) | Draft | 2026-04-13 | Pass consumption, reconnect reuse, completion semantics, and anti-abuse lifecycle rules for live draft sessions |
-| 008d-r1 | [2026-04-24-008d-review-fixes](2026-04-24-008d-review-fixes.md) | Implemented | 2026-04-24 | Review remediation plan for Stripe pass-credit migration, terminal session handling, and extension reconnect hardening |
+| 008d | [draft-pass-session-lifecycle](008d-draft-pass-session-lifecycle.md) | Approved | 2026-04-25 | Implementation complete on PR #34; pass consumption, reconnect reuse, terminal completion semantics, and anti-abuse lifecycle rules are merge-ready, with seasonal manual verification still deferred |
+| 008d-r1 | [2026-04-24-008d-review-fixes](2026-04-24-008d-review-fixes.md) | Implemented | 2026-04-25 | Review remediation completed on PR #34, including migration uniqueness, terminal `/end` + WS denial handling, and extension reconnect hardening |
 | 008e | [optional-pick-number](008e-optional-pick-number.md) | Draft | 2026-04-23 | Make pick_number optional in WS auto-ingestion; backend auto-derives from session cursor when absent |
 | 010a | [web-draft-kit-ui](010a-web-draft-kit-ui.md) | Draft | 2026-04-11 | UI implementation plan limited to scaffolding until spec 010 wireframe/design decisions are approved |
 

@@ -6,8 +6,10 @@
 **Scope:** Medium (~1–2 days, multi-session)  
 **Execution mode:** Dependency waves  
 **Key decisions:** a draft pass is consumed on first successful session start, reconnect never consumes another pass, closed sessions cannot be resumed onto the same pass  
-**Execution status:** Implementation complete  
-**Readiness:** Approved — implementation started 2026-04-23
+**Execution status:** Implementation complete on PR #34 (`feat/008d-draft-pass-session-lifecycle`)  
+**Readiness:** Approved for merge as of 2026-04-25; launch-readiness still depends on seasonal manual verification
+
+> **Status update — 2026-04-25:** PR #34 is mergeable after the final `/end` terminal-session 409 fix and review-thread reconciliation. Automated coverage now includes pass-consumption invariants, terminal reconnect denial, Stripe pass-credit idempotency, and extension reconnect suppression on `SESSION_CLOSED`. The only remaining launch caveat is the already-documented seasonal manual draft-room verification.
 
 ## Launch Decisions
 
@@ -81,6 +83,8 @@ Launch-time invariants should be enforced by schema and service logic:
 ---
 
 ## Implementation Phases
+
+> The phases and task list below are retained as the executed implementation plan for historical traceability; branch status should be taken from the execution/readiness lines above.
 
 ### Phase 1 — State model and migration contract
 
