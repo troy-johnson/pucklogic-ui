@@ -105,4 +105,17 @@ describe("Yahoo adapter", () => {
       requiresManualVerification: true,
     });
   });
+
+  it("extractLatestYahooPick: omits pickNumber when pick-number element is absent", () => {
+    const doc = new DOMParser().parseFromString(
+      `<div><div data-testid="draft-pick"><span class="player-name">Miro Heiskanen</span></div></div>`,
+      "text/html",
+    );
+
+    const pick = extractLatestYahooPick(doc);
+
+    expect(pick).not.toBeNull();
+    expect(pick!.playerName).toBe("Miro Heiskanen");
+    expect(pick!.pickNumber).toBeUndefined();
+  });
 });
