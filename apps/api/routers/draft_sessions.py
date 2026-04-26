@@ -167,18 +167,10 @@ async def draft_session_ws(
 
         event_type = message.get("type")
         if event_type == "pick":
-            payload = message.get("payload") or {}
-            pick_number = payload.get("pick_number")
-            if not isinstance(pick_number, int) or pick_number < 1:
-                await websocket.send_json(
-                    {
-                        "type": "error",
-                        "payload": {
-                            "message": "pick event requires a positive integer pick_number"
-                        },
-                    }
-                )
-                continue
+            raw_payload = message.get("payload")
+            payload = raw_payload if isinstance(raw_payload, dict) else {}
+            raw = payload.get("pick_number")
+            pick_number: int | None = raw if isinstance(raw, int) and raw >= 1 else None
 
             try:
                 result = service.accept_pick(
@@ -212,7 +204,7 @@ async def draft_session_ws(
                     "payload": {
                         "status": "pick_received",
                         "session_id": session_id,
-                        "pick_number": pick_number,
+                        "pick_number": result["accepted_pick"]["pick_number"],
                         "sync_state": result["sync_state"],
                     },
                 }

@@ -163,8 +163,8 @@ Observability catalog includes socket lifecycle + fallback/de-sync signals.
 ### Shared parsing (`src/content/shared.ts`)
 
 - `textFromFirstMatch(root, selectors)`
-- `parsePickNumber(text)`
-- `DetectedPick` type
+- `parsePickNumber(text)` — returns `number | undefined`; returns `undefined` when text is `null`, empty, or contains no digit sequence
+- `DetectedPick` type — `pickNumber: number | undefined`; `undefined` when pick number cannot be parsed from the DOM
 
 ---
 

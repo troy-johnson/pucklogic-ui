@@ -1,14 +1,15 @@
 | Field | Value |
 |---|---|
-| Active Phase | `008d-draft-pass-session-lifecycle` — implementation complete on branch `feat/008d-draft-pass-session-lifecycle`; PR #34 is approved/mergeable and awaiting merge |
-| Active Branch | feat/008d-draft-pass-session-lifecycle |
-| Open PR | #34 — `feat(api): draft pass session lifecycle and terminal reconnect denial (008d)` |
-| Current Focus | Finalize 008d docs/ADR/Serena sync for merge-ready PR #34, then merge and resume 008e |
-| Last Action | Added the final `/end` terminal-session 409 fix, re-ran the branch review, and replied to the remaining open GitHub review thread; branch is now merge-ready |
+| Active Phase | `008e-optional-pick-number` — not yet started; plan written at `docs/plans/008e-optional-pick-number.md` |
+| Active Branch | main |
+| Open PR | none |
+| Current Focus | Implement 008e: make pick_number optional in WS auto-ingestion path (backend service + router + extension + tests + docs) |
+| Track | express — scope fully defined, plan through 3 review rounds, no open design questions |
+| Last Action | Classification gate passed (express); beginning implement-tdd on branch feat/008e-optional-pick-number |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
 | Current Hypothesis | WebSocket-backed backend authority is the critical first implementation slice; ESPN is MVP, Yahoo is secondary, manual mode remains the launch fallback, and launch infra is Fly.io single-instance with Redis deferred |
-| Next Steps | 1. Merge PR #34 after the final doc/state sync and operator migration check 2. Reconcile any post-merge status surfaces still pointing at branch work 3. Resume `008e` optional pick_number follow-up 4. Keep Yahoo gated until season-live manual draft-room verification succeeds |
-| Next Session Entry | Resume at: merge PR #34; if already merged, switch back to `main` and pick up `008e`. |
+| Next Steps | 1. Create branch feat/008e-optional-pick-number 2. Execute 008e plan (Steps 1–6) 3. Keep Yahoo gated until season-live manual draft-room verification succeeds |
+| Next Session Entry | Resume at: create branch feat/008e-optional-pick-number and begin Step 1 (service layer). |
 
 ## Merge and code review outcome (2026-04-10)
 
