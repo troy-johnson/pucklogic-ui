@@ -92,7 +92,9 @@ With:
 raw_payload = message.get("payload")
 payload = raw_payload if isinstance(raw_payload, dict) else {}
 raw = payload.get("pick_number")
-pick_number: int | None = raw if isinstance(raw, int) and raw >= 1 else None
+pick_number: int | None = (
+    raw if isinstance(raw, int) and not isinstance(raw, bool) and raw >= 1 else None
+)
 ```
 
 The `isinstance(raw_payload, dict)` guard is a real bug fix: the current `message.get("payload") or {}` passes `{}` for `None`/empty but would `AttributeError` on a list or string payload, since `.get()` is not defined on those types.
