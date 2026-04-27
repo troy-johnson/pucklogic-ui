@@ -33,7 +33,7 @@ Make `pick_number` optional in the WebSocket auto-ingestion path. When the exten
 | `0`, negative, non-integer, boolean, string | Treat as absent — same derivation path |
 | Positive integer `>= 1` | Keep existing in-turn / out-of-turn ordering checks |
 
-The router normalization expression: `raw if isinstance(raw, int) and raw >= 1 else None`.
+The router normalization expression: `raw if isinstance(raw, int) and not isinstance(raw, bool) and raw >= 1 else None`.
 
 **Observability:** Malformed values (0, negative, wrong type) are silently treated as absent — no log or metric emitted. DOM-miss is expected and frequent; logging it would produce noise in production. If future observability is needed, it belongs in the extension-side `selector_fallback` signal, not in the backend normalizer.
 

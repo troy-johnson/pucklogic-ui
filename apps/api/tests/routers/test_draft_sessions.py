@@ -621,6 +621,38 @@ class TestWebSocketPickNumberNormalization:
         kwargs = mock_service.accept_pick.call_args.kwargs
         assert kwargs["pick_number"] is None
 
+    def test_pick_with_true_pick_number_is_treated_as_absent(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.attach_socket.return_value = {"sync_health": "healthy"}
+        mock_service.accept_pick.return_value = self._make_service_result(1)
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            ws.receive_json()
+            ws.send_json({"type": "pick", "payload": {"player_name": "Skater", "pick_number": True}})
+            event = ws.receive_json()
+
+        assert event["type"] == "state_update"
+        assert event["payload"]["pick_number"] == 1
+        kwargs = mock_service.accept_pick.call_args.kwargs
+        assert kwargs["pick_number"] is None
+
+    def test_pick_with_false_pick_number_is_treated_as_absent(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.attach_socket.return_value = {"sync_health": "healthy"}
+        mock_service.accept_pick.return_value = self._make_service_result(1)
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            ws.receive_json()
+            ws.send_json({"type": "pick", "payload": {"player_name": "Skater", "pick_number": False}})
+            event = ws.receive_json()
+
+        assert event["type"] == "state_update"
+        assert event["payload"]["pick_number"] == 1
+        kwargs = mock_service.accept_pick.call_args.kwargs
+        assert kwargs["pick_number"] is None
+
     def test_pick_with_non_dict_payload_does_not_crash(
         self, client: TestClient, mock_service: MagicMock
     ) -> None:

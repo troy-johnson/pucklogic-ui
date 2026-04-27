@@ -170,7 +170,11 @@ async def draft_session_ws(
             raw_payload = message.get("payload")
             payload = raw_payload if isinstance(raw_payload, dict) else {}
             raw = payload.get("pick_number")
-            pick_number: int | None = raw if isinstance(raw, int) and raw >= 1 else None
+            pick_number: int | None = (
+                raw
+                if isinstance(raw, int) and not isinstance(raw, bool) and raw >= 1
+                else None
+            )
 
             try:
                 result = service.accept_pick(

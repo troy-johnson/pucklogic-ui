@@ -1,15 +1,15 @@
 | Field | Value |
 |---|---|
-| Active Phase | `008e-optional-pick-number` — not yet started; plan written at `docs/plans/008e-optional-pick-number.md` |
-| Active Branch | main |
-| Open PR | none |
-| Current Focus | Implement 008e: make pick_number optional in WS auto-ingestion path (backend service + router + extension + tests + docs) |
+| Active Phase | `008e-optional-pick-number` — implementation on branch `feat/008e-optional-pick-number`; PR #35 open with review feedback addressed locally |
+| Active Branch | feat/008e-optional-pick-number |
+| Open PR | #35 — `feat(api,extension): optional pick_number in WS auto-ingestion path (008e)` |
+| Current Focus | Land the boolean WS pick_number normalization fix, rerun verification, and sync PR review response |
 | Track | express — scope fully defined, plan through 3 review rounds, no open design questions |
-| Last Action | Classification gate passed (express); beginning implement-tdd on branch feat/008e-optional-pick-number |
+| Last Action | Added bool normalization regression tests, fixed router normalization to treat booleans as absent, and updated the 008e plan note |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
 | Current Hypothesis | WebSocket-backed backend authority is the critical first implementation slice; ESPN is MVP, Yahoo is secondary, manual mode remains the launch fallback, and launch infra is Fly.io single-instance with Redis deferred |
-| Next Steps | 1. Create branch feat/008e-optional-pick-number 2. Execute 008e plan (Steps 1–6) 3. Keep Yahoo gated until season-live manual draft-room verification succeeds |
-| Next Session Entry | Resume at: create branch feat/008e-optional-pick-number and begin Step 1 (service layer). |
+| Next Steps | 1. Run backend + extension verification for PR #35 2. Update the PR thread with fix/test evidence 3. Keep Yahoo gated until season-live manual draft-room verification succeeds |
+| Next Session Entry | Resume at: finish PR #35 verification and post the boolean normalization fix summary on the PR. |
 
 ## Merge and code review outcome (2026-04-10)
 
