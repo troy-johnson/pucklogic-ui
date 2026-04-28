@@ -1,14 +1,15 @@
 | Field | Value |
 |---|---|
-| Active Phase | `008d-draft-pass-session-lifecycle` — implementation complete on branch `feat/008d-draft-pass-session-lifecycle`; PR #34 is approved/mergeable and awaiting merge |
-| Active Branch | feat/008d-draft-pass-session-lifecycle |
-| Open PR | #34 — `feat(api): draft pass session lifecycle and terminal reconnect denial (008d)` |
-| Current Focus | Finalize 008d docs/ADR/Serena sync for merge-ready PR #34, then merge and resume 008e |
-| Last Action | Added the final `/end` terminal-session 409 fix, re-ran the branch review, and replied to the remaining open GitHub review thread; branch is now merge-ready |
+| Active Phase | `008e-optional-pick-number` — implementation complete on branch `feat/008e-optional-pick-number`; PR #35 is merge-ready pending merge |
+| Active Branch | feat/008e-optional-pick-number |
+| Open PR | #35 — `feat(api,extension): optional pick_number in WS auto-ingestion path (008e)` |
+| Current Focus | Final documentation/state sync before merging PR #35 |
+| Track | express — scope fully defined and verified |
+| Last Action | Pushed formatting sync (`6003af0`), all PR checks green, and started status-surface reconciliation pass |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
-| Current Hypothesis | WebSocket-backed backend authority is the critical first implementation slice; ESPN is MVP, Yahoo is secondary, manual mode remains the launch fallback, and launch infra is Fly.io single-instance with Redis deferred |
-| Next Steps | 1. Merge PR #34 after the final doc/state sync and operator migration check 2. Reconcile any post-merge status surfaces still pointing at branch work 3. Resume `008e` optional pick_number follow-up 4. Keep Yahoo gated until season-live manual draft-room verification succeeds |
-| Next Session Entry | Resume at: merge PR #34; if already merged, switch back to `main` and pick up `008e`. |
+| Current Hypothesis | WebSocket-backed backend authority is the critical first implementation slice; ESPN is MVP, Yahoo remains gated until season-live manual draft-room verification |
+| Next Steps | 1. Merge PR #35 2. Mark 008e implemented in plan index 3. Reconcile Notion + Serena closure memory |
+| Next Session Entry | Resume at: post-merge status reconciliation for 008e across Notion, axon-state, and Serena. |
 
 ## Merge and code review outcome (2026-04-10)
 

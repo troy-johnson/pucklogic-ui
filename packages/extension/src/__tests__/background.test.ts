@@ -353,4 +353,30 @@ describe("BackgroundSessionBridge", () => {
 
     expect(metrics).toContain("socket_attach_failure");
   });
+
+  it("omits pick_number from payload when pickNumber is undefined", async () => {
+    const bridge = new BackgroundSessionBridge({
+      WebSocketImpl: FakeWebSocket,
+      getToken: async () => "token-123",
+    });
+
+    await bridge.initSession({
+      sessionId: "session-1",
+      wsUrl: "wss://api.pucklogic.com/draft-sessions/session-1/ws",
+    });
+
+    const socket = FakeWebSocket.instances[0];
+    socket.triggerOpen();
+
+    bridge.handleRuntimeMessage({
+      type: "PICK_DETECTED",
+      playerName: "Connor McDavid",
+      pickNumber: undefined,
+    });
+
+    const parsed = JSON.parse(socket.sent[socket.sent.length - 1]);
+    expect(parsed.type).toBe("pick");
+    expect(parsed.payload.player_name).toBe("Connor McDavid");
+    expect("pick_number" in parsed.payload).toBe(false);
+  });
 });

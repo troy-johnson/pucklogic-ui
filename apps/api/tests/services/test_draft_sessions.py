@@ -726,6 +726,108 @@ class TestAcceptPick:
         assert update_kwargs["accepted_picks"][-1]["pick_number"] == 11
 
 
+class TestAcceptPickNone:
+    def test_accept_pick_none_derives_pick_number_one_on_fresh_session(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+
+        mock_repo.get_active_session.return_value = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "active",
+            "platform": "espn",
+            "sync_state": {
+                "sync_health": "healthy",
+                "last_processed_pick": None,
+                "cursor": None,
+            },
+            "accepted_picks": [],
+        }
+
+        result = service.accept_pick(
+            session_id="ses_1",
+            user_id="usr_1",
+            pick_number=None,
+            now=now,
+            ingestion_mode="auto",
+            player_name="Connor McDavid",
+        )
+
+        assert result["accepted_pick"]["pick_number"] == 1
+        assert result["sync_state"]["last_processed_pick"] == 1
+
+    def test_accept_pick_none_advances_cursor_sequentially(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+
+        mock_repo.get_active_session.return_value = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "active",
+            "platform": "espn",
+            "sync_state": {
+                "sync_health": "healthy",
+                "last_processed_pick": 5,
+                "cursor": "pk_5",
+            },
+            "accepted_picks": [],
+        }
+
+        result = service.accept_pick(
+            session_id="ses_1",
+            user_id="usr_1",
+            pick_number=None,
+            now=now,
+            ingestion_mode="auto",
+            player_name="Auston Matthews",
+        )
+
+        assert result["accepted_pick"]["pick_number"] == 6
+        assert result["sync_state"]["last_processed_pick"] == 6
+
+    def test_accept_pick_none_skips_ordering_check(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        """When pick_number is None, out-of-turn check does not apply."""
+        now = datetime.now(UTC)
+
+        mock_repo.get_active_session.return_value = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "active",
+            "platform": "espn",
+            "sync_state": {
+                "sync_health": "healthy",
+                "last_processed_pick": 3,
+                "cursor": "pk_3",
+            },
+            "accepted_picks": [],
+        }
+
+        # No ValueError raised — derived value (4) is always in-turn
+        result = service.accept_pick(
+            session_id="ses_1",
+            user_id="usr_1",
+            pick_number=None,
+            now=now,
+            ingestion_mode="auto",
+            player_name="Leon Draisaitl",
+        )
+
+        assert result["accepted_pick"]["pick_number"] == 4
+
+
 class TestAcceptPickSubscriptionGate:
     def test_accept_pick_raises_permission_error_when_subscription_inactive(
         self,

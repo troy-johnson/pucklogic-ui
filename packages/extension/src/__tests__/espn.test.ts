@@ -7,6 +7,7 @@ import {
   extractLatestEspnPick,
   startEspnContentScript,
 } from "../content/espn";
+import { parsePickNumber } from "../content/shared";
 
 describe("ESPN adapter", () => {
   it("detects ESPN draft-room context from hostname and path", () => {
@@ -175,5 +176,45 @@ describe("ESPN adapter", () => {
       message: "espn_degraded_state:selector_miss",
       source: "espn",
     });
+  });
+
+  describe("parsePickNumber", () => {
+    it("returns undefined for null input", () => {
+      expect(parsePickNumber(null)).toBeUndefined();
+    });
+
+    it("returns undefined for empty string", () => {
+      expect(parsePickNumber("")).toBeUndefined();
+    });
+
+    it("returns undefined when text contains no digit sequence", () => {
+      expect(parsePickNumber("no digits here")).toBeUndefined();
+    });
+
+    it("returns the parsed number for valid pick text", () => {
+      expect(parsePickNumber("Pick 7")).toBe(7);
+    });
+
+    it("returns the first digit sequence found", () => {
+      expect(parsePickNumber("12")).toBe(12);
+    });
+  });
+
+  it("startEspnContentScript: omits pickNumber when pick-number element is absent", () => {
+    const sent: Array<{ playerName: string; pickNumber?: number }> = [];
+    const doc = new DOMParser().parseFromString(
+      `<div><div data-testid="draft-pick"><span class="player-name">Connor McDavid</span></div></div>`,
+      "text/html",
+    );
+
+    const observer = startEspnContentScript(
+      (playerName, pickNumber) => sent.push({ playerName, pickNumber }),
+      { url: "https://fantasy.espn.com/hockey/draft?leagueId=1", doc },
+    );
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0].playerName).toBe("Connor McDavid");
+    expect(sent[0].pickNumber).toBeUndefined();
+    observer?.disconnect();
   });
 });

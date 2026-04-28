@@ -192,7 +192,7 @@ class DraftSessionService:
         *,
         session_id: str,
         user_id: str,
-        pick_number: int,
+        pick_number: int | None,
         now: datetime,
         ingestion_mode: str = "manual",
         player_id: str | None = None,
@@ -215,14 +215,19 @@ class DraftSessionService:
         last_processed_pick = sync_state.get("last_processed_pick")
         expected_pick_number = (last_processed_pick or 0) + 1
 
-        if pick_number < expected_pick_number:
-            raise ValueError(
-                f"pick_number {pick_number} already processed; expected {expected_pick_number}"
-            )
-        if pick_number > expected_pick_number:
-            raise ValueError(
-                f"pick_number {pick_number} out of turn; expected {expected_pick_number}"
-            )
+        if pick_number is None:
+            pick_number = expected_pick_number
+        else:
+            if pick_number < expected_pick_number:
+                raise ValueError(
+                    "pick_number "
+                    f"{pick_number} already processed; expected {expected_pick_number}"
+                )
+            if pick_number > expected_pick_number:
+                raise ValueError(
+                    "pick_number "
+                    f"{pick_number} out of turn; expected {expected_pick_number}"
+                )
 
         platform = active.get("platform", "espn")
         accepted_picks = list(active.get("accepted_picks") or [])
