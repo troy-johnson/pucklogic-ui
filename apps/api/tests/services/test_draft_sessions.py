@@ -740,7 +740,11 @@ class TestAcceptPickNone:
             "user_id": "usr_1",
             "status": "active",
             "platform": "espn",
-            "sync_state": {"sync_health": "healthy", "last_processed_pick": None, "cursor": None},
+            "sync_state": {
+                "sync_health": "healthy",
+                "last_processed_pick": None,
+                "cursor": None,
+            },
             "accepted_picks": [],
         }
 
@@ -769,7 +773,11 @@ class TestAcceptPickNone:
             "user_id": "usr_1",
             "status": "active",
             "platform": "espn",
-            "sync_state": {"sync_health": "healthy", "last_processed_pick": 5, "cursor": "pk_5"},
+            "sync_state": {
+                "sync_health": "healthy",
+                "last_processed_pick": 5,
+                "cursor": "pk_5",
+            },
             "accepted_picks": [],
         }
 
@@ -799,7 +807,11 @@ class TestAcceptPickNone:
             "user_id": "usr_1",
             "status": "active",
             "platform": "espn",
-            "sync_state": {"sync_health": "healthy", "last_processed_pick": 3, "cursor": "pk_3"},
+            "sync_state": {
+                "sync_health": "healthy",
+                "last_processed_pick": 3,
+                "cursor": "pk_3",
+            },
             "accepted_picks": [],
         }
 

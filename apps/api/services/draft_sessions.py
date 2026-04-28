@@ -220,11 +220,13 @@ class DraftSessionService:
         else:
             if pick_number < expected_pick_number:
                 raise ValueError(
-                    f"pick_number {pick_number} already processed; expected {expected_pick_number}"
+                    "pick_number "
+                    f"{pick_number} already processed; expected {expected_pick_number}"
                 )
             if pick_number > expected_pick_number:
                 raise ValueError(
-                    f"pick_number {pick_number} out of turn; expected {expected_pick_number}"
+                    "pick_number "
+                    f"{pick_number} out of turn; expected {expected_pick_number}"
                 )
 
         platform = active.get("platform", "espn")

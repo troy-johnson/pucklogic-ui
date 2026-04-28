@@ -308,7 +308,9 @@ class TestManualPickEndpoint:
     def test_manual_pick_returns_409_for_out_of_turn_pick(
         self, client: TestClient, mock_service: MagicMock
     ) -> None:
-        mock_service.accept_pick.side_effect = ValueError("pick_number 22 out of turn; expected 20")
+        mock_service.accept_pick.side_effect = ValueError(
+            "pick_number 22 out of turn; expected 20"
+        )
 
         response = client.post(
             "/draft-sessions/ses_1/manual-picks",
@@ -473,7 +475,9 @@ class TestDraftSessionWebSocket:
             "last_processed_pick": 10,
             "cursor": None,
         }
-        mock_service.accept_pick.side_effect = ValueError("pick_number 13 out of turn; expected 11")
+        mock_service.accept_pick.side_effect = ValueError(
+            "pick_number 13 out of turn; expected 11"
+        )
 
         with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
             ws.receive_json()
@@ -555,7 +559,9 @@ class TestWebSocketPickNumberNormalization:
 
         with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
             ws.receive_json()
-            ws.send_json({"type": "pick", "payload": {"player_name": "Connor McDavid"}})
+            ws.send_json(
+                {"type": "pick", "payload": {"player_name": "Connor McDavid"}}
+            )
             event = ws.receive_json()
 
         assert event["type"] == "state_update"
@@ -571,7 +577,9 @@ class TestWebSocketPickNumberNormalization:
 
         with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
             ws.receive_json()
-            ws.send_json({"type": "pick", "payload": {"player_name": "Auston Matthews"}})
+            ws.send_json(
+                {"type": "pick", "payload": {"player_name": "Auston Matthews"}}
+            )
             event = ws.receive_json()
 
         assert event["payload"]["pick_number"] == 7
@@ -584,7 +592,9 @@ class TestWebSocketPickNumberNormalization:
 
         with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
             ws.receive_json()
-            ws.send_json({"type": "pick", "payload": {"player_name": "Skater", "pick_number": 0}})
+            ws.send_json(
+                {"type": "pick", "payload": {"player_name": "Skater", "pick_number": 0}}
+            )
             event = ws.receive_json()
 
         assert event["type"] == "state_update"
@@ -599,7 +609,12 @@ class TestWebSocketPickNumberNormalization:
 
         with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
             ws.receive_json()
-            ws.send_json({"type": "pick", "payload": {"player_name": "Skater", "pick_number": -5}})
+            ws.send_json(
+                {
+                    "type": "pick",
+                    "payload": {"player_name": "Skater", "pick_number": -5},
+                }
+            )
             event = ws.receive_json()
 
         assert event["type"] == "state_update"
@@ -614,7 +629,12 @@ class TestWebSocketPickNumberNormalization:
 
         with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
             ws.receive_json()
-            ws.send_json({"type": "pick", "payload": {"player_name": "Skater", "pick_number": "7"}})
+            ws.send_json(
+                {
+                    "type": "pick",
+                    "payload": {"player_name": "Skater", "pick_number": "7"},
+                }
+            )
             event = ws.receive_json()
 
         assert event["type"] == "state_update"
@@ -629,7 +649,12 @@ class TestWebSocketPickNumberNormalization:
 
         with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
             ws.receive_json()
-            ws.send_json({"type": "pick", "payload": {"player_name": "Skater", "pick_number": True}})
+            ws.send_json(
+                {
+                    "type": "pick",
+                    "payload": {"player_name": "Skater", "pick_number": True},
+                }
+            )
             event = ws.receive_json()
 
         assert event["type"] == "state_update"
@@ -645,7 +670,12 @@ class TestWebSocketPickNumberNormalization:
 
         with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
             ws.receive_json()
-            ws.send_json({"type": "pick", "payload": {"player_name": "Skater", "pick_number": False}})
+            ws.send_json(
+                {
+                    "type": "pick",
+                    "payload": {"player_name": "Skater", "pick_number": False},
+                }
+            )
             event = ws.receive_json()
 
         assert event["type"] == "state_update"
@@ -672,11 +702,15 @@ class TestWebSocketPickNumberNormalization:
         self, client: TestClient, mock_service: MagicMock
     ) -> None:
         mock_service.attach_socket.return_value = {"sync_health": "healthy"}
-        mock_service.accept_pick.side_effect = ValueError("pick_number 5 out of turn; expected 3")
+        mock_service.accept_pick.side_effect = ValueError(
+            "pick_number 5 out of turn; expected 3"
+        )
 
         with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
             ws.receive_json()
-            ws.send_json({"type": "pick", "payload": {"player_name": "Skater", "pick_number": 5}})
+            ws.send_json(
+                {"type": "pick", "payload": {"player_name": "Skater", "pick_number": 5}}
+            )
             event = ws.receive_json()
 
         assert event["type"] == "error"
