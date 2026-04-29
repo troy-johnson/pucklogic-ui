@@ -308,7 +308,9 @@ class TestManualPickEndpoint:
     def test_manual_pick_returns_409_for_out_of_turn_pick(
         self, client: TestClient, mock_service: MagicMock
     ) -> None:
-        mock_service.accept_pick.side_effect = ValueError("pick_number 22 out of turn; expected 20")
+        mock_service.accept_pick.side_effect = ValueError(
+            "pick_number 22 out of turn; expected 20"
+        )
 
         response = client.post(
             "/draft-sessions/ses_1/manual-picks",
@@ -421,7 +423,13 @@ class TestDraftSessionWebSocket:
                 "sync_health": "healthy",
                 "last_processed_pick": 11,
                 "cursor": None,
-            }
+            },
+            "accepted_pick": {
+                "pick_number": 11,
+                "platform": "espn",
+                "ingestion_mode": "auto",
+                "timestamp": "2026-04-25T00:00:00+00:00",
+            },
         }
 
         with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
@@ -432,6 +440,7 @@ class TestDraftSessionWebSocket:
         assert event["type"] == "state_update"
         assert event["payload"]["status"] == "pick_received"
         assert event["payload"]["sync_state"]["last_processed_pick"] == 11
+        assert event["payload"]["pick_number"] == 11
         kwargs = mock_service.accept_pick.call_args.kwargs
         assert kwargs["session_id"] == "ses_1"
         assert kwargs["user_id"] == "usr_123"
@@ -466,7 +475,9 @@ class TestDraftSessionWebSocket:
             "last_processed_pick": 10,
             "cursor": None,
         }
-        mock_service.accept_pick.side_effect = ValueError("pick_number 13 out of turn; expected 11")
+        mock_service.accept_pick.side_effect = ValueError(
+            "pick_number 13 out of turn; expected 11"
+        )
 
         with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
             ws.receive_json()
@@ -520,3 +531,202 @@ class TestDraftSessionWebSocket:
 
         assert event["type"] == "error"
         assert "active draft pass required" in event["payload"]["message"]
+
+
+class TestWebSocketPickNumberNormalization:
+    """pick_number is optional in the WS auto-ingestion path."""
+
+    def _make_service_result(self, pick_number: int) -> dict:
+        return {
+            "sync_state": {
+                "sync_health": "healthy",
+                "last_processed_pick": pick_number,
+                "cursor": f"pk_{pick_number}",
+            },
+            "accepted_pick": {
+                "pick_number": pick_number,
+                "platform": "espn",
+                "ingestion_mode": "auto",
+                "timestamp": "2026-04-25T00:00:00+00:00",
+            },
+        }
+
+    def test_pick_without_pick_number_is_accepted(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.attach_socket.return_value = {"sync_health": "healthy"}
+        mock_service.accept_pick.return_value = self._make_service_result(1)
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            ws.receive_json()
+            ws.send_json(
+                {"type": "pick", "payload": {"player_name": "Connor McDavid"}}
+            )
+            event = ws.receive_json()
+
+        assert event["type"] == "state_update"
+        assert event["payload"]["status"] == "pick_received"
+        kwargs = mock_service.accept_pick.call_args.kwargs
+        assert kwargs["pick_number"] is None
+
+    def test_pick_without_pick_number_emits_derived_value_in_state_update(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.attach_socket.return_value = {"sync_health": "healthy"}
+        mock_service.accept_pick.return_value = self._make_service_result(7)
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            ws.receive_json()
+            ws.send_json(
+                {"type": "pick", "payload": {"player_name": "Auston Matthews"}}
+            )
+            event = ws.receive_json()
+
+        assert event["payload"]["pick_number"] == 7
+
+    def test_pick_with_zero_pick_number_is_treated_as_absent(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.attach_socket.return_value = {"sync_health": "healthy"}
+        mock_service.accept_pick.return_value = self._make_service_result(1)
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            ws.receive_json()
+            ws.send_json(
+                {"type": "pick", "payload": {"player_name": "Skater", "pick_number": 0}}
+            )
+            event = ws.receive_json()
+
+        assert event["type"] == "state_update"
+        kwargs = mock_service.accept_pick.call_args.kwargs
+        assert kwargs["pick_number"] is None
+
+    def test_pick_with_negative_pick_number_is_treated_as_absent(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.attach_socket.return_value = {"sync_health": "healthy"}
+        mock_service.accept_pick.return_value = self._make_service_result(1)
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            ws.receive_json()
+            ws.send_json(
+                {
+                    "type": "pick",
+                    "payload": {"player_name": "Skater", "pick_number": -5},
+                }
+            )
+            event = ws.receive_json()
+
+        assert event["type"] == "state_update"
+        kwargs = mock_service.accept_pick.call_args.kwargs
+        assert kwargs["pick_number"] is None
+
+    def test_pick_with_string_pick_number_is_treated_as_absent(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.attach_socket.return_value = {"sync_health": "healthy"}
+        mock_service.accept_pick.return_value = self._make_service_result(1)
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            ws.receive_json()
+            ws.send_json(
+                {
+                    "type": "pick",
+                    "payload": {"player_name": "Skater", "pick_number": "7"},
+                }
+            )
+            event = ws.receive_json()
+
+        assert event["type"] == "state_update"
+        kwargs = mock_service.accept_pick.call_args.kwargs
+        assert kwargs["pick_number"] is None
+
+    def test_pick_with_true_pick_number_is_treated_as_absent(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.attach_socket.return_value = {"sync_health": "healthy"}
+        mock_service.accept_pick.return_value = self._make_service_result(1)
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            ws.receive_json()
+            ws.send_json(
+                {
+                    "type": "pick",
+                    "payload": {"player_name": "Skater", "pick_number": True},
+                }
+            )
+            event = ws.receive_json()
+
+        assert event["type"] == "state_update"
+        assert event["payload"]["pick_number"] == 1
+        kwargs = mock_service.accept_pick.call_args.kwargs
+        assert kwargs["pick_number"] is None
+
+    def test_pick_with_false_pick_number_is_treated_as_absent(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.attach_socket.return_value = {"sync_health": "healthy"}
+        mock_service.accept_pick.return_value = self._make_service_result(1)
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            ws.receive_json()
+            ws.send_json(
+                {
+                    "type": "pick",
+                    "payload": {"player_name": "Skater", "pick_number": False},
+                }
+            )
+            event = ws.receive_json()
+
+        assert event["type"] == "state_update"
+        assert event["payload"]["pick_number"] == 1
+        kwargs = mock_service.accept_pick.call_args.kwargs
+        assert kwargs["pick_number"] is None
+
+    def test_pick_with_non_dict_payload_does_not_crash(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.attach_socket.return_value = {"sync_health": "healthy"}
+        mock_service.accept_pick.return_value = self._make_service_result(1)
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            ws.receive_json()
+            ws.send_json({"type": "pick", "payload": ["bad", "payload"]})
+            event = ws.receive_json()
+
+        assert event["type"] == "state_update"
+        kwargs = mock_service.accept_pick.call_args.kwargs
+        assert kwargs["pick_number"] is None
+
+    def test_explicit_valid_pick_number_still_enforces_ordering(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.attach_socket.return_value = {"sync_health": "healthy"}
+        mock_service.accept_pick.side_effect = ValueError(
+            "pick_number 5 out of turn; expected 3"
+        )
+
+        with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
+            ws.receive_json()
+            ws.send_json(
+                {"type": "pick", "payload": {"player_name": "Skater", "pick_number": 5}}
+            )
+            event = ws.receive_json()
+
+        assert event["type"] == "error"
+        assert "out of turn" in event["payload"]["message"]
+
+
+class TestManualPickStrictContract:
+    """Manual HTTP endpoint must still require a positive integer pick_number."""
+
+    def test_manual_pick_requires_pick_number(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        response = client.post(
+            "/draft-sessions/ses_1/manual-picks",
+            json={"player_name": "Connor McDavid"},
+        )
+
+        assert response.status_code == 422
+        mock_service.accept_pick.assert_not_called()

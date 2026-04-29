@@ -167,7 +167,7 @@ Optional but expected follow-on event types, if the recommendation engine is wir
 ## Pick event minimum fields
 
 - player identifier or stable player lookup payload
-- pick number or draft position when available
+- `pick_number` — optional for the WebSocket auto-ingestion path; backend derives from session cursor (`last_processed_pick + 1`) when absent or when the value is not a positive integer. Required for the manual-pick HTTP endpoint.
 - platform source
 - timestamp
 - ingestion mode: `auto` or `manual`

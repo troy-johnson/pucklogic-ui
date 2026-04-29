@@ -1,5 +1,5 @@
 export type DetectedPick = {
-  pickNumber: number;
+  pickNumber: number | undefined;
   playerName: string;
   team?: string;
   position?: string;
@@ -18,14 +18,14 @@ export function textFromFirstMatch(root: ParentNode, selectors: string[]): strin
   return null;
 }
 
-export function parsePickNumber(text: string | null): number {
+export function parsePickNumber(text: string | null): number | undefined {
   if (!text) {
-    return 0;
+    return undefined;
   }
 
   const match = text.match(/\d+/);
   if (!match) {
-    return 0;
+    return undefined;
   }
 
   return Number.parseInt(match[0], 10);

@@ -21,12 +21,13 @@
 | H — Extension go/no-go | Aug 18 – Aug 24 | Conditional | [Plan 008a §H](plans/008a-draft-season-readiness.md#milestone-h--extension-gono-go) |
 | I — Extension MVP / beta | Aug 25 – Sep 14 | Conditional | [Spec 008](specs/008-live-draft-sync-launch-required.md) · [Plan 008a §I](plans/008a-draft-season-readiness.md#milestone-i--extension-mvp--beta-conditional) |
 
-### Current execution reality (2026-04-19)
+### Current execution reality (2026-04-29)
 
-- `008a` is now a **reference roadmap**, not the literal active execution order.
-- `008b` live-draft backend contract work is **implemented and complete on `main`**.
-- `008c` extension sync adapters are the **active track** on `feat/008c-extension-sync-adapters`; Waves 1–5 are complete with focused extension verification passing, while live draft-room verification remains season-blocked and Yahoo stays gated/non-blocking.
+- `008a` remains a **reference roadmap**, not the literal active execution order.
+- `008b` live-draft backend, `008d` draft-pass lifecycle, and `008e` optional pick-number follow-up are **implemented and merged on `main`**.
+- `008c` extension sync adapters are implemented; remaining validation is season-blocked live draft-room verification, with Yahoo still gated/non-blocking.
 - `010a` web draft kit UI remains **scaffold-only** until spec `010` is approved.
+- **Next execution priority:** Milestone C backend additions (token model + Stripe token purchase flow + token balance surfaces + kit-pass entitlement gating).
 
 Use this roadmap for milestone sequencing and launch prioritization. For live branch/phase status, defer to `.agents/axon-state.md` and the active plan docs.
 
@@ -53,6 +54,8 @@ Items identified during Milestone B spec review that need to land in later miles
 - [ ] Token balance visible in extension popup
 - [ ] Manual session start from extension with explicit token consumption
 - [ ] Auto-revert from manual fallback when sync recovers (extension-side, with user notification)
+
+---
 
 ## Blocked / Pre-Launch Follow-Ups
 

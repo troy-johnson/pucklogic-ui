@@ -1,14 +1,15 @@
 | Field | Value |
 |---|---|
-| Active Phase | `008d-draft-pass-session-lifecycle` — implementation complete on branch `feat/008d-draft-pass-session-lifecycle`; PR #34 is approved/mergeable and awaiting merge |
-| Active Branch | feat/008d-draft-pass-session-lifecycle |
-| Open PR | #34 — `feat(api): draft pass session lifecycle and terminal reconnect denial (008d)` |
-| Current Focus | Finalize 008d docs/ADR/Serena sync for merge-ready PR #34, then merge and resume 008e |
-| Last Action | Added the final `/end` terminal-session 409 fix, re-ran the branch review, and replied to the remaining open GitHub review thread; branch is now merge-ready |
+| Active Phase | `008e-optional-pick-number` — merged to `main` via PR #35 on 2026-04-28 |
+| Active Branch | main |
+| Open PR | none |
+| Current Focus | Post-merge status reconciliation complete for 008e; selecting next implementation track |
+| Track | express — 008e complete and closed |
+| Last Action | Merged PR #35, resolved outdated review thread, and synced docs/PR body/Serena closure memory |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
-| Current Hypothesis | WebSocket-backed backend authority is the critical first implementation slice; ESPN is MVP, Yahoo is secondary, manual mode remains the launch fallback, and launch infra is Fly.io single-instance with Redis deferred |
-| Next Steps | 1. Merge PR #34 after the final doc/state sync and operator migration check 2. Reconcile any post-merge status surfaces still pointing at branch work 3. Resume `008e` optional pick_number follow-up 4. Keep Yahoo gated until season-live manual draft-room verification succeeds |
-| Next Session Entry | Resume at: merge PR #34; if already merged, switch back to `main` and pick up `008e`. |
+| Current Hypothesis | Live draft backend/session authority path (008b/008d/008e) is now complete; next value is milestone-C backend additions and season-blocked live verification readiness artifacts |
+| Next Steps | 1. Reconcile Notion status for 008e as merged/completed 2. Pick next card: Milestone C backend additions (draft_tokens + Stripe token purchase flow) 3. Open branch/plan for that card |
+| Next Session Entry | Resume at: select and start Milestone C backend token-model implementation task. |
 
 ## Merge and code review outcome (2026-04-10)
 
