@@ -18,7 +18,7 @@
 | 008c | [extension-sync-adapters](008c-extension-sync-adapters.md) | Approved | 2026-04-11 | Second implementation track after backend contract stabilization; ESPN MVP first, Yahoo stretch; includes pre-launch adapter observability |
 | 008d | [draft-pass-session-lifecycle](008d-draft-pass-session-lifecycle.md) | Approved | 2026-04-25 | Implementation complete on PR #34; pass consumption, reconnect reuse, terminal completion semantics, and anti-abuse lifecycle rules are merge-ready, with seasonal manual verification still deferred |
 | 008d-r1 | [2026-04-24-008d-review-fixes](2026-04-24-008d-review-fixes.md) | Implemented | 2026-04-25 | Review remediation completed on PR #34, including migration uniqueness, terminal `/end` + WS denial handling, and extension reconnect hardening |
-| 008e | [optional-pick-number](008e-optional-pick-number.md) | Approved | 2026-04-23 | Implementation complete on PR #35; makes WS auto-ingestion pick_number optional with backend cursor derivation while preserving strict manual HTTP contract |
+| 008e | [optional-pick-number](008e-optional-pick-number.md) | Implemented | 2026-04-23 | Merged via PR #35 on 2026-04-28; WS auto-ingestion now treats optional pick_number as backend-derived while preserving strict manual HTTP contract |
 | 010a | [web-draft-kit-ui](010a-web-draft-kit-ui.md) | Draft | 2026-04-11 | UI implementation plan limited to scaffolding until spec 010 wireframe/design decisions are approved |
 
 ## Drafts

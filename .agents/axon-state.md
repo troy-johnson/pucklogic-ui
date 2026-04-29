@@ -1,15 +1,15 @@
 | Field | Value |
 |---|---|
-| Active Phase | `008e-optional-pick-number` — implementation complete on branch `feat/008e-optional-pick-number`; PR #35 is merge-ready pending merge |
-| Active Branch | feat/008e-optional-pick-number |
-| Open PR | #35 — `feat(api,extension): optional pick_number in WS auto-ingestion path (008e)` |
-| Current Focus | Final documentation/state sync before merging PR #35 |
-| Track | express — scope fully defined and verified |
-| Last Action | Pushed formatting sync (`6003af0`), all PR checks green, and started status-surface reconciliation pass |
+| Active Phase | `008e-optional-pick-number` — merged to `main` via PR #35 on 2026-04-28 |
+| Active Branch | main |
+| Open PR | none |
+| Current Focus | Post-merge status reconciliation complete for 008e; selecting next implementation track |
+| Track | express — 008e complete and closed |
+| Last Action | Merged PR #35, resolved outdated review thread, and synced docs/PR body/Serena closure memory |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
-| Current Hypothesis | WebSocket-backed backend authority is the critical first implementation slice; ESPN is MVP, Yahoo remains gated until season-live manual draft-room verification |
-| Next Steps | 1. Merge PR #35 2. Mark 008e implemented in plan index 3. Reconcile Notion + Serena closure memory |
-| Next Session Entry | Resume at: post-merge status reconciliation for 008e across Notion, axon-state, and Serena. |
+| Current Hypothesis | Live draft backend/session authority path (008b/008d/008e) is now complete; next value is milestone-C backend additions and season-blocked live verification readiness artifacts |
+| Next Steps | 1. Reconcile Notion status for 008e as merged/completed 2. Pick next card: Milestone C backend additions (draft_tokens + Stripe token purchase flow) 3. Open branch/plan for that card |
+| Next Session Entry | Resume at: select and start Milestone C backend token-model implementation task. |
 
 ## Merge and code review outcome (2026-04-10)
 
