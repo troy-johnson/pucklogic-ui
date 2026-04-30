@@ -1034,7 +1034,7 @@ async def get_player_trends(player_id: str):
 | PDF — Print & Draft | WeasyPrint | `POST /exports/generate` (`export_type: pdf`) | Streaming bytes — browser download |
 | Excel — Draft Kit | openpyxl | `POST /exports/generate` (`export_type: excel`) | Streaming bytes — browser download |
 
-Exports are read-only outputs — no import slots, no VBA. Users may export as many times as they want with any weight configuration at no additional cost.
+Exports are read-only outputs — no import slots, no VBA. **Export requires a kit pass** (per spec 009 entitlement matrix and spec 011 gating contract). Once held, kit-pass holders may export as many times as they want with any weight configuration at no additional cost — export is included with kit pass and is not sold separately.
 
 **Excel — 2 sheets:**
 - **Sheet 1 — "Full Rankings {season}":** Rank, Player, Team, Pos, FanPts, VORP, ScheduleScore, OffNightGames, SourceCount, then all stat columns (skater stats, then goalie stats; null = `—`).

@@ -25,7 +25,7 @@ The ROADMAP previously called for designing and implementing a `draft_tokens` ta
 1. Add kit-pass entitlement to the existing subscription row, scoped per draft season.
 2. Extend the Stripe checkout flow to sell kit pass alongside draft passes; credit purchase via webhook.
 3. Provide a single authoritative entitlements read endpoint for web and extension clients.
-4. Gate customization-save (user_kits, league_profiles mutations) and export endpoints on kit-pass possession.
+4. Gate customization-save (`POST /user-kits`, `DELETE /user-kits/{id}`, `POST /league-profiles`) and export (`POST /exports/generate`) on kit-pass possession.
 5. Snapshot ranked-list inputs and outputs into `draft_sessions` at clean session close, enabling a post-season ML comparison job between PuckLogic rankings and actual NHL performance.
 
 ## Non-Goals (Future Work)
@@ -59,6 +59,10 @@ ALTER TABLE subscriptions
   ADD COLUMN kit_pass_purchased_at TIMESTAMPTZ;
 
 ALTER TABLE draft_sessions
+  ADD COLUMN season TEXT,
+  ADD COLUMN league_profile_id UUID REFERENCES league_profiles(id),
+  ADD COLUMN scoring_config_id UUID REFERENCES scoring_configs(id),
+  ADD COLUMN source_weights JSONB,
   ADD COLUMN closing_rankings_snapshot JSONB;
 ```
 
@@ -67,7 +71,23 @@ Notes:
 - Both `kit_pass_*` columns nullable; absence ≡ "no kit pass for any season."
 - No CHECK constraint on `kit_pass_season` format; validated at API boundary against `settings.current_season`. Avoids a schema migration on each season rollover.
 - No new index. Reads are by `user_id` (already unique-indexed via `subscriptions_user_id_unique` from 008d); kit-pass active/stale check is in-row equality.
+- The four new `draft_sessions` recipe columns (`season`, `league_profile_id`, `scoring_config_id`, `source_weights`) persist the **rankings recipe** at session-start time. They are required: `snapshot_rankings_at_close` has no other deterministic source for "what the user drafted under." The current `draft_sessions` schema does not record this, so adding it is part of Milestone C.
 - `closing_rankings_snapshot` is nullable; populated only on clean session close. Sessions that expire or abandon without a close get NULL — explicitly acceptable for the ML comparison job, which filters to closed sessions.
+
+### Recipe capture at session start — `POST /draft-sessions/start`
+
+`POST /draft-sessions/start` is extended to accept and persist the rankings recipe used to produce the rankings the user is drafting against:
+
+```
+season, league_profile_id, scoring_config_id, source_weights, platform
+```
+
+These fields mirror `RankingsComputeRequest`. Behavior:
+
+- Required: `season`, `scoring_config_id`, `source_weights`, `platform` (`platform` is already required today).
+- Optional: `league_profile_id` (nullable on `/rankings/compute`; same here).
+- The values are stored verbatim on the `draft_sessions` row and are **not** re-derived at session close. If the user mutates their saved kit or league profile mid-draft, the snapshot still reflects the configuration the session started under.
+- Sessions created before the migration have NULL recipe columns. For those, `snapshot_rankings_at_close` logs and no-ops (handled by the missing-input guard in the service contract).
 
 ### Snapshot JSONB shape
 
@@ -118,8 +138,10 @@ Behavior:
 
 - Atomically claims `event_id` via `stripe_processed_events` (`ON CONFLICT DO NOTHING`), preventing duplicate credit on Stripe retries.
 - On successful claim, upserts the user's `subscriptions` row, setting `kit_pass_season = :season` and `kit_pass_purchased_at = :purchased_at`.
-- **Idempotent and overwrite-safe:** if the user already has `kit_pass_season = :season`, the upsert is a no-op for that field. Crediting a *later* season overwrites the prior season — purchasing in a new season replaces the prior pass; this is the intended product behavior.
-- Returns `True` if credited, `False` if event was already processed.
+- **Same-season idempotency:** if the user's existing `kit_pass_season` already equals `:season`, the season field is unchanged and `purchased_at` is **also unchanged** (the original purchase timestamp wins; we do not bump it on a duplicate-event credit). The event is still claimed in `stripe_processed_events`.
+- **Later-season overwrite:** if the user's existing `kit_pass_season` is *earlier* than `:season` (e.g. `2025-26` → `2026-27`), both `kit_pass_season` and `kit_pass_purchased_at` are overwritten with the new values. Buying again in a new season replaces the prior pass. This is the intended product behavior.
+- **Earlier-season "downgrade" guard:** if the user's existing `kit_pass_season` is *later* than `:season`, the helper logs a warning and leaves the row unchanged. This case should not occur in practice (Stripe metadata captures the season at purchase time and Stripe events arrive in order) but the guard prevents accidental regression from delayed/replayed webhooks.
+- Returns `True` if credited (state changed), `False` if event was already processed or guarded.
 
 The Stripe webhook dispatcher reads `event.data.object.metadata.product` to route `checkout.session.completed` to either `credit_draft_pass_for_stripe_event` or `credit_kit_pass_for_stripe_event`. Webhook payloads with missing or unknown `product` log a warning and return `200` so Stripe does not retry indefinitely on malformed events.
 
@@ -135,13 +157,15 @@ Returns the authoritative entitlement snapshot for the authenticated user:
   "kit_pass": {
     "active": true,
     "season": "2026-27",
-    "purchased_at": "2026-08-14T19:22:00Z"
+    "purchased_at": "2026-08-14T19:22:00Z",
+    "purchase_url": null
   }
 }
 ```
 
 - `kit_pass.active` is computed: `kit_pass_season == settings.current_season`.
-- If `kit_pass_season` is null or stale: `{"active": false, "season": null, "purchased_at": null}`.
+- Inactive/stale/no-pass response shape: `{"active": false, "season": null, "purchased_at": null, "purchase_url": "/stripe/create-checkout-session?product=kit_pass"}`. The exact URL is constructed from `settings.frontend_url` + the checkout-session route; FE follows the link, posts to it (auth header attached), and redirects to the Stripe-returned `checkout_url`.
+- `purchase_url` is **null when `active: true`** (no CTA needed). The FE / extension uses this single field for the "Buy kit pass" CTA without parsing the rest of the payload.
 - Response includes `Cache-Control: no-store` headers — extension polls this endpoint, and stale reads after a webhook lands are user-visible.
 
 ### `POST /stripe/create-checkout-session` (modified)
@@ -159,10 +183,14 @@ Router-level mapping converts `PermissionError` → HTTP `403` with `detail="kit
 
 ### Endpoints gaining `require_kit_pass`
 
-- `POST /user-kits` — save customized kit (was auth-only).
-- `PATCH /user-kits/{id}` and `DELETE /user-kits/{id}`.
-- `POST /league-profiles` and league-profile mutations — kit pass gates *saving* configuration, per spec 009 entitlement matrix.
-- Export endpoints (Excel and PDF generation routes). The implementation plan must verify the current export route names against `apps/api/routers/` before wiring; spec 009 states export is included with kit pass and not sold separately, so all export-trigger endpoints are gated.
+The current code surface (verified against `apps/api/routers/`) for mutating saved kits and saving league configuration is:
+
+- `POST /user-kits` — save a new customized kit.
+- `DELETE /user-kits/{id}` — delete an owned saved kit.
+- `POST /league-profiles` — save a new league profile.
+- `POST /exports/generate` — produce PDF or Excel export (the only export-triggering route).
+
+These four endpoints gain the `require_kit_pass` dependency. **No PATCH endpoint exists today** for either resource; "edit a saved kit" is a DELETE-then-POST flow in v1, and adding PATCH endpoints is explicitly out of scope for Milestone C. If a PATCH is added in a later milestone (likely as part of the web UI workstream), it will gain the dependency at that time.
 
 ### Endpoints **not** gated
 
@@ -212,14 +240,18 @@ def get_entitlements(user_id: str) -> EntitlementsResponse:
 ```python
 def snapshot_rankings_at_close(session_id: str, user_id: str) -> None:
     """Called from end_session() after the session row transitions to terminal
-    status. Pulls the inputs that produced rankings for this session
-    (league_profile_id, scoring_config_id, source_weights, platform from the
-    session record) and recomputes the ranked list against current
-    player_projections / player_stats. Writes the JSONB snapshot.
+    status. Reads the recipe columns from the draft_sessions row
+    (season, league_profile_id, scoring_config_id, source_weights, platform)
+    and recomputes the ranked list against current player_projections /
+    player_stats. Writes the JSONB snapshot to closing_rankings_snapshot.
+
+    If any required recipe column is NULL (pre-migration session, or session
+    that started without recipe persistence), logs and no-ops without raising.
 
     Best-effort and async: invoked after end_session returns 204 to the client.
-    Failure logs and does not block session close; an ML-job retry sweep
-    handles gaps for sessions where snapshot is NULL after a grace period."""
+    Failure during recompute or write logs and does not propagate; session
+    close still succeeds. An ML-job retry sweep handles gaps for sessions
+    where snapshot remains NULL after a grace period."""
 ```
 
 **Recompute vs. cached lookup — decided.** Snapshot **recomputes** rankings from the session's stored inputs against current `player_projections` / `player_stats`. Rationale:
@@ -270,9 +302,12 @@ TDD discipline per repo convention; tests written before implementation. Files: 
   - `kit_pass` product completes → `subscriptions.kit_pass_season` populated; `purchased_at` recorded.
   - Replay of the same event → no second update, returns 200.
   - Webhook with no metadata or unknown product → logged and returns 200.
-- `require_kit_pass` dependency, per gated route (user-kits create/update/delete, league-profiles mutations, exports):
+- `require_kit_pass` dependency, per gated route (`POST /user-kits`, `DELETE /user-kits/{id}`, `POST /league-profiles`, `POST /exports/generate`):
   - Free-tier user → 403 `"kit pass required"`.
   - Active kit-pass user → passes through.
+- `POST /draft-sessions/start`:
+  - Persists the recipe payload (`season`, `league_profile_id`, `scoring_config_id`, `source_weights`, `platform`) verbatim on the new `draft_sessions` row.
+  - Round-trip test: start session with recipe, end session, assert `draft_sessions.closing_rankings_snapshot` reflects those exact recipe inputs.
 
 ### Integration
 
@@ -289,8 +324,10 @@ TDD discipline per repo convention; tests written before implementation. Files: 
 - Remove the stale `draft_tokens` bullet from `docs/ROADMAP.md` (Milestone C backend additions); replace with reference to this spec.
 - Update `docs/backend-reference.md`:
   - Add the two new `subscriptions` columns to the schema block.
-  - Add `closing_rankings_snapshot` to the `draft_sessions` schema block.
-  - Document `GET /entitlements`, the modified Stripe checkout signature, and `STRIPE_PRICE_KIT_PASS`.
+  - Add the five new `draft_sessions` columns (`season`, `league_profile_id`, `scoring_config_id`, `source_weights`, `closing_rankings_snapshot`) to the schema block.
+  - Document `POST /draft-sessions/start` recipe-payload extension.
+  - Document `GET /entitlements`, the modified `POST /stripe/create-checkout-session` signature, `POST /exports/generate` kit-pass requirement, and `STRIPE_PRICE_KIT_PASS`.
+  - **Rewrite the export-cost line** (currently *"Users may export as many times as they want with any weight configuration at no additional cost"*) to attribute the unlimited-export benefit to kit-pass holders, e.g. *"Kit-pass holders may export as many times as they want with any weight configuration at no additional cost; export is included with kit pass and not sold separately."* This resolves the apparent free-export reading.
   - Note in the existing 008d-resolution comment block that kit-pass also lives on `subscriptions`, reaffirming the no-new-table launch decision.
 - Update `docs/extension-reference.md` to point the extension at `GET /entitlements` for balance and kit-pass status.
 - Update `docs/specs/INDEX.md` with this spec.
@@ -310,4 +347,4 @@ The implementation plan derived from this spec should sequence roughly:
 5. Session-close snapshot writeback + tests.
 6. Documentation updates (ROADMAP, backend-reference, extension-reference, specs index).
 
-The plan author should verify exact route names for export endpoints against `apps/api/routers/` at plan-writing time.
+All gated route names are concrete in this spec (verified against `apps/api/routers/` at spec time): `POST /user-kits`, `DELETE /user-kits/{id}`, `POST /league-profiles`, `POST /exports/generate`. The plan author does not need to re-verify these.
