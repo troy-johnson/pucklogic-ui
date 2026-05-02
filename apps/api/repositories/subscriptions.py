@@ -46,6 +46,43 @@ class SubscriptionRepository:
         ).execute()
         return bool(result.data)
 
+    def credit_kit_pass_for_stripe_event(self, event_id: str, user_id: str, season: int) -> str:
+        """Claim a Stripe event and apply kit-pass credit semantics for the given season.
+
+        Returns an outcome token from the backing RPC, e.g.:
+        - "applied"
+        - "noop_same_season"
+        - "overwrite_newer_season"
+        - "stale_earlier_season"
+        """
+        result = self._db.rpc(
+            "credit_kit_pass_for_stripe_event",
+            {"p_event_id": event_id, "p_user_id": user_id, "p_season": season},
+        ).execute()
+        return str(result.data)
+
+    def get_kit_pass_state(self, user_id: str, current_season: int) -> dict[str, int | bool | None]:
+        """Return current kit-pass state for entitlement reads.
+
+        Shape:
+            {"active": bool, "season": int | None}
+        """
+        result = (
+            self._db.table("subscriptions")
+            .select("kit_pass_season")
+            .eq("user_id", user_id)
+            .maybe_single()
+            .execute()
+        )
+        if result.data is None:
+            return {"active": False, "season": None}
+
+        season = result.data.get("kit_pass_season")
+        if season is None:
+            return {"active": False, "season": None}
+
+        return {"active": season >= current_season, "season": season}
+
     def is_active(self, user_id: str) -> bool:
         """Return True if user_id has an active, non-expired subscription."""
         result = (

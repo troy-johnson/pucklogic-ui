@@ -30,6 +30,10 @@ async def start_draft_session(
         return service.start_session(
             user_id=user["id"],
             platform=req.platform,
+            season=req.season,
+            league_profile_id=req.league_profile_id,
+            scoring_config_id=req.scoring_config_id,
+            source_weights=req.source_weights,
             now=datetime.now(UTC),
         )
     except PermissionError as exc:
@@ -171,9 +175,7 @@ async def draft_session_ws(
             payload = raw_payload if isinstance(raw_payload, dict) else {}
             raw = payload.get("pick_number")
             pick_number: int | None = (
-                raw
-                if isinstance(raw, int) and not isinstance(raw, bool) and raw >= 1
-                else None
+                raw if isinstance(raw, int) and not isinstance(raw, bool) and raw >= 1 else None
             )
 
             try:

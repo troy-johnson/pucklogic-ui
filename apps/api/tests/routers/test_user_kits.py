@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from core.dependencies import get_current_user, get_db
+from core.dependencies import get_current_user, get_db, get_subscription_repository
 from main import app
 
 MOCK_USER = {"id": "user-123", "email": "test@example.com"}
@@ -25,10 +25,18 @@ def mock_db() -> MagicMock:
     return MagicMock()
 
 
+@pytest.fixture
+def mock_sub_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.is_active.return_value = True
+    return repo
+
+
 @pytest.fixture(autouse=True)
-def override_deps(mock_db: MagicMock) -> None:
+def override_deps(mock_db: MagicMock, mock_sub_repo: MagicMock) -> None:
     app.dependency_overrides[get_current_user] = lambda: MOCK_USER
     app.dependency_overrides[get_db] = lambda: mock_db
+    app.dependency_overrides[get_subscription_repository] = lambda: mock_sub_repo
     yield
     app.dependency_overrides.clear()
 
@@ -108,6 +116,20 @@ class TestCreateUserKit:
         body = {"source_weights": {"nhl_com": 50}}
         assert client.post("/user-kits", json=body).status_code == 422
 
+    def test_returns_403_when_user_lacks_active_kit_pass(
+        self,
+        client: TestClient,
+        mock_db: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        mock_db.table.return_value.insert.return_value.execute.return_value.data = [KIT_ROW]
+        mock_sub_repo.is_active.return_value = False
+
+        resp = client.post("/user-kits", json=self.CREATE_BODY)
+
+        assert resp.status_code == 403
+        assert resp.json()["detail"] == "active draft pass required"
+
 
 class TestDeleteUserKit:
     def test_returns_204_when_deleted(self, client: TestClient, mock_db: MagicMock) -> None:
@@ -133,6 +155,18 @@ class TestDeleteUserKit:
 
         # First eq: kit_id, second eq: user_id
         eq2.assert_called_once_with("user_id", MOCK_USER["id"])
+
+    def test_returns_403_when_user_lacks_active_kit_pass(
+        self,
+        client: TestClient,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        mock_sub_repo.is_active.return_value = False
+
+        resp = client.delete("/user-kits/kit-1")
+
+        assert resp.status_code == 403
+        assert resp.json()["detail"] == "active draft pass required"
 
 
 class TestUnauthenticated:

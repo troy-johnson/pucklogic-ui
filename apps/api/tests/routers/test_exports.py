@@ -198,3 +198,17 @@ class TestAuthRequired:
     def test_unauthenticated_request_returns_401(self, client: TestClient) -> None:
         resp = client.post("/exports/generate", json=EXCEL_BODY)
         assert resp.status_code == 401
+
+
+class TestKitPassGating:
+    def test_generate_export_returns_403_when_user_lacks_active_kit_pass(
+        self,
+        client: TestClient,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        mock_sub_repo.is_active.return_value = False
+
+        resp = client.post("/exports/generate", json=EXCEL_BODY)
+
+        assert resp.status_code == 403
+        assert resp.json()["detail"] == "active draft pass required"

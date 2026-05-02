@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 
 import stripe
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
@@ -32,6 +33,11 @@ async def create_checkout_session(
         success_url=req.success_url,
         cancel_url=req.cancel_url,
         client_reference_id=current_user["id"],
+        metadata={
+            "user_id": current_user["id"],
+            "product": "kit_pass",
+            "season": str(datetime.now(UTC).year),
+        },
     )
     return CheckoutSessionResponse(checkout_url=session.url, session_id=session.id)
 
@@ -61,12 +67,23 @@ async def stripe_webhook(
         event_id = event.get("id")
         user_id = session.get("client_reference_id")
         payment_status = session.get("payment_status")
+        metadata = session.get("metadata") or {}
+        product = metadata.get("product")
+        season_raw = metadata.get("season")
+        unknown_product_msg = (
+            "Unknown or missing Stripe product/season metadata for event %s: product=%s season=%s"
+        )
         logger.info(
-            "Checkout completed: event_id=%s session_id=%s user_id=%s payment_status=%s",
+            (
+                "Checkout completed: event_id=%s session_id=%s user_id=%s "
+                "payment_status=%s product=%s season=%s"
+            ),
             event_id,
             session.get("id"),
             user_id,
             payment_status,
+            product,
+            season_raw,
         )
         if payment_status != "paid":
             logger.info(
@@ -77,10 +94,20 @@ async def stripe_webhook(
             return {"received": True}
         if user_id:
             if event_id:
-                if repo.credit_draft_pass_for_stripe_event(event_id, user_id):
-                    logger.info("Stripe event %s credited draft pass", event_id)
+                if product == "kit_pass":
+                    if season_raw is None:
+                        logger.warning(unknown_product_msg, event_id, product, season_raw)
+                        return {"received": True}
+                    try:
+                        season = int(season_raw)
+                    except (TypeError, ValueError):
+                        logger.warning(unknown_product_msg, event_id, product, season_raw)
+                        return {"received": True}
+
+                    outcome = repo.credit_kit_pass_for_stripe_event(event_id, user_id, season)
+                    logger.info("Stripe event %s kit pass credit outcome=%s", event_id, outcome)
                 else:
-                    logger.info("Stripe event %s already processed; skipping credit", event_id)
+                    logger.warning(unknown_product_msg, event_id, product, season_raw)
             else:
                 logger.error(
                     "checkout.session.completed missing event id for user %s; skipping credit",

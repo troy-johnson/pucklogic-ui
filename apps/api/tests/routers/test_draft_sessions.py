@@ -15,6 +15,13 @@ from main import app
 from services.draft_sessions import TerminalSessionError
 
 MOCK_USER = {"id": "usr_123", "email": "user@example.com"}
+START_BODY = {
+    "platform": "espn",
+    "season": "2026-27",
+    "league_profile_id": "lp_123",
+    "scoring_config_id": "sc_123",
+    "source_weights": {"hashtag": 1.0},
+}
 
 
 @pytest.fixture
@@ -65,7 +72,7 @@ class TestStartDraftSession:
             "sync_state": {"sync_health": "healthy"},
         }
 
-        response = client.post("/draft-sessions/start", json={"platform": "espn"})
+        response = client.post("/draft-sessions/start", json=START_BODY)
 
         assert response.status_code == 200
         assert response.json()["session_id"] == "ses_1"
@@ -82,18 +89,22 @@ class TestStartDraftSession:
             "sync_state": {"sync_health": "healthy"},
         }
 
-        client.post("/draft-sessions/start", json={"platform": "espn"})
+        client.post("/draft-sessions/start", json=START_BODY)
 
         kwargs = mock_service.start_session.call_args.kwargs
         assert kwargs["user_id"] == "usr_123"
         assert kwargs["platform"] == "espn"
+        assert kwargs["season"] == "2026-27"
+        assert kwargs["league_profile_id"] == "lp_123"
+        assert kwargs["scoring_config_id"] == "sc_123"
+        assert kwargs["source_weights"] == {"hashtag": 1.0}
 
     def test_start_returns_403_without_entitlement(
         self, client: TestClient, mock_service: MagicMock
     ) -> None:
         mock_service.start_session.side_effect = PermissionError("active draft pass required")
 
-        response = client.post("/draft-sessions/start", json={"platform": "espn"})
+        response = client.post("/draft-sessions/start", json=START_BODY)
 
         assert response.status_code == 403
 
@@ -197,6 +208,16 @@ class TestEndDraftSession:
 
         assert response.status_code == 204
         mock_service.end_session.assert_called_once()
+
+    def test_end_returns_409_for_terminal_session(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.end_session.side_effect = TerminalSessionError("session is closed")
+
+        response = client.post("/draft-sessions/ses_1/end")
+
+        assert response.status_code == 409
+        assert "closed" in response.json()["detail"]
 
 
 class TestSyncState:
@@ -308,9 +329,7 @@ class TestManualPickEndpoint:
     def test_manual_pick_returns_409_for_out_of_turn_pick(
         self, client: TestClient, mock_service: MagicMock
     ) -> None:
-        mock_service.accept_pick.side_effect = ValueError(
-            "pick_number 22 out of turn; expected 20"
-        )
+        mock_service.accept_pick.side_effect = ValueError("pick_number 22 out of turn; expected 20")
 
         response = client.post(
             "/draft-sessions/ses_1/manual-picks",
@@ -475,9 +494,7 @@ class TestDraftSessionWebSocket:
             "last_processed_pick": 10,
             "cursor": None,
         }
-        mock_service.accept_pick.side_effect = ValueError(
-            "pick_number 13 out of turn; expected 11"
-        )
+        mock_service.accept_pick.side_effect = ValueError("pick_number 13 out of turn; expected 11")
 
         with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
             ws.receive_json()
@@ -559,9 +576,7 @@ class TestWebSocketPickNumberNormalization:
 
         with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
             ws.receive_json()
-            ws.send_json(
-                {"type": "pick", "payload": {"player_name": "Connor McDavid"}}
-            )
+            ws.send_json({"type": "pick", "payload": {"player_name": "Connor McDavid"}})
             event = ws.receive_json()
 
         assert event["type"] == "state_update"
@@ -577,9 +592,7 @@ class TestWebSocketPickNumberNormalization:
 
         with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
             ws.receive_json()
-            ws.send_json(
-                {"type": "pick", "payload": {"player_name": "Auston Matthews"}}
-            )
+            ws.send_json({"type": "pick", "payload": {"player_name": "Auston Matthews"}})
             event = ws.receive_json()
 
         assert event["payload"]["pick_number"] == 7
@@ -592,9 +605,7 @@ class TestWebSocketPickNumberNormalization:
 
         with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
             ws.receive_json()
-            ws.send_json(
-                {"type": "pick", "payload": {"player_name": "Skater", "pick_number": 0}}
-            )
+            ws.send_json({"type": "pick", "payload": {"player_name": "Skater", "pick_number": 0}})
             event = ws.receive_json()
 
         assert event["type"] == "state_update"
@@ -702,15 +713,11 @@ class TestWebSocketPickNumberNormalization:
         self, client: TestClient, mock_service: MagicMock
     ) -> None:
         mock_service.attach_socket.return_value = {"sync_health": "healthy"}
-        mock_service.accept_pick.side_effect = ValueError(
-            "pick_number 5 out of turn; expected 3"
-        )
+        mock_service.accept_pick.side_effect = ValueError("pick_number 5 out of turn; expected 3")
 
         with client.websocket_connect("/draft-sessions/ses_1/ws?token=ws-token") as ws:
             ws.receive_json()
-            ws.send_json(
-                {"type": "pick", "payload": {"player_name": "Skater", "pick_number": 5}}
-            )
+            ws.send_json({"type": "pick", "payload": {"player_name": "Skater", "pick_number": 5}})
             event = ws.receive_json()
 
         assert event["type"] == "error"

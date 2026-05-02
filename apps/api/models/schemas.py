@@ -336,9 +336,14 @@ class DraftSession(BaseModel):
     session_id: str
     user_id: str
     platform: DraftPlatform
+    season: str | None = None
+    league_profile_id: str | None = None
+    scoring_config_id: str | None = None
+    source_weights: dict[str, float] | None = None
     status: DraftSessionStatus
     entitlement_ref: str | None = None
     sync_state: DraftSyncState
+    snapshot_rankings_at_close: dict[str, str | int | float | bool | list | dict] | None = None
     accepted_picks: list[DraftPick] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
@@ -350,6 +355,16 @@ class DraftSession(BaseModel):
 
 class DraftSessionStartRequest(BaseModel):
     platform: DraftPlatform
+    season: str
+    league_profile_id: str | None = None
+    scoring_config_id: str
+    source_weights: dict[str, float]
+
+    @model_validator(mode="after")
+    def source_weights_not_all_zero(self) -> DraftSessionStartRequest:
+        if not self.source_weights or all(v == 0 for v in self.source_weights.values()):
+            raise ValueError("source_weights: at least one source must have a non-zero weight")
+        return self
 
 
 class DraftManualPickRequest(BaseModel):

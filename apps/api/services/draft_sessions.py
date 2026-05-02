@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from repositories.draft_sessions import DraftSessionRepository
 from repositories.subscriptions import SubscriptionRepository
+from services.rankings import build_close_snapshot_from_recipe
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,17 @@ class DraftSessionService:
             "sync_recovery": 0,
         }
 
-    def start_session(self, *, user_id: str, platform: str, now: datetime) -> dict:
+    def start_session(
+        self,
+        *,
+        user_id: str,
+        platform: str,
+        season: str | None = None,
+        league_profile_id: str | None = None,
+        scoring_config_id: str | None = None,
+        source_weights: dict[str, float] | None = None,
+        now: datetime,
+    ) -> dict:
         self.expire_inactive_sessions(now)
 
         active = self._draft_session_repo.get_active_session(
@@ -60,6 +71,10 @@ class DraftSessionService:
             "session_id": f"ses_{uuid4().hex}",
             "user_id": user_id,
             "platform": platform,
+            "season": season,
+            "league_profile_id": league_profile_id,
+            "scoring_config_id": scoring_config_id,
+            "source_weights": source_weights,
             "status": "active",
             "entitlement_ref": entitlement_ref,
             "sync_state": {
@@ -131,6 +146,21 @@ class DraftSessionService:
         self._draft_session_repo.end_session(
             session_id=session_id,
             user_id=user_id,
+            now=now,
+        )
+
+        snapshot = self._build_close_snapshot(active, now)
+        if snapshot is None:
+            logger.warning(
+                "Skipping close snapshot for session %s: missing recipe inputs",
+                session_id,
+            )
+            return
+
+        self._draft_session_repo.snapshot_rankings_at_close(
+            session_id=session_id,
+            user_id=user_id,
+            snapshot=snapshot,
             now=now,
         )
 
@@ -220,13 +250,11 @@ class DraftSessionService:
         else:
             if pick_number < expected_pick_number:
                 raise ValueError(
-                    "pick_number "
-                    f"{pick_number} already processed; expected {expected_pick_number}"
+                    f"pick_number {pick_number} already processed; expected {expected_pick_number}"
                 )
             if pick_number > expected_pick_number:
                 raise ValueError(
-                    "pick_number "
-                    f"{pick_number} out of turn; expected {expected_pick_number}"
+                    f"pick_number {pick_number} out of turn; expected {expected_pick_number}"
                 )
 
         platform = active.get("platform", "espn")
@@ -304,3 +332,32 @@ class DraftSessionService:
         row = self._draft_session_repo.get_session_by_id(session_id, user_id)
         if row is not None and row.get("status") in ("ended", "expired"):
             raise TerminalSessionError("session is closed")
+
+    def _build_close_snapshot(self, active_session: dict, now: datetime) -> dict | None:
+        season = active_session.get("season")
+        league_profile_id = active_session.get("league_profile_id")
+        scoring_config_id = active_session.get("scoring_config_id")
+        source_weights = active_session.get("source_weights")
+        platform = active_session.get("platform")
+
+        if (
+            season is None
+            or league_profile_id is None
+            or scoring_config_id is None
+            or source_weights is None
+            or platform is None
+        ):
+            return None
+
+        recipe = {
+            "season": season,
+            "league_profile_id": league_profile_id,
+            "scoring_config_id": scoring_config_id,
+            "source_weights": source_weights,
+            "platform": platform,
+        }
+        return build_close_snapshot_from_recipe(
+            recipe=recipe,
+            source_rankings=active_session.get("source_rankings") or {},
+            generated_at=now.astimezone(UTC).isoformat(),
+        )

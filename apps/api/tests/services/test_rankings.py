@@ -9,7 +9,11 @@ from __future__ import annotations
 
 import pytest
 
-from services.rankings import compute_weighted_rankings, flatten_db_rankings
+from services.rankings import (
+    build_close_snapshot_from_recipe,
+    compute_weighted_rankings,
+    flatten_db_rankings,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -243,3 +247,61 @@ class TestComputeWeightedRankings:
         result = compute_weighted_rankings(source_rankings, {"nhl_com": 1})
         assert len(result) == 1
         assert result[0]["composite_score"] == 1.0
+
+
+class TestBuildCloseSnapshotFromRecipe:
+    def test_builds_snapshot_using_persisted_recipe_inputs(self) -> None:
+        recipe = {
+            "season": "2026-27",
+            "league_profile_id": "lp_1",
+            "scoring_config_id": "sc_1",
+            "source_weights": {"nhl_com": 1.0, "moneypuck": 1.0},
+            "platform": "espn",
+        }
+        source_rankings = {
+            "nhl_com": [
+                {"player_id": "p1", "name": "McDavid", "rank": 1},
+                {"player_id": "p2", "name": "MacKinnon", "rank": 2},
+            ],
+            "moneypuck": [
+                {"player_id": "p2", "name": "MacKinnon", "rank": 1},
+                {"player_id": "p1", "name": "McDavid", "rank": 2},
+            ],
+        }
+
+        snapshot = build_close_snapshot_from_recipe(
+            recipe=recipe,
+            source_rankings=source_rankings,
+            generated_at="2026-05-01T00:00:00+00:00",
+        )
+
+        assert snapshot["generated_at"] == "2026-05-01T00:00:00+00:00"
+        assert snapshot["season"] == "2026-27"
+        assert snapshot["league_profile_id"] == "lp_1"
+        assert snapshot["scoring_config_id"] == "sc_1"
+        assert snapshot["platform"] == "espn"
+        assert snapshot["source_weights"] == {"nhl_com": 1.0, "moneypuck": 1.0}
+        assert [row["player_id"] for row in snapshot["rankings"]] == ["p1", "p2"]
+
+    def test_recomputes_from_source_rankings_not_cached_payload(self) -> None:
+        recipe = {
+            "season": "2026-27",
+            "league_profile_id": "lp_1",
+            "scoring_config_id": "sc_1",
+            "source_weights": {"nhl_com": 1.0},
+            "platform": "espn",
+            "cached_rankings": [{"player_id": "stale", "composite_rank": 1}],
+        }
+        source_rankings = {
+            "nhl_com": [
+                {"player_id": "fresh", "name": "Fresh Player", "rank": 1},
+            ]
+        }
+
+        snapshot = build_close_snapshot_from_recipe(
+            recipe=recipe,
+            source_rankings=source_rankings,
+            generated_at="2026-05-01T00:00:00+00:00",
+        )
+
+        assert [row["player_id"] for row in snapshot["rankings"]] == ["fresh"]

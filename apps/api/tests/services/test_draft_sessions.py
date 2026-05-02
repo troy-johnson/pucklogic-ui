@@ -467,6 +467,28 @@ class TestEndAndSyncState:
             service.end_session(session_id="ses_1", user_id="usr_1", now=now)
 
         mock_repo.end_session.assert_not_called()
+        mock_repo.snapshot_rankings_at_close.assert_not_called()
+
+    def test_end_session_does_not_snapshot_for_terminal_expired_session(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+        mock_repo.get_active_session.return_value = None
+        mock_repo.get_session_by_id.return_value = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "expired",
+            "completion_reason": "inactivity_expired",
+        }
+
+        with pytest.raises(TerminalSessionError, match="session is closed"):
+            service.end_session(session_id="ses_1", user_id="usr_1", now=now)
+
+        mock_repo.end_session.assert_not_called()
+        mock_repo.snapshot_rankings_at_close.assert_not_called()
 
     def test_end_session_marks_matching_session_ended(
         self,
@@ -511,6 +533,68 @@ class TestEndAndSyncState:
             user_id="usr_1",
             now=now,
         )
+
+    def test_end_session_writes_snapshot_when_recipe_inputs_present(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+
+        mock_repo.get_active_session.return_value = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "active",
+            "season": "2026-27",
+            "league_profile_id": "lp_1",
+            "scoring_config_id": "sc_1",
+            "source_weights": {"hashtag": 1.0},
+            "platform": "espn",
+            "source_rankings": {
+                "hashtag": [
+                    {"player_id": "p1", "name": "Player One", "rank": 1},
+                    {"player_id": "p2", "name": "Player Two", "rank": 2},
+                ]
+            },
+        }
+
+        service.end_session(session_id="ses_1", user_id="usr_1", now=now)
+
+        mock_repo.snapshot_rankings_at_close.assert_called_once()
+        snapshot_call = mock_repo.snapshot_rankings_at_close.call_args.kwargs
+        assert snapshot_call["session_id"] == "ses_1"
+        assert snapshot_call["user_id"] == "usr_1"
+        assert snapshot_call["now"] == now
+        assert snapshot_call["snapshot"]["season"] == "2026-27"
+        assert snapshot_call["snapshot"]["league_profile_id"] == "lp_1"
+        assert snapshot_call["snapshot"]["scoring_config_id"] == "sc_1"
+        assert snapshot_call["snapshot"]["source_weights"] == {"hashtag": 1.0}
+        assert snapshot_call["snapshot"]["platform"] == "espn"
+        assert snapshot_call["snapshot"]["rankings"][0]["player_id"] == "p1"
+
+    def test_end_session_logs_and_skips_snapshot_when_recipe_inputs_missing(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        now = datetime.now(UTC)
+
+        mock_repo.get_active_session.return_value = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "active",
+            "season": "2026-27",
+            # missing league_profile_id/scoring_config_id/source_weights/platform
+        }
+
+        with caplog.at_level("WARNING"):
+            service.end_session(session_id="ses_1", user_id="usr_1", now=now)
+
+        mock_repo.snapshot_rankings_at_close.assert_not_called()
+        assert "Skipping close snapshot" in caplog.text
 
     def test_get_sync_state_returns_authoritative_payload(
         self,
@@ -629,6 +713,7 @@ class TestReconnectSyncState:
         service.reconnect_sync_state(session_id="ses_1", user_id="usr_1", now=now)
 
         mock_repo.expire_inactive_sessions.assert_called_once()
+        mock_repo.snapshot_rankings_at_close.assert_not_called()
 
 
 class TestAcceptPick:
@@ -724,6 +809,7 @@ class TestAcceptPick:
         assert update_kwargs["user_id"] == "usr_1"
         assert update_kwargs["sync_state"]["last_processed_pick"] == 11
         assert update_kwargs["accepted_picks"][-1]["pick_number"] == 11
+        mock_repo.snapshot_rankings_at_close.assert_not_called()
 
 
 class TestAcceptPickNone:

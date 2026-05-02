@@ -139,3 +139,25 @@ class DraftSessionRepository:
             .execute()
         )
         return len(result.data or [])
+
+    def snapshot_rankings_at_close(
+        self,
+        *,
+        session_id: str,
+        user_id: str,
+        snapshot: dict[str, Any],
+        now: datetime,
+    ) -> None:
+        now_iso = now.astimezone(UTC).isoformat()
+        (
+            self._db.table("draft_sessions")
+            .update(
+                {
+                    "snapshot_rankings_at_close": snapshot,
+                    "updated_at": now_iso,
+                }
+            )
+            .eq("session_id", session_id)
+            .eq("user_id", user_id)
+            .execute()
+        )

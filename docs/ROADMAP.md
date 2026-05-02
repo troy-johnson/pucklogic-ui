@@ -43,9 +43,9 @@ Items identified during Milestone B spec review that need to land in later miles
 - [x] Approve closed beta feedback pipeline: Discord + structured prompt; user sourcing deferred to Aug 2026
 
 ### Milestone C backend additions (May 5 – May 18)
-- [ ] Design and implement `draft_tokens` table (purchased but unconsumed sessions — current `subscriptions` schema does not support this)
-- [ ] Update Stripe checkout flow: purchase creates tokens, not a direct session
-- [ ] Token balance readable by both web app and extension
+- [ ] Implement spec 011 entitlement model on `subscriptions` (kit-pass season + purchase timestamp; no separate `draft_tokens` table)
+- [ ] Update Stripe checkout/webhook flow for kit-pass product metadata (`user_id`, `product`, `season`) and idempotent crediting
+- [ ] Expose authenticated `GET /entitlements` for web app and extension entitlement reads
 - [ ] Kit pass entitlement gating for customization and export paths
 - [ ] Snapshot PuckLogic rankings into session record at session close — required for post-season "ranking vs. actual performance" ML comparison job (no UI needed; backend only)
 

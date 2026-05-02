@@ -159,3 +159,100 @@ class TestCreditDraftPassForStripeEvent:
         self._rpc_chain(mock_db).data = False
 
         assert repo.credit_draft_pass_for_stripe_event("evt_1", "user-1") is False
+
+
+class TestCreditKitPassForStripeEvent:
+    def _rpc_chain(self, mock_db: MagicMock) -> MagicMock:
+        return mock_db.rpc.return_value.execute.return_value
+
+    def test_returns_applied_when_new_season_credit_is_written(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._rpc_chain(mock_db).data = "applied"
+
+        outcome = repo.credit_kit_pass_for_stripe_event(
+            event_id="evt_kit_1",
+            user_id="user-1",
+            season=2026,
+        )
+
+        assert outcome == "applied"
+        mock_db.rpc.assert_called_once_with(
+            "credit_kit_pass_for_stripe_event",
+            {"p_event_id": "evt_kit_1", "p_user_id": "user-1", "p_season": 2026},
+        )
+
+    def test_returns_noop_for_same_season_duplicate(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._rpc_chain(mock_db).data = "noop_same_season"
+
+        outcome = repo.credit_kit_pass_for_stripe_event(
+            event_id="evt_kit_2",
+            user_id="user-1",
+            season=2026,
+        )
+
+        assert outcome == "noop_same_season"
+
+    def test_returns_overwrite_for_later_season_purchase(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._rpc_chain(mock_db).data = "overwrite_newer_season"
+
+        outcome = repo.credit_kit_pass_for_stripe_event(
+            event_id="evt_kit_3",
+            user_id="user-1",
+            season=2027,
+        )
+
+        assert outcome == "overwrite_newer_season"
+
+    def test_returns_stale_event_for_earlier_season_replay(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._rpc_chain(mock_db).data = "stale_earlier_season"
+
+        outcome = repo.credit_kit_pass_for_stripe_event(
+            event_id="evt_kit_4",
+            user_id="user-1",
+            season=2025,
+        )
+
+        assert outcome == "stale_earlier_season"
+
+
+class TestGetKitPassState:
+    def _query_chain(self, mock_db: MagicMock) -> MagicMock:
+        chain = mock_db.table.return_value
+        chain = chain.select.return_value
+        chain = chain.eq.return_value
+        chain = chain.maybe_single.return_value
+        return chain.execute.return_value
+
+    def test_returns_active_state_when_current_or_future_season(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._query_chain(mock_db).data = {"kit_pass_season": 2026}
+
+        state = repo.get_kit_pass_state(user_id="user-1", current_season=2026)
+
+        assert state == {"active": True, "season": 2026}
+
+    def test_returns_stale_state_when_season_is_in_past(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._query_chain(mock_db).data = {"kit_pass_season": 2025}
+
+        state = repo.get_kit_pass_state(user_id="user-1", current_season=2026)
+
+        assert state == {"active": False, "season": 2025}
+
+    def test_returns_no_pass_state_when_row_missing_or_null(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._query_chain(mock_db).data = None
+
+        state = repo.get_kit_pass_state(user_id="user-1", current_season=2026)
+
+        assert state == {"active": False, "season": None}
