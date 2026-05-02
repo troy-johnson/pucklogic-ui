@@ -69,7 +69,11 @@ class RankingsComputeRequest(BaseModel):
 
     @model_validator(mode="after")
     def source_weights_not_all_zero(self) -> RankingsComputeRequest:
-        if not self.source_weights or all(v == 0 for v in self.source_weights.values()):
+        if not self.source_weights:
+            raise ValueError("source_weights: at least one source must have a non-zero weight")
+        if any(v < 0 for v in self.source_weights.values()):
+            raise ValueError("source_weights: negative weights are not allowed")
+        if all(v == 0 for v in self.source_weights.values()):
             raise ValueError("source_weights: at least one source must have a non-zero weight")
         return self
 
@@ -185,7 +189,11 @@ class ExportRequest(BaseModel):
 
     @model_validator(mode="after")
     def source_weights_not_all_zero(self) -> ExportRequest:
-        if not self.source_weights or all(v == 0 for v in self.source_weights.values()):
+        if not self.source_weights:
+            raise ValueError("source_weights: at least one source must have a non-zero weight")
+        if any(v < 0 for v in self.source_weights.values()):
+            raise ValueError("source_weights: negative weights are not allowed")
+        if all(v == 0 for v in self.source_weights.values()):
             raise ValueError("source_weights: at least one source must have a non-zero weight")
         return self
 
@@ -220,6 +228,16 @@ class CheckoutSessionResponse(BaseModel):
 class UserKitCreate(BaseModel):
     name: str
     source_weights: dict[str, float]
+
+    @model_validator(mode="after")
+    def source_weights_must_be_non_negative_and_non_zero(self) -> UserKitCreate:
+        if not self.source_weights:
+            raise ValueError("source_weights: at least one source must have a non-zero weight")
+        if any(v < 0 for v in self.source_weights.values()):
+            raise ValueError("source_weights: negative weights are not allowed")
+        if all(v == 0 for v in self.source_weights.values()):
+            raise ValueError("source_weights: at least one source must have a non-zero weight")
+        return self
 
 
 class UserKitOut(BaseModel):
@@ -363,7 +381,11 @@ class DraftSessionStartRequest(BaseModel):
 
     @model_validator(mode="after")
     def source_weights_not_all_zero(self) -> DraftSessionStartRequest:
-        if not self.source_weights or all(v == 0 for v in self.source_weights.values()):
+        if not self.source_weights:
+            raise ValueError("source_weights: at least one source must have a non-zero weight")
+        if any(v < 0 for v in self.source_weights.values()):
+            raise ValueError("source_weights: negative weights are not allowed")
+        if all(v == 0 for v in self.source_weights.values()):
             raise ValueError("source_weights: at least one source must have a non-zero weight")
         return self
 

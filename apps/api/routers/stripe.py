@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 
 import stripe
+import stripe as stripe_sdk
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from core.config import settings
@@ -58,12 +60,17 @@ async def stripe_webhook(
     stripe.api_key = settings.stripe_secret_key
     body = await request.body()
 
+    if not stripe_signature:
+        raise HTTPException(status_code=400, detail="Missing signature")
+
     try:
         event = stripe.Webhook.construct_event(
             body, stripe_signature, settings.stripe_webhook_secret
         )
-    except stripe.error.SignatureVerificationError as exc:
+    except stripe_sdk.error.SignatureVerificationError as exc:
         raise HTTPException(status_code=400, detail="Invalid signature") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid payload") from exc
 
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
@@ -73,6 +80,10 @@ async def stripe_webhook(
         metadata = session.get("metadata") or {}
         product = metadata.get("product")
         season_raw = metadata.get("season")
+        created_epoch = session.get("created", event.get("created"))
+        purchased_at = None
+        if isinstance(created_epoch, int | float):
+            purchased_at = datetime.fromtimestamp(created_epoch, tz=UTC)
         unknown_product_msg = (
             "Unknown or missing Stripe product/season metadata for event %s: product=%s season=%s"
         )
@@ -101,7 +112,18 @@ async def stripe_webhook(
                     if season_raw is None:
                         logger.warning(unknown_product_msg, event_id, product, season_raw)
                         return {"received": True}
-                    outcome = repo.credit_kit_pass_for_stripe_event(event_id, user_id, season_raw)
+                    if purchased_at is None:
+                        logger.warning(
+                            "Missing created timestamp for kit-pass event %s; skipping credit",
+                            event_id,
+                        )
+                        return {"received": True}
+                    outcome = repo.credit_kit_pass_for_stripe_event(
+                        event_id,
+                        user_id,
+                        season_raw,
+                        purchased_at,
+                    )
                     logger.info("Stripe event %s kit pass credit outcome=%s", event_id, outcome)
                 elif product == "draft_pass":
                     credited = repo.credit_draft_pass_for_stripe_event(event_id, user_id)

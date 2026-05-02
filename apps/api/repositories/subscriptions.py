@@ -46,7 +46,9 @@ class SubscriptionRepository:
         ).execute()
         return bool(result.data)
 
-    def credit_kit_pass_for_stripe_event(self, event_id: str, user_id: str, season: str) -> str:
+    def credit_kit_pass_for_stripe_event(
+        self, event_id: str, user_id: str, season: str, purchased_at: datetime
+    ) -> str:
         """Claim a Stripe event and apply kit-pass credit semantics for the given season.
 
         Returns an outcome token from the backing RPC, e.g.:
@@ -57,7 +59,12 @@ class SubscriptionRepository:
         """
         result = self._db.rpc(
             "credit_kit_pass_for_stripe_event",
-            {"p_event_id": event_id, "p_user_id": user_id, "p_season": season},
+            {
+                "p_event_id": event_id,
+                "p_user_id": user_id,
+                "p_season": season,
+                "p_purchased_at": purchased_at.astimezone(UTC).isoformat(),
+            },
         ).execute()
         return str(result.data)
 

@@ -192,6 +192,10 @@ class TestExportValidation:
         body = {**EXCEL_BODY, "source_weights": {"hashtag": 0.0}}
         assert client.post("/exports/generate", json=body).status_code == 422
 
+    def test_negative_weight_returns_422(self, client: TestClient) -> None:
+        body = {**EXCEL_BODY, "source_weights": {"hashtag": -0.1, "moneypuck": 1.1}}
+        assert client.post("/exports/generate", json=body).status_code == 422
+
 
 class TestAuthRequired:
     @pytest.fixture(autouse=True)

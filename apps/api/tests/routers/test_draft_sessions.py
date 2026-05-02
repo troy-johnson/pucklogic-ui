@@ -108,6 +108,11 @@ class TestStartDraftSession:
 
         assert response.status_code == 403
 
+    def test_start_returns_422_for_negative_source_weight(self, client: TestClient) -> None:
+        bad_body = {**START_BODY, "source_weights": {"hashtag": -0.1, "dobber": 1.1}}
+        response = client.post("/draft-sessions/start", json=bad_body)
+        assert response.status_code == 422
+
 
 class TestTerminalSessionReconnectDenial:
     def test_resume_returns_409_for_terminal_session(

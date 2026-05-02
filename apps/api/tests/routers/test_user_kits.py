@@ -120,6 +120,14 @@ class TestCreateUserKit:
         body = {"source_weights": {"nhl_com": 50}}
         assert client.post("/user-kits", json=body).status_code == 422
 
+    def test_all_zero_source_weights_returns_422(self, client: TestClient) -> None:
+        body = {"name": "Zero Kit", "source_weights": {"nhl_com": 0.0, "moneypuck": 0.0}}
+        assert client.post("/user-kits", json=body).status_code == 422
+
+    def test_negative_source_weight_returns_422(self, client: TestClient) -> None:
+        body = {"name": "Bad Kit", "source_weights": {"nhl_com": -0.1, "moneypuck": 1.1}}
+        assert client.post("/user-kits", json=body).status_code == 422
+
     def test_returns_403_when_user_lacks_active_kit_pass(
         self,
         client: TestClient,

@@ -383,3 +383,13 @@ class TestDraftSessionStartRequest:
             source_weights={"hashtag": 1.0},
         )
         assert req.league_profile_id is None
+
+    def test_rejects_negative_source_weights(self) -> None:
+        with pytest.raises(ValidationError, match="negative weights"):
+            DraftSessionStartRequest(
+                platform="espn",
+                season="2026-27",
+                league_profile_id="lp_123",
+                scoring_config_id="sc_123",
+                source_weights={"hashtag": -0.1, "dobber": 1.1},
+            )

@@ -169,28 +169,37 @@ class TestCreditKitPassForStripeEvent:
         self, repo: SubscriptionRepository, mock_db: MagicMock
     ) -> None:
         self._rpc_chain(mock_db).data = "applied"
+        purchased_at = datetime(2026, 8, 14, 19, 22, tzinfo=UTC)
 
         outcome = repo.credit_kit_pass_for_stripe_event(
             event_id="evt_kit_1",
             user_id="user-1",
-            season=2026,
+            season="2026-27",
+            purchased_at=purchased_at,
         )
 
         assert outcome == "applied"
         mock_db.rpc.assert_called_once_with(
             "credit_kit_pass_for_stripe_event",
-            {"p_event_id": "evt_kit_1", "p_user_id": "user-1", "p_season": 2026},
+            {
+                "p_event_id": "evt_kit_1",
+                "p_user_id": "user-1",
+                "p_season": "2026-27",
+                "p_purchased_at": purchased_at.astimezone(UTC).isoformat(),
+            },
         )
 
     def test_returns_noop_for_same_season_duplicate(
         self, repo: SubscriptionRepository, mock_db: MagicMock
     ) -> None:
         self._rpc_chain(mock_db).data = "noop_same_season"
+        purchased_at = datetime(2026, 8, 14, 19, 22, tzinfo=UTC)
 
         outcome = repo.credit_kit_pass_for_stripe_event(
             event_id="evt_kit_2",
             user_id="user-1",
-            season=2026,
+            season="2026-27",
+            purchased_at=purchased_at,
         )
 
         assert outcome == "noop_same_season"
@@ -199,11 +208,13 @@ class TestCreditKitPassForStripeEvent:
         self, repo: SubscriptionRepository, mock_db: MagicMock
     ) -> None:
         self._rpc_chain(mock_db).data = "overwrite_newer_season"
+        purchased_at = datetime(2027, 8, 14, 19, 22, tzinfo=UTC)
 
         outcome = repo.credit_kit_pass_for_stripe_event(
             event_id="evt_kit_3",
             user_id="user-1",
-            season=2027,
+            season="2027-28",
+            purchased_at=purchased_at,
         )
 
         assert outcome == "overwrite_newer_season"
@@ -212,11 +223,13 @@ class TestCreditKitPassForStripeEvent:
         self, repo: SubscriptionRepository, mock_db: MagicMock
     ) -> None:
         self._rpc_chain(mock_db).data = "stale_earlier_season"
+        purchased_at = datetime(2025, 8, 14, 19, 22, tzinfo=UTC)
 
         outcome = repo.credit_kit_pass_for_stripe_event(
             event_id="evt_kit_4",
             user_id="user-1",
-            season=2025,
+            season="2025-26",
+            purchased_at=purchased_at,
         )
 
         assert outcome == "stale_earlier_season"

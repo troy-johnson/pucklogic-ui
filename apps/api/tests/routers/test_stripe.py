@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -230,6 +231,30 @@ class TestStripeWebhook:
             )
         assert resp.status_code == 400
 
+    def test_returns_400_when_signature_header_missing(self, client: TestClient) -> None:
+        with patch("routers.stripe.settings") as mock_settings:
+            mock_settings.stripe_secret_key = "sk_test_123"
+            mock_settings.stripe_webhook_secret = "whsec_test"
+            resp = client.post("/stripe/webhook", content=b"{}")
+
+        assert resp.status_code == 400
+
+    def test_returns_400_on_malformed_payload(self, client: TestClient) -> None:
+        with (
+            patch("routers.stripe.settings") as mock_settings,
+            patch("routers.stripe.stripe") as mock_stripe,
+        ):
+            mock_settings.stripe_secret_key = "sk_test_123"
+            mock_settings.stripe_webhook_secret = "whsec_test"
+            mock_stripe.Webhook.construct_event.side_effect = ValueError("invalid payload")
+            resp = client.post(
+                "/stripe/webhook",
+                content=b"not-json",
+                headers={"stripe-signature": "t=123,v1=abc"},
+            )
+
+        assert resp.status_code == 400
+
     def test_returns_200_on_valid_event(self, client: TestClient) -> None:
         with (
             patch("routers.stripe.settings") as mock_settings,
@@ -266,6 +291,7 @@ class TestStripeWebhook:
                 "data": {
                     "object": {
                         "id": "cs_test_xyz",
+                        "created": 1786735320,
                         "client_reference_id": "user-abc-123",
                         "payment_status": "paid",
                         "metadata": {"product": "kit_pass", "season": "2026"},
@@ -280,7 +306,10 @@ class TestStripeWebhook:
 
         assert resp.status_code == 200
         mock_sub_repo.credit_kit_pass_for_stripe_event.assert_called_once_with(
-            "evt_new", "user-abc-123", "2026"
+            "evt_new",
+            "user-abc-123",
+            "2026",
+            datetime(2026, 8, 14, 19, 22, tzinfo=UTC),
         )
 
     def test_webhook_skips_credit_when_no_client_reference_id(
@@ -346,6 +375,7 @@ class TestStripeWebhook:
                 "data": {
                     "object": {
                         "id": "cs_test_xyz",
+                        "created": 1786735320,
                         "client_reference_id": "user-abc-123",
                         "payment_status": "paid",
                         "metadata": {"product": "kit_pass", "season": "2026"},
@@ -360,7 +390,10 @@ class TestStripeWebhook:
 
         assert resp.status_code == 200
         mock_sub_repo.credit_kit_pass_for_stripe_event.assert_called_once_with(
-            "evt_duplicate", "user-abc-123", "2026"
+            "evt_duplicate",
+            "user-abc-123",
+            "2026",
+            datetime(2026, 8, 14, 19, 22, tzinfo=UTC),
         )
 
     def test_webhook_skips_credit_when_event_id_missing(
@@ -438,6 +471,7 @@ class TestStripeWebhook:
                 "data": {
                     "object": {
                         "id": "cs_test_xyz",
+                        "created": 1786735320,
                         "client_reference_id": "user-abc-123",
                         "payment_status": "paid",
                         "metadata": {"product": "kit_pass", "season": "2026"},
@@ -451,7 +485,10 @@ class TestStripeWebhook:
             )
 
         mock_sub_repo.credit_kit_pass_for_stripe_event.assert_called_once_with(
-            "evt_new", "user-abc-123", "2026"
+            "evt_new",
+            "user-abc-123",
+            "2026",
+            datetime(2026, 8, 14, 19, 22, tzinfo=UTC),
         )
 
     def test_webhook_credits_kit_pass_when_product_metadata_is_kit_pass(
@@ -471,6 +508,7 @@ class TestStripeWebhook:
                 "data": {
                     "object": {
                         "id": "cs_test_xyz",
+                        "created": 1786735320,
                         "client_reference_id": "user-abc-123",
                         "payment_status": "paid",
                         "metadata": {
@@ -488,7 +526,10 @@ class TestStripeWebhook:
 
         assert resp.status_code == 200
         mock_sub_repo.credit_kit_pass_for_stripe_event.assert_called_once_with(
-            "evt_kit_1", "user-abc-123", "2026"
+            "evt_kit_1",
+            "user-abc-123",
+            "2026",
+            datetime(2026, 8, 14, 19, 22, tzinfo=UTC),
         )
 
     def test_webhook_returns_200_and_warns_on_unknown_product(
