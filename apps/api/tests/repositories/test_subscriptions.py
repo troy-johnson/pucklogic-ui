@@ -230,29 +230,107 @@ class TestGetKitPassState:
         chain = chain.maybe_single.return_value
         return chain.execute.return_value
 
-    def test_returns_active_state_when_current_or_future_season(
+    def test_returns_active_state_when_season_matches_current(
         self, repo: SubscriptionRepository, mock_db: MagicMock
     ) -> None:
-        self._query_chain(mock_db).data = {"kit_pass_season": 2026}
+        self._query_chain(mock_db).data = {
+            "kit_pass_season": "2026-27",
+            "kit_pass_purchased_at": "2026-08-14T19:22:00Z",
+        }
 
-        state = repo.get_kit_pass_state(user_id="user-1", current_season=2026)
+        state = repo.get_kit_pass_state(user_id="user-1", current_season="2026-27")
 
-        assert state == {"active": True, "season": 2026}
+        assert state == {
+            "active": True,
+            "season": "2026-27",
+            "purchased_at": "2026-08-14T19:22:00Z",
+        }
 
-    def test_returns_stale_state_when_season_is_in_past(
+    def test_returns_stale_state_when_season_does_not_match(
         self, repo: SubscriptionRepository, mock_db: MagicMock
     ) -> None:
-        self._query_chain(mock_db).data = {"kit_pass_season": 2025}
+        self._query_chain(mock_db).data = {
+            "kit_pass_season": "2025-26",
+            "kit_pass_purchased_at": "2025-08-01T00:00:00Z",
+        }
 
-        state = repo.get_kit_pass_state(user_id="user-1", current_season=2026)
+        state = repo.get_kit_pass_state(user_id="user-1", current_season="2026-27")
 
-        assert state == {"active": False, "season": 2025}
+        assert state == {
+            "active": False,
+            "season": "2025-26",
+            "purchased_at": "2025-08-01T00:00:00Z",
+        }
 
     def test_returns_no_pass_state_when_row_missing_or_null(
         self, repo: SubscriptionRepository, mock_db: MagicMock
     ) -> None:
         self._query_chain(mock_db).data = None
 
-        state = repo.get_kit_pass_state(user_id="user-1", current_season=2026)
+        state = repo.get_kit_pass_state(user_id="user-1", current_season="2026-27")
 
-        assert state == {"active": False, "season": None}
+        assert state == {"active": False, "season": None, "purchased_at": None}
+
+
+class TestGetDraftPassBalance:
+    def _query_chain(self, mock_db: MagicMock) -> MagicMock:
+        chain = mock_db.table.return_value
+        chain = chain.select.return_value
+        chain = chain.eq.return_value
+        chain = chain.maybe_single.return_value
+        return chain.execute.return_value
+
+    def test_returns_balance_when_row_exists(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._query_chain(mock_db).data = {"draft_pass_balance": 3}
+
+        assert repo.get_draft_pass_balance("user-1") == 3
+
+    def test_returns_zero_when_no_row(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._query_chain(mock_db).data = None
+
+        assert repo.get_draft_pass_balance("user-1") == 0
+
+
+class TestGetEntitlementsState:
+    def _query_chain(self, mock_db: MagicMock) -> MagicMock:
+        chain = mock_db.table.return_value
+        chain = chain.select.return_value
+        chain = chain.eq.return_value
+        chain = chain.maybe_single.return_value
+        return chain.execute.return_value
+
+    def test_returns_combined_state_from_single_row(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._query_chain(mock_db).data = {
+            "draft_pass_balance": 3,
+            "kit_pass_season": "2026-27",
+            "kit_pass_purchased_at": "2026-08-14T19:22:00Z",
+        }
+
+        state = repo.get_entitlements_state("user-1", current_season="2026-27")
+
+        assert state == {
+            "draft_pass_balance": 3,
+            "active": True,
+            "season": "2026-27",
+            "purchased_at": "2026-08-14T19:22:00Z",
+        }
+
+    def test_returns_defaults_when_no_row(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._query_chain(mock_db).data = None
+
+        state = repo.get_entitlements_state("user-1", current_season="2026-27")
+
+        assert state == {
+            "draft_pass_balance": 0,
+            "active": False,
+            "season": None,
+            "purchased_at": None,
+        }

@@ -40,7 +40,11 @@ def mock_db() -> MagicMock:
 @pytest.fixture
 def mock_sub_repo() -> MagicMock:
     repo = MagicMock()
-    repo.is_active.return_value = True
+    repo.get_kit_pass_state.return_value = {
+        "active": True,
+        "season": "2026-27",
+        "purchased_at": None,
+    }
     return repo
 
 
@@ -98,9 +102,13 @@ class TestCreateLeagueProfile:
         mock_sub_repo: MagicMock,
     ) -> None:
         mock_db.create.return_value = PROFILE_ROW
-        mock_sub_repo.is_active.return_value = False
+        mock_sub_repo.get_kit_pass_state.return_value = {
+            "active": False,
+            "season": None,
+            "purchased_at": None,
+        }
 
         resp = client.post("/league-profiles", json=CREATE_BODY)
 
         assert resp.status_code == 403
-        assert resp.json()["detail"] == "active draft pass required"
+        assert resp.json()["detail"] == "kit pass required"

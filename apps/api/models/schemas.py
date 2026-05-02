@@ -204,6 +204,7 @@ class ExportJobResponse(BaseModel):
 class CheckoutSessionRequest(BaseModel):
     success_url: str
     cancel_url: str
+    product: Literal["draft_pass", "kit_pass"]
 
 
 class CheckoutSessionResponse(BaseModel):
@@ -343,7 +344,7 @@ class DraftSession(BaseModel):
     status: DraftSessionStatus
     entitlement_ref: str | None = None
     sync_state: DraftSyncState
-    snapshot_rankings_at_close: dict[str, str | int | float | bool | list | dict] | None = None
+    closing_rankings_snapshot: dict[str, str | int | float | bool | list | dict] | None = None
     accepted_picks: list[DraftPick] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime

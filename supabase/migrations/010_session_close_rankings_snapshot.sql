@@ -3,7 +3,7 @@
 
 ALTER TABLE draft_sessions
   ADD COLUMN season TEXT,
-  ADD COLUMN league_profile_id UUID,
-  ADD COLUMN scoring_config_id UUID,
+  ADD COLUMN league_profile_id UUID REFERENCES league_profiles(id),
+  ADD COLUMN scoring_config_id UUID REFERENCES scoring_configs(id),
   ADD COLUMN source_weights JSONB,
-  ADD COLUMN snapshot_rankings_at_close JSONB;
+  ADD COLUMN closing_rankings_snapshot JSONB;

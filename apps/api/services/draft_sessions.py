@@ -7,8 +7,11 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from repositories.draft_sessions import DraftSessionRepository
+from repositories.league_profiles import LeagueProfileRepository
+from repositories.projections import ProjectionRepository
+from repositories.scoring_configs import ScoringConfigRepository
 from repositories.subscriptions import SubscriptionRepository
-from services.rankings import build_close_snapshot_from_recipe
+from services.projections import aggregate_projections
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +26,16 @@ class DraftSessionService:
         *,
         draft_session_repo: DraftSessionRepository,
         subscription_repo: SubscriptionRepository,
+        projection_repo: ProjectionRepository,
+        league_profile_repo: LeagueProfileRepository,
+        scoring_config_repo: ScoringConfigRepository,
         inactivity_timeout: timedelta,
     ) -> None:
         self._draft_session_repo = draft_session_repo
         self._subscription_repo = subscription_repo
+        self._projection_repo = projection_repo
+        self._league_profile_repo = league_profile_repo
+        self._scoring_config_repo = scoring_config_repo
         self._inactivity_timeout = inactivity_timeout
         self._observability_counters: dict[str, int] = {
             "socket_attach": 0,
@@ -149,20 +158,36 @@ class DraftSessionService:
             now=now,
         )
 
-        snapshot = self._build_close_snapshot(active, now)
-        if snapshot is None:
-            logger.warning(
-                "Skipping close snapshot for session %s: missing recipe inputs",
-                session_id,
-            )
-            return
+    def snapshot_rankings_at_close(self, *, session_id: str, user_id: str, now: datetime) -> None:
+        """Best-effort: fetch persisted recipe, recompute rankings from DB, write snapshot.
 
-        self._draft_session_repo.snapshot_rankings_at_close(
-            session_id=session_id,
-            user_id=user_id,
-            snapshot=snapshot,
-            now=now,
-        )
+        Called as a background task after end_session. Failure is logged and does not
+        propagate — session close already succeeded before this runs.
+        """
+        try:
+            row = self._draft_session_repo.get_session_by_id(session_id, user_id)
+            if row is None:
+                logger.warning("snapshot_rankings_at_close: session %s not found", session_id)
+                return
+
+            snapshot = self._build_close_snapshot(row, now)
+            if snapshot is None:
+                logger.warning(
+                    "Skipping close snapshot for session %s: missing recipe inputs",
+                    session_id,
+                )
+                return
+
+            self._draft_session_repo.snapshot_rankings_at_close(
+                session_id=session_id,
+                user_id=user_id,
+                snapshot=snapshot,
+                now=now,
+            )
+        except Exception:
+            logger.exception(
+                "Close snapshot failed for session %s; session close unaffected", session_id
+            )
 
     def get_sync_state(self, *, session_id: str, user_id: str, now: datetime) -> dict:
         self.expire_inactive_sessions(now)
@@ -333,31 +358,64 @@ class DraftSessionService:
         if row is not None and row.get("status") in ("ended", "expired"):
             raise TerminalSessionError("session is closed")
 
-    def _build_close_snapshot(self, active_session: dict, now: datetime) -> dict | None:
-        season = active_session.get("season")
-        league_profile_id = active_session.get("league_profile_id")
-        scoring_config_id = active_session.get("scoring_config_id")
-        source_weights = active_session.get("source_weights")
-        platform = active_session.get("platform")
+    def _build_close_snapshot(self, session_row: dict, now: datetime) -> dict | None:
+        season = session_row.get("season")
+        league_profile_id = session_row.get("league_profile_id")
+        scoring_config_id = session_row.get("scoring_config_id")
+        source_weights = session_row.get("source_weights")
+        platform = session_row.get("platform")
 
         if (
             season is None
-            or league_profile_id is None
             or scoring_config_id is None
             or source_weights is None
             or platform is None
         ):
             return None
 
-        recipe = {
+        scoring_config_row = self._scoring_config_repo.get(
+            scoring_config_id, user_id=session_row["user_id"]
+        )
+        if scoring_config_row is None:
+            logger.warning(
+                "Skipping close snapshot for session %s: scoring config not found",
+                session_row.get("session_id"),
+            )
+            return None
+
+        league_profile = None
+        if league_profile_id:
+            league_profile = self._league_profile_repo.get(
+                league_profile_id, session_row["user_id"]
+            )
+
+        projection_rows = self._projection_repo.get_by_season(
+            season,
+            platform,
+            session_row["user_id"],
+        )
+        ranked = aggregate_projections(
+            projection_rows,
+            source_weights,
+            scoring_config_row["stat_weights"],
+            league_profile,
+        )
+        rankings = [
+            {
+                "player_id": player["player_id"],
+                "rank": player["composite_rank"],
+                "fantasy_points": player["projected_fantasy_points"],
+            }
+            for player in ranked
+        ]
+
+        return {
+            "snapshot_version": 1,
+            "captured_at": now.astimezone(UTC).isoformat(),
             "season": season,
             "league_profile_id": league_profile_id,
             "scoring_config_id": scoring_config_id,
             "source_weights": source_weights,
             "platform": platform,
+            "rankings": rankings,
         }
-        return build_close_snapshot_from_recipe(
-            recipe=recipe,
-            source_rankings=active_session.get("source_rankings") or {},
-            generated_at=now.astimezone(UTC).isoformat(),
-        )

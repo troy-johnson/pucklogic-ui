@@ -259,7 +259,7 @@ class TestDraftSessionRepositorySnapshot:
         snapshot = {
             "generated_at": now.isoformat(),
             "season": "2026-27",
-            "rankings": [{"player_id": "p1", "composite_rank": 1}],
+            "rankings": [{"player_id": "p1", "rank": 1}],
         }
 
         repo.snapshot_rankings_at_close(
@@ -274,7 +274,7 @@ class TestDraftSessionRepositorySnapshot:
             if mock_db.table.return_value.update.call_args.args
             else mock_db.table.return_value.update.call_args.kwargs.get("json", {})
         )
-        assert update_call["snapshot_rankings_at_close"] == snapshot
+        assert update_call["closing_rankings_snapshot"] == snapshot
         assert update_call["updated_at"] == now.astimezone(UTC).isoformat()
 
     def test_snapshot_rankings_at_close_scopes_write_to_session_owner(

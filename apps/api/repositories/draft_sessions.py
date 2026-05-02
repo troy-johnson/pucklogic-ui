@@ -153,7 +153,7 @@ class DraftSessionRepository:
             self._db.table("draft_sessions")
             .update(
                 {
-                    "snapshot_rankings_at_close": snapshot,
+                    "closing_rankings_snapshot": snapshot,
                     "updated_at": now_iso,
                 }
             )

@@ -122,7 +122,7 @@ def build_close_snapshot_from_recipe(
     *,
     recipe: dict[str, Any],
     source_rankings: dict[str, list[dict[str, Any]]],
-    generated_at: str,
+    captured_at: str,
 ) -> dict[str, Any]:
     """Build a close-time rankings snapshot from persisted session recipe inputs.
 
@@ -131,7 +131,8 @@ def build_close_snapshot_from_recipe(
     source_weights = recipe.get("source_weights") or {}
     rankings = compute_weighted_rankings(source_rankings, source_weights)
     return {
-        "generated_at": generated_at,
+        "snapshot_version": 1,
+        "captured_at": captured_at,
         "season": recipe.get("season"),
         "league_profile_id": recipe.get("league_profile_id"),
         "scoring_config_id": recipe.get("scoring_config_id"),

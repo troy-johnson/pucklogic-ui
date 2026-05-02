@@ -272,10 +272,11 @@ class TestBuildCloseSnapshotFromRecipe:
         snapshot = build_close_snapshot_from_recipe(
             recipe=recipe,
             source_rankings=source_rankings,
-            generated_at="2026-05-01T00:00:00+00:00",
+            captured_at="2026-05-01T00:00:00+00:00",
         )
 
-        assert snapshot["generated_at"] == "2026-05-01T00:00:00+00:00"
+        assert snapshot["snapshot_version"] == 1
+        assert snapshot["captured_at"] == "2026-05-01T00:00:00+00:00"
         assert snapshot["season"] == "2026-27"
         assert snapshot["league_profile_id"] == "lp_1"
         assert snapshot["scoring_config_id"] == "sc_1"
@@ -301,7 +302,7 @@ class TestBuildCloseSnapshotFromRecipe:
         snapshot = build_close_snapshot_from_recipe(
             recipe=recipe,
             source_rankings=source_rankings,
-            generated_at="2026-05-01T00:00:00+00:00",
+            captured_at="2026-05-01T00:00:00+00:00",
         )
 
         assert [row["player_id"] for row in snapshot["rankings"]] == ["fresh"]

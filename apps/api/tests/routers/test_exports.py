@@ -106,7 +106,11 @@ def mock_src_repo() -> MagicMock:
 @pytest.fixture
 def mock_sub_repo() -> MagicMock:
     repo = MagicMock()
-    repo.is_active.return_value = True
+    repo.get_kit_pass_state.return_value = {
+        "active": True,
+        "season": "2026-27",
+        "purchased_at": None,
+    }
     return repo
 
 
@@ -206,9 +210,13 @@ class TestKitPassGating:
         client: TestClient,
         mock_sub_repo: MagicMock,
     ) -> None:
-        mock_sub_repo.is_active.return_value = False
+        mock_sub_repo.get_kit_pass_state.return_value = {
+            "active": False,
+            "season": None,
+            "purchased_at": None,
+        }
 
         resp = client.post("/exports/generate", json=EXCEL_BODY)
 
         assert resp.status_code == 403
-        assert resp.json()["detail"] == "active draft pass required"
+        assert resp.json()["detail"] == "kit pass required"

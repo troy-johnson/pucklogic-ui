@@ -97,6 +97,9 @@ def get_draft_session_service() -> DraftSessionService:
         _draft_session_service = DraftSessionService(
             draft_session_repo=get_draft_session_repository(),
             subscription_repo=get_subscription_repository(),
+            projection_repo=get_projection_repository(),
+            league_profile_repo=get_league_profile_repository(),
+            scoring_config_repo=get_scoring_config_repository(),
             inactivity_timeout=timedelta(minutes=15),
         )
     return _draft_session_service
@@ -161,5 +164,6 @@ def require_kit_pass(
     current_user: dict[str, Any] = Depends(get_current_user),
     subscription_repo: SubscriptionRepository = Depends(get_subscription_repository),
 ) -> None:
-    if not subscription_repo.is_active(current_user["id"]):
-        raise HTTPException(status_code=403, detail="active draft pass required")
+    state = subscription_repo.get_kit_pass_state(current_user["id"], settings.current_season)
+    if not state.get("active"):
+        raise HTTPException(status_code=403, detail="kit pass required")

@@ -28,7 +28,11 @@ def mock_db() -> MagicMock:
 @pytest.fixture
 def mock_sub_repo() -> MagicMock:
     repo = MagicMock()
-    repo.is_active.return_value = True
+    repo.get_kit_pass_state.return_value = {
+        "active": True,
+        "season": "2026-27",
+        "purchased_at": None,
+    }
     return repo
 
 
@@ -123,12 +127,16 @@ class TestCreateUserKit:
         mock_sub_repo: MagicMock,
     ) -> None:
         mock_db.table.return_value.insert.return_value.execute.return_value.data = [KIT_ROW]
-        mock_sub_repo.is_active.return_value = False
+        mock_sub_repo.get_kit_pass_state.return_value = {
+            "active": False,
+            "season": None,
+            "purchased_at": None,
+        }
 
         resp = client.post("/user-kits", json=self.CREATE_BODY)
 
         assert resp.status_code == 403
-        assert resp.json()["detail"] == "active draft pass required"
+        assert resp.json()["detail"] == "kit pass required"
 
 
 class TestDeleteUserKit:
@@ -161,12 +169,16 @@ class TestDeleteUserKit:
         client: TestClient,
         mock_sub_repo: MagicMock,
     ) -> None:
-        mock_sub_repo.is_active.return_value = False
+        mock_sub_repo.get_kit_pass_state.return_value = {
+            "active": False,
+            "season": None,
+            "purchased_at": None,
+        }
 
         resp = client.delete("/user-kits/kit-1")
 
         assert resp.status_code == 403
-        assert resp.json()["detail"] == "active draft pass required"
+        assert resp.json()["detail"] == "kit pass required"
 
 
 class TestUnauthenticated:

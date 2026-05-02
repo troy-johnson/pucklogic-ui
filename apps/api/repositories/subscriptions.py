@@ -46,7 +46,7 @@ class SubscriptionRepository:
         ).execute()
         return bool(result.data)
 
-    def credit_kit_pass_for_stripe_event(self, event_id: str, user_id: str, season: int) -> str:
+    def credit_kit_pass_for_stripe_event(self, event_id: str, user_id: str, season: str) -> str:
         """Claim a Stripe event and apply kit-pass credit semantics for the given season.
 
         Returns an outcome token from the backing RPC, e.g.:
@@ -61,27 +61,73 @@ class SubscriptionRepository:
         ).execute()
         return str(result.data)
 
-    def get_kit_pass_state(self, user_id: str, current_season: int) -> dict[str, int | bool | None]:
+    def get_entitlements_state(
+        self, user_id: str, current_season: str
+    ) -> dict[str, int | bool | str | None]:
+        """Return draft-pass balance + kit-pass state from a single row read."""
+        result = (
+            self._db.table("subscriptions")
+            .select("draft_pass_balance, kit_pass_season, kit_pass_purchased_at")
+            .eq("user_id", user_id)
+            .maybe_single()
+            .execute()
+        )
+
+        if result.data is None:
+            return {
+                "draft_pass_balance": 0,
+                "active": False,
+                "season": None,
+                "purchased_at": None,
+            }
+
+        season = result.data.get("kit_pass_season")
+        purchased_at = result.data.get("kit_pass_purchased_at")
+        return {
+            "draft_pass_balance": result.data.get("draft_pass_balance") or 0,
+            "active": bool(season and season == current_season),
+            "season": season,
+            "purchased_at": purchased_at,
+        }
+
+    def get_kit_pass_state(self, user_id: str, current_season: str) -> dict[str, str | bool | None]:
         """Return current kit-pass state for entitlement reads.
 
         Shape:
-            {"active": bool, "season": int | None}
+            {"active": bool, "season": str | None, "purchased_at": str | None}
         """
         result = (
             self._db.table("subscriptions")
-            .select("kit_pass_season")
+            .select("kit_pass_season, kit_pass_purchased_at")
             .eq("user_id", user_id)
             .maybe_single()
             .execute()
         )
         if result.data is None:
-            return {"active": False, "season": None}
+            return {"active": False, "season": None, "purchased_at": None}
 
         season = result.data.get("kit_pass_season")
         if season is None:
-            return {"active": False, "season": None}
+            return {"active": False, "season": None, "purchased_at": None}
 
-        return {"active": season >= current_season, "season": season}
+        return {
+            "active": season == current_season,
+            "season": season,
+            "purchased_at": result.data.get("kit_pass_purchased_at"),
+        }
+
+    def get_draft_pass_balance(self, user_id: str) -> int:
+        """Return the user's current draft pass balance (0 if no row)."""
+        result = (
+            self._db.table("subscriptions")
+            .select("draft_pass_balance")
+            .eq("user_id", user_id)
+            .maybe_single()
+            .execute()
+        )
+        if result.data is None:
+            return 0
+        return result.data.get("draft_pass_balance") or 0
 
     def is_active(self, user_id: str) -> bool:
         """Return True if user_id has an active, non-expired subscription."""

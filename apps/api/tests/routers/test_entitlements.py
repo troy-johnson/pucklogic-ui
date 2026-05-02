@@ -24,7 +24,7 @@ def mock_entitlements_service() -> MagicMock:
     service.get_entitlements.return_value = {
         "kit_pass": {
             "active": True,
-            "season": 2026,
+            "season": "2026-27",
             "purchase_url": None,
         }
     }
@@ -46,7 +46,7 @@ def test_get_entitlements_returns_200_and_expected_shape(client: TestClient) -> 
     assert resp.json() == {
         "kit_pass": {
             "active": True,
-            "season": 2026,
+            "season": "2026-27",
             "purchase_url": None,
         }
     }

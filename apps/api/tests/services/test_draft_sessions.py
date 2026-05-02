@@ -21,10 +21,40 @@ def mock_sub_repo() -> MagicMock:
 
 
 @pytest.fixture
-def service(mock_repo: MagicMock, mock_sub_repo: MagicMock) -> DraftSessionService:
+def mock_projection_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.get_by_season.return_value = []
+    return repo
+
+
+@pytest.fixture
+def mock_scoring_config_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.get.return_value = {"stat_weights": {"g": 1.0}}
+    return repo
+
+
+@pytest.fixture
+def mock_league_profile_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.get.return_value = None
+    return repo
+
+
+@pytest.fixture
+def service(
+    mock_repo: MagicMock,
+    mock_sub_repo: MagicMock,
+    mock_projection_repo: MagicMock,
+    mock_league_profile_repo: MagicMock,
+    mock_scoring_config_repo: MagicMock,
+) -> DraftSessionService:
     return DraftSessionService(
         draft_session_repo=mock_repo,
         subscription_repo=mock_sub_repo,
+        projection_repo=mock_projection_repo,
+        league_profile_repo=mock_league_profile_repo,
+        scoring_config_repo=mock_scoring_config_repo,
         inactivity_timeout=timedelta(minutes=15),
     )
 
@@ -534,7 +564,7 @@ class TestEndAndSyncState:
             now=now,
         )
 
-    def test_end_session_writes_snapshot_when_recipe_inputs_present(
+    def test_end_session_does_not_write_snapshot_inline(
         self,
         service: DraftSessionService,
         mock_repo: MagicMock,
@@ -546,55 +576,134 @@ class TestEndAndSyncState:
             "session_id": "ses_1",
             "user_id": "usr_1",
             "status": "active",
+            "season": "2026-27",
+            "scoring_config_id": "sc_1",
+            "source_weights": {"hashtag": 1.0},
+            "platform": "espn",
+        }
+
+        service.end_session(session_id="ses_1", user_id="usr_1", now=now)
+
+        mock_repo.end_session.assert_called_once()
+        mock_repo.snapshot_rankings_at_close.assert_not_called()
+
+
+class TestSnapshotRankingsAtClose:
+    def test_writes_snapshot_when_recipe_inputs_present(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_projection_repo: MagicMock,
+        mock_scoring_config_repo: MagicMock,
+    ) -> None:
+        now = datetime.now(UTC)
+
+        mock_repo.get_session_by_id.return_value = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "ended",
             "season": "2026-27",
             "league_profile_id": "lp_1",
             "scoring_config_id": "sc_1",
             "source_weights": {"hashtag": 1.0},
             "platform": "espn",
-            "source_rankings": {
-                "hashtag": [
-                    {"player_id": "p1", "name": "Player One", "rank": 1},
-                    {"player_id": "p2", "name": "Player Two", "rank": 2},
-                ]
-            },
         }
+        mock_scoring_config_repo.get.return_value = {"stat_weights": {"g": 1.0}}
+        mock_projection_repo.get_by_season.return_value = [
+            {
+                "g": 10,
+                "season": "2026-27",
+                "player_id": "p1",
+                "sources": {
+                    "name": "hashtag",
+                    "default_weight": 1.0,
+                    "is_paid": False,
+                    "user_id": None,
+                },
+                "players": {"name": "Player One", "team": "TOR", "position": "C"},
+                "player_platform_positions": [{"platform": "espn", "positions": ["C"]}],
+                "schedule_scores": [
+                    {"season": "2026-27", "schedule_score": 0.0, "off_night_games": 0}
+                ],
+            }
+        ]
 
-        service.end_session(session_id="ses_1", user_id="usr_1", now=now)
+        service.snapshot_rankings_at_close(session_id="ses_1", user_id="usr_1", now=now)
 
         mock_repo.snapshot_rankings_at_close.assert_called_once()
         snapshot_call = mock_repo.snapshot_rankings_at_close.call_args.kwargs
-        assert snapshot_call["session_id"] == "ses_1"
-        assert snapshot_call["user_id"] == "usr_1"
-        assert snapshot_call["now"] == now
+        assert snapshot_call["snapshot"]["snapshot_version"] == 1
         assert snapshot_call["snapshot"]["season"] == "2026-27"
         assert snapshot_call["snapshot"]["league_profile_id"] == "lp_1"
-        assert snapshot_call["snapshot"]["scoring_config_id"] == "sc_1"
         assert snapshot_call["snapshot"]["source_weights"] == {"hashtag": 1.0}
-        assert snapshot_call["snapshot"]["platform"] == "espn"
         assert snapshot_call["snapshot"]["rankings"][0]["player_id"] == "p1"
+        assert snapshot_call["snapshot"]["rankings"][0]["rank"] == 1
+        assert "fantasy_points" in snapshot_call["snapshot"]["rankings"][0]
+        mock_projection_repo.get_by_season.assert_called_once_with("2026-27", "espn", "usr_1")
 
-    def test_end_session_logs_and_skips_snapshot_when_recipe_inputs_missing(
+    def test_logs_and_skips_when_recipe_inputs_missing(
         self,
         service: DraftSessionService,
         mock_repo: MagicMock,
-        mock_sub_repo: MagicMock,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         now = datetime.now(UTC)
 
-        mock_repo.get_active_session.return_value = {
+        mock_repo.get_session_by_id.return_value = {
             "session_id": "ses_1",
             "user_id": "usr_1",
-            "status": "active",
+            "status": "ended",
             "season": "2026-27",
-            # missing league_profile_id/scoring_config_id/source_weights/platform
+            # missing scoring_config_id/source_weights/platform
         }
 
         with caplog.at_level("WARNING"):
-            service.end_session(session_id="ses_1", user_id="usr_1", now=now)
+            service.snapshot_rankings_at_close(session_id="ses_1", user_id="usr_1", now=now)
 
         mock_repo.snapshot_rankings_at_close.assert_not_called()
         assert "Skipping close snapshot" in caplog.text
+
+    def test_logs_and_does_not_propagate_on_write_failure(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        mock_projection_repo: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        now = datetime.now(UTC)
+
+        mock_repo.get_session_by_id.return_value = {
+            "session_id": "ses_1",
+            "user_id": "usr_1",
+            "status": "ended",
+            "season": "2026-27",
+            "league_profile_id": "lp_1",
+            "scoring_config_id": "sc_1",
+            "source_weights": {"hashtag": 1.0},
+            "platform": "espn",
+        }
+        mock_projection_repo.get_by_season.side_effect = RuntimeError("DB error")
+
+        with caplog.at_level("ERROR"):
+            service.snapshot_rankings_at_close(session_id="ses_1", user_id="usr_1", now=now)
+
+        mock_repo.snapshot_rankings_at_close.assert_not_called()
+        assert "Close snapshot failed" in caplog.text
+
+    def test_logs_when_session_not_found(
+        self,
+        service: DraftSessionService,
+        mock_repo: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        now = datetime.now(UTC)
+        mock_repo.get_session_by_id.return_value = None
+
+        with caplog.at_level("WARNING"):
+            service.snapshot_rankings_at_close(session_id="ses_1", user_id="usr_1", now=now)
+
+        mock_repo.snapshot_rankings_at_close.assert_not_called()
+        assert "not found" in caplog.text
 
     def test_get_sync_state_returns_authoritative_payload(
         self,
