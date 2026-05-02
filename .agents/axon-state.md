@@ -1,15 +1,15 @@
 | Field | Value |
 |---|---|
-| Active Phase | `011b-implement-tdd` — in progress (Tasks 8–13 completed and verified; final reconciliation pending) |
-| Active Branch | main |
-| Open PR | none |
-| Current Focus | Complete Milestone C backend execution wrap-up: reconcile 011a/011b artifacts and prepare commit boundary |
-| Track | implement-tdd — `011a` complete in working tree, `011b` largely complete in working tree |
-| Last Action | Completed `011b` Tasks 10/12/13: wired clean-close snapshot recompute path, updated backend-reference draft-session schema/route semantics, and executed plan-specified focused verification command (123 passed) |
+| Active Phase | `011b-implement-tdd` — in progress (implementation complete; PR review/merge readiness and status reconciliation active) |
+| Active Branch | `spec/011-milestone-c-token-pass` (tracking `origin/spec/011-milestone-c-token-pass`) |
+| Open PR | [#36](https://github.com/troy-johnson/pucklogic-ui/pull/36) — `feat(api): implement milestone C entitlements and close-time snapshots` (base: `main`, state: OPEN) |
+| Current Focus | Drive PR #36 through review/merge readiness and finalize cross-system status reconciliation (not commit-boundary prep) |
+| Track | implement-tdd — `011a` and `011b` changes committed and under open PR review |
+| Last Action | Created commit `d264d1e` (`feat(api): align milestone C entitlements and close snapshot contract`) and updated PR #36 body with Spec 011 review follow-up details plus focused verification evidence |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
-| Current Hypothesis | 011b acceptance is satisfied in focused verification; remaining work is operational closeout (state reconciliation and commit planning). Full-suite signal remains constrained by pre-existing missing `shap` dependency in ML tests. |
-| Next Steps | 1. Summarize and confirm final changed-file set for 011a/011b 2. Prepare commit message(s) and commit boundaries for user approval 3. Reconcile Notion/axon-state after commit action |
-| Next Session Entry | Resume at: confirm commit grouping and create approved commit(s) for 011a/011b changes. |
+| Current Hypothesis | PR #36 is green on required checks (Backend tests/pytest, Frontend tests/Vitest, Vercel, Vercel Preview Comments); remaining risk is review/merge disposition plus post-merge status sync. Full local `pytest apps/api/tests` remains blocked by pre-existing missing `shap` dependency in ML tests. |
+| Next Steps | 1. Request/re-run review on PR #36 if needed 2. Monitor/confirm PR checks and review disposition 3. After approval/merge, reconcile Notion and axon-state to mark `011a`/`011b` complete |
+| Next Session Entry | Resume at: check PR #36 review state + checks, then complete post-merge Notion/axon-state reconciliation for Milestone C closure. |
 
 ## Merge and code review outcome (2026-04-10)
 
