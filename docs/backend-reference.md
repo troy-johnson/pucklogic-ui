@@ -271,7 +271,7 @@ CREATE TABLE draft_sessions (
   entitlement_ref TEXT,                    -- subscription id recorded at session start for audit
   sync_state JSONB NOT NULL DEFAULT '{"last_processed_pick": null, "sync_health": "healthy", "cursor": null}',
   accepted_picks JSONB NOT NULL DEFAULT '[]',
-  snapshot_rankings_at_close JSONB,
+  closing_rankings_snapshot JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   last_heartbeat_at TIMESTAMPTZ NOT NULL DEFAULT now(),

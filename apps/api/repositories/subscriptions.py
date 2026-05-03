@@ -53,6 +53,7 @@ class SubscriptionRepository:
 
         Returns an outcome token from the backing RPC, e.g.:
         - "applied"
+        - "already_processed"
         - "noop_same_season"
         - "overwrite_newer_season"
         - "stale_earlier_season"
@@ -66,7 +67,7 @@ class SubscriptionRepository:
                 "p_purchased_at": purchased_at.astimezone(UTC).isoformat(),
             },
         ).execute()
-        return str(result.data)
+        return str(result.data) if result.data is not None else "already_processed"
 
     def get_entitlements_state(
         self, user_id: str, current_season: str
