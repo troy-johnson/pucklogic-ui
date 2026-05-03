@@ -530,7 +530,7 @@ POST   /draft-sessions/start               — Create or resume the user's activ
                                              source_weights, platform
 POST   /draft-sessions/{session_id}/resume — Reattach to an owned active draft session without consuming another pass
 POST   /draft-sessions/{session_id}/end    — Explicitly end the owned active draft session
-                                             Clean-close path writes snapshot_rankings_at_close
+                                             Clean-close path writes closing_rankings_snapshot
                                              from recomputed rankings using persisted recipe inputs
                                              Missing recipe inputs: warning log + no-op
                                              Expired/abandoned sessions may remain snapshot NULL
