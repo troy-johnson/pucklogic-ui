@@ -4,7 +4,6 @@ import logging
 from datetime import UTC, datetime
 
 import stripe
-import stripe as stripe_sdk
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from core.config import settings
@@ -25,6 +24,8 @@ async def create_checkout_session(
     """Create a Stripe Checkout session for a one-time purchase."""
     if not settings.stripe_secret_key:
         raise HTTPException(status_code=503, detail="Stripe not configured")
+    if req.product == "kit_pass" and not settings.stripe_price_kit_pass:
+        raise HTTPException(status_code=503, detail="Kit pass not configured")
 
     price_id = (
         settings.stripe_price_kit_pass if req.product == "kit_pass" else settings.stripe_price_id
@@ -67,7 +68,7 @@ async def stripe_webhook(
         event = stripe.Webhook.construct_event(
             body, stripe_signature, settings.stripe_webhook_secret
         )
-    except stripe_sdk.error.SignatureVerificationError as exc:
+    except stripe.error.SignatureVerificationError as exc:
         raise HTTPException(status_code=400, detail="Invalid signature") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid payload") from exc

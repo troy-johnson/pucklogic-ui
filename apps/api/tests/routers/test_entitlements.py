@@ -22,11 +22,12 @@ def _raise_401() -> None:
 def mock_entitlements_service() -> MagicMock:
     service = MagicMock()
     service.get_entitlements.return_value = {
+        "draft_pass_balance": 3,
         "kit_pass": {
             "active": True,
             "season": "2026-27",
             "purchase_url": None,
-        }
+        },
     }
     return service
 
@@ -44,11 +45,12 @@ def test_get_entitlements_returns_200_and_expected_shape(client: TestClient) -> 
 
     assert resp.status_code == 200
     assert resp.json() == {
+        "draft_pass_balance": 3,
         "kit_pass": {
             "active": True,
             "season": "2026-27",
             "purchase_url": None,
-        }
+        },
     }
 
 

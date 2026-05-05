@@ -41,6 +41,18 @@ class TestCreateCheckoutSession:
             resp = client.post("/stripe/create-checkout-session", json=CHECKOUT_BODY)
         assert resp.status_code == 503
 
+    def test_returns_503_when_kit_pass_price_not_configured(self, client: TestClient) -> None:
+        with patch("routers.stripe.settings") as mock_settings:
+            mock_settings.stripe_secret_key = "sk_test_123"
+            mock_settings.stripe_price_kit_pass = ""
+            resp = client.post(
+                "/stripe/create-checkout-session",
+                json={**CHECKOUT_BODY, "product": "kit_pass"},
+            )
+
+        assert resp.status_code == 503
+        assert resp.json()["detail"] == "Kit pass not configured"
+
     def test_returns_200_when_configured(self, client: TestClient) -> None:
         mock_session = MagicMock()
         mock_session.url = "https://checkout.stripe.com/pay/cs_test_abc"
@@ -240,12 +252,17 @@ class TestStripeWebhook:
         assert resp.status_code == 400
 
     def test_returns_400_on_malformed_payload(self, client: TestClient) -> None:
+        import stripe as stripe_lib
+
         with (
             patch("routers.stripe.settings") as mock_settings,
             patch("routers.stripe.stripe") as mock_stripe,
         ):
             mock_settings.stripe_secret_key = "sk_test_123"
             mock_settings.stripe_webhook_secret = "whsec_test"
+            mock_stripe.error.SignatureVerificationError = (
+                stripe_lib.error.SignatureVerificationError
+            )
             mock_stripe.Webhook.construct_event.side_effect = ValueError("invalid payload")
             resp = client.post(
                 "/stripe/webhook",

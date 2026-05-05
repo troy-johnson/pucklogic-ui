@@ -213,6 +213,16 @@ class TestEndDraftSession:
 
         assert response.status_code == 204
         mock_service.end_session.assert_called_once()
+        end_call = mock_service.end_session.call_args.kwargs
+        assert end_call["session_id"] == "ses_1"
+        assert end_call["user_id"] == "usr_123"
+        assert "now" in end_call
+
+        mock_service.snapshot_rankings_at_close.assert_called_once()
+        snapshot_call = mock_service.snapshot_rankings_at_close.call_args.kwargs
+        assert snapshot_call["session_id"] == "ses_1"
+        assert snapshot_call["user_id"] == "usr_123"
+        assert snapshot_call["now"] == end_call["now"]
 
     def test_end_returns_409_for_terminal_session(
         self, client: TestClient, mock_service: MagicMock

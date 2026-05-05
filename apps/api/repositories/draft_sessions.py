@@ -159,5 +159,6 @@ class DraftSessionRepository:
             )
             .eq("session_id", session_id)
             .eq("user_id", user_id)
+            .eq("status", "ended")
             .execute()
         )
