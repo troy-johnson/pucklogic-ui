@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_price_id: str = ""
+    stripe_price_kit_pass: str = ""
     frontend_url: str = "http://localhost:3000"
     environment: str = "development"
     current_season: str = "2025-26"

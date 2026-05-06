@@ -12,6 +12,7 @@ from core.dependencies import (
     get_scoring_config_repository,
     get_source_repository,
     get_subscription_repository,
+    require_kit_pass,
 )
 from models.schemas import ExportRequest
 from repositories.league_profiles import LeagueProfileRepository
@@ -34,6 +35,7 @@ async def generate_export(
     sc_repo: ScoringConfigRepository = Depends(get_scoring_config_repository),
     src_repo: SourceRepository = Depends(get_source_repository),
     sub_repo: SubscriptionRepository = Depends(get_subscription_repository),
+    _: None = Depends(require_kit_pass),
 ) -> Response:
     """Run the projection pipeline and stream the result as PDF or Excel."""
     # Batch-validate source_weights keys (single DB query)

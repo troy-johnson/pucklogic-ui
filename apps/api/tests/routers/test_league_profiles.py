@@ -5,7 +5,11 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from core.dependencies import get_current_user, get_league_profile_repository
+from core.dependencies import (
+    get_current_user,
+    get_league_profile_repository,
+    get_subscription_repository,
+)
 from main import app
 
 MOCK_USER = {"id": "u-1", "email": "test@example.com"}
@@ -34,9 +38,21 @@ def mock_db() -> MagicMock:
 
 
 @pytest.fixture
-def client(mock_db: MagicMock) -> TestClient:
+def mock_sub_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.get_kit_pass_state.return_value = {
+        "active": True,
+        "season": "2026-27",
+        "purchased_at": None,
+    }
+    return repo
+
+
+@pytest.fixture
+def client(mock_db: MagicMock, mock_sub_repo: MagicMock) -> TestClient:
     app.dependency_overrides[get_current_user] = lambda: MOCK_USER
     app.dependency_overrides[get_league_profile_repository] = lambda: mock_db
+    app.dependency_overrides[get_subscription_repository] = lambda: mock_sub_repo
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -78,3 +94,21 @@ class TestCreateLeagueProfile:
             client.post("/league-profiles", json={**CREATE_BODY, "platform": "sleeper"}).status_code
             == 422
         )
+
+    def test_returns_403_when_user_lacks_active_kit_pass(
+        self,
+        client: TestClient,
+        mock_db: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        mock_db.create.return_value = PROFILE_ROW
+        mock_sub_repo.get_kit_pass_state.return_value = {
+            "active": False,
+            "season": None,
+            "purchased_at": None,
+        }
+
+        resp = client.post("/league-profiles", json=CREATE_BODY)
+
+        assert resp.status_code == 403
+        assert resp.json()["detail"] == "kit pass required"

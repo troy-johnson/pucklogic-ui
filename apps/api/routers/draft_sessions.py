@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     HTTPException,
     Query,
@@ -30,6 +31,10 @@ async def start_draft_session(
         return service.start_session(
             user_id=user["id"],
             platform=req.platform,
+            season=req.season,
+            league_profile_id=req.league_profile_id,
+            scoring_config_id=req.scoring_config_id,
+            source_weights=req.source_weights,
             now=datetime.now(UTC),
         )
     except PermissionError as exc:
@@ -59,22 +64,26 @@ async def resume_draft_session(
 @router.post("/{session_id}/end", status_code=204)
 async def end_draft_session(
     session_id: str,
+    background_tasks: BackgroundTasks,
     user: dict[str, Any] = Depends(get_current_user),
     service: DraftSessionService = Depends(get_draft_session_service),
 ) -> Response:
+    now = datetime.now(UTC)
     try:
-        service.end_session(
-            session_id=session_id,
-            user_id=user["id"],
-            now=datetime.now(UTC),
-        )
-        return Response(status_code=204)
+        service.end_session(session_id=session_id, user_id=user["id"], now=now)
     except TerminalSessionError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    background_tasks.add_task(
+        service.snapshot_rankings_at_close,
+        session_id=session_id,
+        user_id=user["id"],
+        now=now,
+    )
+    return Response(status_code=204)
 
 
 @router.get("/{session_id}/sync-state")
@@ -171,9 +180,7 @@ async def draft_session_ws(
             payload = raw_payload if isinstance(raw_payload, dict) else {}
             raw = payload.get("pick_number")
             pick_number: int | None = (
-                raw
-                if isinstance(raw, int) and not isinstance(raw, bool) and raw >= 1
-                else None
+                raw if isinstance(raw, int) and not isinstance(raw, bool) and raw >= 1 else None
             )
 
             try:

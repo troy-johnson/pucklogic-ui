@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 
 import stripe
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
@@ -20,18 +21,29 @@ async def create_checkout_session(
     req: CheckoutSessionRequest,
     current_user: dict = Depends(get_current_user),
 ) -> CheckoutSessionResponse:
-    """Create a Stripe Checkout session for a one-time draft-kit purchase."""
+    """Create a Stripe Checkout session for a one-time purchase."""
     if not settings.stripe_secret_key:
         raise HTTPException(status_code=503, detail="Stripe not configured")
+    if req.product == "kit_pass" and not settings.stripe_price_kit_pass:
+        raise HTTPException(status_code=503, detail="Kit pass not configured")
+
+    price_id = (
+        settings.stripe_price_kit_pass if req.product == "kit_pass" else settings.stripe_price_id
+    )
 
     stripe.api_key = settings.stripe_secret_key
 
     session = stripe.checkout.Session.create(
         mode="payment",
-        line_items=[{"price": settings.stripe_price_id, "quantity": 1}],
+        line_items=[{"price": price_id, "quantity": 1}],
         success_url=req.success_url,
         cancel_url=req.cancel_url,
         client_reference_id=current_user["id"],
+        metadata={
+            "user_id": current_user["id"],
+            "product": req.product,
+            "season": settings.current_season,
+        },
     )
     return CheckoutSessionResponse(checkout_url=session.url, session_id=session.id)
 
@@ -49,24 +61,44 @@ async def stripe_webhook(
     stripe.api_key = settings.stripe_secret_key
     body = await request.body()
 
+    if not stripe_signature:
+        raise HTTPException(status_code=400, detail="Missing signature")
+
     try:
         event = stripe.Webhook.construct_event(
             body, stripe_signature, settings.stripe_webhook_secret
         )
     except stripe.error.SignatureVerificationError as exc:
         raise HTTPException(status_code=400, detail="Invalid signature") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid payload") from exc
 
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
         event_id = event.get("id")
         user_id = session.get("client_reference_id")
         payment_status = session.get("payment_status")
+        metadata = session.get("metadata") or {}
+        product = metadata.get("product")
+        season_raw = metadata.get("season")
+        created_epoch = session.get("created", event.get("created"))
+        purchased_at = None
+        if isinstance(created_epoch, int | float):
+            purchased_at = datetime.fromtimestamp(created_epoch, tz=UTC)
+        unknown_product_msg = (
+            "Unknown or missing Stripe product/season metadata for event %s: product=%s season=%s"
+        )
         logger.info(
-            "Checkout completed: event_id=%s session_id=%s user_id=%s payment_status=%s",
+            (
+                "Checkout completed: event_id=%s session_id=%s user_id=%s "
+                "payment_status=%s product=%s season=%s"
+            ),
             event_id,
             session.get("id"),
             user_id,
             payment_status,
+            product,
+            season_raw,
         )
         if payment_status != "paid":
             logger.info(
@@ -77,10 +109,28 @@ async def stripe_webhook(
             return {"received": True}
         if user_id:
             if event_id:
-                if repo.credit_draft_pass_for_stripe_event(event_id, user_id):
-                    logger.info("Stripe event %s credited draft pass", event_id)
+                if product == "kit_pass":
+                    if season_raw is None:
+                        logger.warning(unknown_product_msg, event_id, product, season_raw)
+                        return {"received": True}
+                    if purchased_at is None:
+                        logger.warning(
+                            "Missing created timestamp for kit-pass event %s; skipping credit",
+                            event_id,
+                        )
+                        return {"received": True}
+                    outcome = repo.credit_kit_pass_for_stripe_event(
+                        event_id,
+                        user_id,
+                        season_raw,
+                        purchased_at,
+                    )
+                    logger.info("Stripe event %s kit pass credit outcome=%s", event_id, outcome)
+                elif product == "draft_pass":
+                    credited = repo.credit_draft_pass_for_stripe_event(event_id, user_id)
+                    logger.info("Stripe event %s draft pass credited=%s", event_id, credited)
                 else:
-                    logger.info("Stripe event %s already processed; skipping credit", event_id)
+                    logger.warning(unknown_product_msg, event_id, product, season_raw)
             else:
                 logger.error(
                     "checkout.session.completed missing event id for user %s; skipping credit",

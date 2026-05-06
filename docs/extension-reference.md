@@ -106,6 +106,18 @@ A Vite plugin copies `manifest.json` into `dist/manifest.json` after bundle.
 - repeated `initSession(...)` cancels the prior connection's reconnect loop and closes the old socket before opening a fresh one
 - structured backend error handling so `{"type":"error","payload":{"code":"SESSION_CLOSED","message":"session is closed"}}`
   plus WebSocket close code `1008` disables reconnect for terminal sessions instead of retry-looping forever
+
+## 6. Entitlement Read Path
+
+- The extension can read entitlement state through authenticated `GET /entitlements`.
+- Response contract:
+  - `kit_pass.active` (`boolean`)
+  - `kit_pass.season` (`number | null`)
+  - `kit_pass.purchase_url` (`string | null`)
+- `purchase_url` behavior:
+  - `null` when `kit_pass.active === true`
+  - otherwise constructed from `settings.frontend_url` + checkout route
+- The response is returned with `Cache-Control: no-store` and should be treated as non-cacheable.
 - observability signals:
   - `socket_attach_success`
   - `socket_attach_failure`

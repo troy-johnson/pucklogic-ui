@@ -4,7 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from core.dependencies import get_current_user, get_db
+from core.dependencies import get_current_user, get_db, require_kit_pass
 from models.schemas import UserKitCreate, UserKitOut
 
 router = APIRouter(prefix="/user-kits", tags=["user-kits"])
@@ -31,6 +31,7 @@ async def create_user_kit(
     kit: UserKitCreate,
     user: dict[str, Any] = Depends(get_current_user),
     db: Any = Depends(get_db),
+    _: None = Depends(require_kit_pass),
 ) -> UserKitOut:
     """Save a new named weight configuration for the authenticated user."""
     result = (
@@ -54,6 +55,7 @@ async def delete_user_kit(
     kit_id: str,
     user: dict[str, Any] = Depends(get_current_user),
     db: Any = Depends(get_db),
+    _: None = Depends(require_kit_pass),
 ) -> None:
     """Delete a saved kit. Only the owning user may delete their own kits."""
     result = db.table("user_kits").delete().eq("id", kit_id).eq("user_id", user["id"]).execute()

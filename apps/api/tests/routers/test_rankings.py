@@ -257,6 +257,10 @@ class TestComputeRankings:
         body = {**VALID_BODY, "source_weights": {"hashtag": 0.0}}
         assert client.post("/rankings/compute", json=body).status_code == 422
 
+    def test_negative_weight_returns_422(self, client: TestClient) -> None:
+        body = {**VALID_BODY, "source_weights": {"hashtag": -0.1, "dailyfaceoff": 1.1}}
+        assert client.post("/rankings/compute", json=body).status_code == 422
+
     def test_auth_checked_even_on_cache_hit(
         self, client: TestClient, mock_cache: MagicMock, mock_src_repo: MagicMock
     ) -> None:

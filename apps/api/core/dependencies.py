@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from fastapi import Header, HTTPException
+from fastapi import Depends, Header, HTTPException
 
 from core.config import settings
 from repositories.draft_sessions import DraftSessionRepository
@@ -25,6 +25,7 @@ from repositories.subscriptions import SubscriptionRepository
 from repositories.trends import TrendsRepository
 from services.cache import CacheService
 from services.draft_sessions import DraftSessionService
+from services.entitlements import EntitlementsService
 
 if TYPE_CHECKING:
     from supabase import Client
@@ -96,9 +97,16 @@ def get_draft_session_service() -> DraftSessionService:
         _draft_session_service = DraftSessionService(
             draft_session_repo=get_draft_session_repository(),
             subscription_repo=get_subscription_repository(),
+            projection_repo=get_projection_repository(),
+            league_profile_repo=get_league_profile_repository(),
+            scoring_config_repo=get_scoring_config_repository(),
             inactivity_timeout=timedelta(minutes=15),
         )
     return _draft_session_service
+
+
+def get_entitlements_service() -> EntitlementsService:
+    return EntitlementsService(get_subscription_repository())
 
 
 def get_projection_repository() -> ProjectionRepository:
@@ -150,3 +158,12 @@ async def get_current_user(
     except Exception as exc:
         logger.warning("Auth failed: %s", exc)
         raise HTTPException(status_code=401, detail="Invalid token") from exc
+
+
+def require_kit_pass(
+    current_user: dict[str, Any] = Depends(get_current_user),
+    subscription_repo: SubscriptionRepository = Depends(get_subscription_repository),
+) -> None:
+    state = subscription_repo.get_kit_pass_state(current_user["id"], settings.current_season)
+    if not state.get("active"):
+        raise HTTPException(status_code=403, detail="kit pass required")

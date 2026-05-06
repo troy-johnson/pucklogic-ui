@@ -159,3 +159,191 @@ class TestCreditDraftPassForStripeEvent:
         self._rpc_chain(mock_db).data = False
 
         assert repo.credit_draft_pass_for_stripe_event("evt_1", "user-1") is False
+
+
+class TestCreditKitPassForStripeEvent:
+    def _rpc_chain(self, mock_db: MagicMock) -> MagicMock:
+        return mock_db.rpc.return_value.execute.return_value
+
+    def test_returns_applied_when_new_season_credit_is_written(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._rpc_chain(mock_db).data = "applied"
+        purchased_at = datetime(2026, 8, 14, 19, 22, tzinfo=UTC)
+
+        outcome = repo.credit_kit_pass_for_stripe_event(
+            event_id="evt_kit_1",
+            user_id="user-1",
+            season="2026-27",
+            purchased_at=purchased_at,
+        )
+
+        assert outcome == "applied"
+        mock_db.rpc.assert_called_once_with(
+            "credit_kit_pass_for_stripe_event",
+            {
+                "p_event_id": "evt_kit_1",
+                "p_user_id": "user-1",
+                "p_season": "2026-27",
+                "p_purchased_at": purchased_at.astimezone(UTC).isoformat(),
+            },
+        )
+
+    def test_returns_noop_for_same_season_duplicate(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._rpc_chain(mock_db).data = "noop_same_season"
+        purchased_at = datetime(2026, 8, 14, 19, 22, tzinfo=UTC)
+
+        outcome = repo.credit_kit_pass_for_stripe_event(
+            event_id="evt_kit_2",
+            user_id="user-1",
+            season="2026-27",
+            purchased_at=purchased_at,
+        )
+
+        assert outcome == "noop_same_season"
+
+    def test_returns_overwrite_for_later_season_purchase(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._rpc_chain(mock_db).data = "overwrite_newer_season"
+        purchased_at = datetime(2027, 8, 14, 19, 22, tzinfo=UTC)
+
+        outcome = repo.credit_kit_pass_for_stripe_event(
+            event_id="evt_kit_3",
+            user_id="user-1",
+            season="2027-28",
+            purchased_at=purchased_at,
+        )
+
+        assert outcome == "overwrite_newer_season"
+
+    def test_returns_stale_event_for_earlier_season_replay(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._rpc_chain(mock_db).data = "stale_earlier_season"
+        purchased_at = datetime(2025, 8, 14, 19, 22, tzinfo=UTC)
+
+        outcome = repo.credit_kit_pass_for_stripe_event(
+            event_id="evt_kit_4",
+            user_id="user-1",
+            season="2025-26",
+            purchased_at=purchased_at,
+        )
+
+        assert outcome == "stale_earlier_season"
+
+
+class TestGetKitPassState:
+    def _query_chain(self, mock_db: MagicMock) -> MagicMock:
+        chain = mock_db.table.return_value
+        chain = chain.select.return_value
+        chain = chain.eq.return_value
+        chain = chain.maybe_single.return_value
+        return chain.execute.return_value
+
+    def test_returns_active_state_when_season_matches_current(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._query_chain(mock_db).data = {
+            "kit_pass_season": "2026-27",
+            "kit_pass_purchased_at": "2026-08-14T19:22:00Z",
+        }
+
+        state = repo.get_kit_pass_state(user_id="user-1", current_season="2026-27")
+
+        assert state == {
+            "active": True,
+            "season": "2026-27",
+            "purchased_at": "2026-08-14T19:22:00Z",
+        }
+
+    def test_returns_stale_state_when_season_does_not_match(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._query_chain(mock_db).data = {
+            "kit_pass_season": "2025-26",
+            "kit_pass_purchased_at": "2025-08-01T00:00:00Z",
+        }
+
+        state = repo.get_kit_pass_state(user_id="user-1", current_season="2026-27")
+
+        assert state == {
+            "active": False,
+            "season": "2025-26",
+            "purchased_at": "2025-08-01T00:00:00Z",
+        }
+
+    def test_returns_no_pass_state_when_row_missing_or_null(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._query_chain(mock_db).data = None
+
+        state = repo.get_kit_pass_state(user_id="user-1", current_season="2026-27")
+
+        assert state == {"active": False, "season": None, "purchased_at": None}
+
+
+class TestGetDraftPassBalance:
+    def _query_chain(self, mock_db: MagicMock) -> MagicMock:
+        chain = mock_db.table.return_value
+        chain = chain.select.return_value
+        chain = chain.eq.return_value
+        chain = chain.maybe_single.return_value
+        return chain.execute.return_value
+
+    def test_returns_balance_when_row_exists(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._query_chain(mock_db).data = {"draft_pass_balance": 3}
+
+        assert repo.get_draft_pass_balance("user-1") == 3
+
+    def test_returns_zero_when_no_row(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._query_chain(mock_db).data = None
+
+        assert repo.get_draft_pass_balance("user-1") == 0
+
+
+class TestGetEntitlementsState:
+    def _query_chain(self, mock_db: MagicMock) -> MagicMock:
+        chain = mock_db.table.return_value
+        chain = chain.select.return_value
+        chain = chain.eq.return_value
+        chain = chain.maybe_single.return_value
+        return chain.execute.return_value
+
+    def test_returns_combined_state_from_single_row(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._query_chain(mock_db).data = {
+            "draft_pass_balance": 3,
+            "kit_pass_season": "2026-27",
+            "kit_pass_purchased_at": "2026-08-14T19:22:00Z",
+        }
+
+        state = repo.get_entitlements_state("user-1", current_season="2026-27")
+
+        assert state == {
+            "draft_pass_balance": 3,
+            "active": True,
+            "season": "2026-27",
+            "purchased_at": "2026-08-14T19:22:00Z",
+        }
+
+    def test_returns_defaults_when_no_row(
+        self, repo: SubscriptionRepository, mock_db: MagicMock
+    ) -> None:
+        self._query_chain(mock_db).data = None
+
+        state = repo.get_entitlements_state("user-1", current_season="2026-27")
+
+        assert state == {
+            "draft_pass_balance": 0,
+            "active": False,
+            "season": None,
+            "purchased_at": None,
+        }

@@ -69,7 +69,11 @@ class RankingsComputeRequest(BaseModel):
 
     @model_validator(mode="after")
     def source_weights_not_all_zero(self) -> RankingsComputeRequest:
-        if not self.source_weights or all(v == 0 for v in self.source_weights.values()):
+        if not self.source_weights:
+            raise ValueError("source_weights: at least one source must have a non-zero weight")
+        if any(v < 0 for v in self.source_weights.values()):
+            raise ValueError("source_weights: negative weights are not allowed")
+        if all(v == 0 for v in self.source_weights.values()):
             raise ValueError("source_weights: at least one source must have a non-zero weight")
         return self
 
@@ -185,7 +189,11 @@ class ExportRequest(BaseModel):
 
     @model_validator(mode="after")
     def source_weights_not_all_zero(self) -> ExportRequest:
-        if not self.source_weights or all(v == 0 for v in self.source_weights.values()):
+        if not self.source_weights:
+            raise ValueError("source_weights: at least one source must have a non-zero weight")
+        if any(v < 0 for v in self.source_weights.values()):
+            raise ValueError("source_weights: negative weights are not allowed")
+        if all(v == 0 for v in self.source_weights.values()):
             raise ValueError("source_weights: at least one source must have a non-zero weight")
         return self
 
@@ -204,6 +212,7 @@ class ExportJobResponse(BaseModel):
 class CheckoutSessionRequest(BaseModel):
     success_url: str
     cancel_url: str
+    product: Literal["draft_pass", "kit_pass"]
 
 
 class CheckoutSessionResponse(BaseModel):
@@ -219,6 +228,16 @@ class CheckoutSessionResponse(BaseModel):
 class UserKitCreate(BaseModel):
     name: str
     source_weights: dict[str, float]
+
+    @model_validator(mode="after")
+    def source_weights_must_be_non_negative_and_non_zero(self) -> UserKitCreate:
+        if not self.source_weights:
+            raise ValueError("source_weights: at least one source must have a non-zero weight")
+        if any(v < 0 for v in self.source_weights.values()):
+            raise ValueError("source_weights: negative weights are not allowed")
+        if all(v == 0 for v in self.source_weights.values()):
+            raise ValueError("source_weights: at least one source must have a non-zero weight")
+        return self
 
 
 class UserKitOut(BaseModel):
@@ -336,9 +355,14 @@ class DraftSession(BaseModel):
     session_id: str
     user_id: str
     platform: DraftPlatform
+    season: str | None = None
+    league_profile_id: str | None = None
+    scoring_config_id: str | None = None
+    source_weights: dict[str, float] | None = None
     status: DraftSessionStatus
     entitlement_ref: str | None = None
     sync_state: DraftSyncState
+    closing_rankings_snapshot: dict[str, str | int | float | bool | list | dict] | None = None
     accepted_picks: list[DraftPick] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
@@ -350,6 +374,20 @@ class DraftSession(BaseModel):
 
 class DraftSessionStartRequest(BaseModel):
     platform: DraftPlatform
+    season: str
+    league_profile_id: str | None = None
+    scoring_config_id: str
+    source_weights: dict[str, float]
+
+    @model_validator(mode="after")
+    def source_weights_not_all_zero(self) -> DraftSessionStartRequest:
+        if not self.source_weights:
+            raise ValueError("source_weights: at least one source must have a non-zero weight")
+        if any(v < 0 for v in self.source_weights.values()):
+            raise ValueError("source_weights: negative weights are not allowed")
+        if all(v == 0 for v in self.source_weights.values()):
+            raise ValueError("source_weights: at least one source must have a non-zero weight")
+        return self
 
 
 class DraftManualPickRequest(BaseModel):

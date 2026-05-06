@@ -263,10 +263,15 @@ CREATE TABLE draft_sessions (
   session_id TEXT NOT NULL UNIQUE,
   user_id UUID NOT NULL REFERENCES auth.users(id),
   platform TEXT NOT NULL CHECK (platform IN ('espn', 'yahoo')),
+  season TEXT,
+  league_profile_id UUID,
+  scoring_config_id UUID,
+  source_weights JSONB,
   status TEXT NOT NULL DEFAULT 'active',   -- 'active', 'ended', 'expired'
   entitlement_ref TEXT,                    -- subscription id recorded at session start for audit
   sync_state JSONB NOT NULL DEFAULT '{"last_processed_pick": null, "sync_health": "healthy", "cursor": null}',
   accepted_picks JSONB NOT NULL DEFAULT '[]',
+  closing_rankings_snapshot JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   last_heartbeat_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -299,7 +304,9 @@ CREATE TABLE subscriptions (
   plan TEXT,
   status TEXT DEFAULT 'active',
   expires_at TIMESTAMPTZ,
-  draft_pass_balance INTEGER NOT NULL DEFAULT 0 CHECK (draft_pass_balance >= 0)
+  draft_pass_balance INTEGER NOT NULL DEFAULT 0 CHECK (draft_pass_balance >= 0),
+  kit_pass_season TEXT,
+  kit_pass_purchased_at TIMESTAMPTZ
 );
 
 CREATE UNIQUE INDEX subscriptions_user_id_unique
@@ -310,15 +317,19 @@ CREATE TABLE stripe_processed_events (
   processed_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 -- NOTE: For launch, session_id linkage is recorded via entitlement_ref on draft_sessions.
--- No separate draft_tokens table is needed (008d resolution). Future multi-pass products
--- may introduce a separate token table but are explicitly out of scope for launch.
+-- No separate draft_tokens table is needed. Milestone C stores kit-pass entitlement state
+-- directly on subscriptions and exposes it through GET /entitlements.
 -- Launch pass/session rules are enforced by database helpers:
 --   * consume_draft_pass(user_id, now) atomically validates active/unexpired entitlement,
 --     decrements draft_pass_balance, and returns the backing subscription id.
 --   * restore_draft_pass(subscription_id) compensates a consumed pass when session creation fails.
 --   * credit_draft_pass_for_stripe_event(event_id, user_id) atomically claims Stripe webhook
---     delivery and credits exactly one pass using `subscriptions_user_id_unique`, preventing
---     duplicate delivery from double-crediting or failing its `ON CONFLICT (user_id)` path.
+--     delivery and credits exactly one draft pass using `subscriptions_user_id_unique`.
+--   * credit_kit_pass_for_stripe_event(event_id, user_id, season) atomically claims Stripe
+--     delivery and updates kit pass entitlement with season-aware idempotency:
+--       - same season replay: no-op
+--       - later season purchase: overwrite
+--       - earlier season replay: no regression
 -- Migration 008 also deduplicates historical `subscriptions.user_id` rows before creating
 -- `subscriptions_user_id_unique`, making the launch invariant explicit: one subscription row
 -- per user backs draft-pass balance and Stripe fulfillment.
@@ -480,16 +491,21 @@ POST   /scoring-configs              — Create custom scoring config (auth requ
                                        Validates: PPP+PPG/PPA and SHP+SHG/SHA mutual exclusion → HTTP 400
 
 GET    /league-profiles              — List user's league profiles (auth required)
-POST   /league-profiles              — Create league profile (auth required)
+POST   /league-profiles              — Create league profile (auth + active kit pass required)
                                        platform: espn | yahoo | fantrax
 
 GET    /user-kits                    — List user's source-weight presets (auth required)
-POST   /user-kits                    — Create source-weight preset (auth required)
-DELETE /user-kits/{id}               — Delete preset (auth required, owner only)
+POST   /user-kits                    — Create source-weight preset (auth + active kit pass required)
+DELETE /user-kits/{id}               — Delete preset (auth + active kit pass required, owner only)
 
-POST   /exports/generate             — Run pipeline and stream PDF or Excel (auth required)
+POST   /exports/generate             — Run pipeline and stream PDF or Excel (auth + active kit pass required)
                                        Body: same as /rankings/compute + export_type: pdf|excel
                                        Returns streaming bytes (Content-Disposition: attachment)
+
+GET    /entitlements                 — Return current entitlement state (auth required)
+                                       Response includes `Cache-Control: no-store`
+                                       Shape: {"kit_pass": {"active": bool, "season": int|null, "purchase_url": string|null}}
+                                       purchase_url is null when active; otherwise frontend checkout URL
 
 POST   /stripe/create-checkout-session  — Stripe checkout (auth required)
 POST   /stripe/webhook               — Stripe webhook (signature-verified)
@@ -509,8 +525,15 @@ GET    /players/{id}                 — Single player by UUID; 404 if not found
 
 ```
 POST   /draft-sessions/start               — Create or resume the user's active draft session (auth + draft pass required)
+                                             Persists recipe inputs on session row:
+                                             season, league_profile_id, scoring_config_id,
+                                             source_weights, platform
 POST   /draft-sessions/{session_id}/resume — Reattach to an owned active draft session without consuming another pass
 POST   /draft-sessions/{session_id}/end    — Explicitly end the owned active draft session
+                                             Clean-close path writes closing_rankings_snapshot
+                                             from recomputed rankings using persisted recipe inputs
+                                             Missing recipe inputs: warning log + no-op
+                                             Expired/abandoned sessions may remain snapshot NULL
 GET    /draft-sessions/{session_id}/sync-state — Fetch authoritative sync state for reconnect/manual recovery
 POST   /draft-sessions/{session_id}/manual-picks — Persist a manually entered pick into the authoritative session timeline
 WS     /draft-sessions/{session_id}/ws     — Live draft WebSocket for pick + sync-state events
@@ -1034,7 +1057,7 @@ async def get_player_trends(player_id: str):
 | PDF — Print & Draft | WeasyPrint | `POST /exports/generate` (`export_type: pdf`) | Streaming bytes — browser download |
 | Excel — Draft Kit | openpyxl | `POST /exports/generate` (`export_type: excel`) | Streaming bytes — browser download |
 
-Exports are read-only outputs — no import slots, no VBA. Users may export as many times as they want with any weight configuration at no additional cost.
+Exports are read-only outputs — no import slots, no VBA. **Export requires a kit pass** (per spec 009 entitlement matrix and spec 011 gating contract). Once held, kit-pass holders may export as many times as they want with any weight configuration at no additional cost — export is included with kit pass and is not sold separately.
 
 **Excel — 2 sheets:**
 - **Sheet 1 — "Full Rankings {season}":** Rank, Player, Team, Pos, FanPts, VORP, ScheduleScore, OffNightGames, SourceCount, then all stat columns (skater stats, then goalie stats; null = `—`).

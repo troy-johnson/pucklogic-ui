@@ -116,3 +116,27 @@ def flatten_db_rankings(
         source_rankings.setdefault(source_name, []).append(entry)
 
     return source_rankings
+
+
+def build_close_snapshot_from_recipe(
+    *,
+    recipe: dict[str, Any],
+    source_rankings: dict[str, list[dict[str, Any]]],
+    captured_at: str,
+) -> dict[str, Any]:
+    """Build a close-time rankings snapshot from persisted session recipe inputs.
+
+    Rankings are always recomputed from source_rankings + source_weights in recipe.
+    """
+    source_weights = recipe.get("source_weights") or {}
+    rankings = compute_weighted_rankings(source_rankings, source_weights)
+    return {
+        "snapshot_version": 1,
+        "captured_at": captured_at,
+        "season": recipe.get("season"),
+        "league_profile_id": recipe.get("league_profile_id"),
+        "scoring_config_id": recipe.get("scoring_config_id"),
+        "source_weights": source_weights,
+        "platform": recipe.get("platform"),
+        "rankings": rankings,
+    }

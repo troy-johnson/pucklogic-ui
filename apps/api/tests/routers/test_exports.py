@@ -106,7 +106,11 @@ def mock_src_repo() -> MagicMock:
 @pytest.fixture
 def mock_sub_repo() -> MagicMock:
     repo = MagicMock()
-    repo.is_active.return_value = True
+    repo.get_kit_pass_state.return_value = {
+        "active": True,
+        "season": "2026-27",
+        "purchased_at": None,
+    }
     return repo
 
 
@@ -188,6 +192,10 @@ class TestExportValidation:
         body = {**EXCEL_BODY, "source_weights": {"hashtag": 0.0}}
         assert client.post("/exports/generate", json=body).status_code == 422
 
+    def test_negative_weight_returns_422(self, client: TestClient) -> None:
+        body = {**EXCEL_BODY, "source_weights": {"hashtag": -0.1, "moneypuck": 1.1}}
+        assert client.post("/exports/generate", json=body).status_code == 422
+
 
 class TestAuthRequired:
     @pytest.fixture(autouse=True)
@@ -198,3 +206,21 @@ class TestAuthRequired:
     def test_unauthenticated_request_returns_401(self, client: TestClient) -> None:
         resp = client.post("/exports/generate", json=EXCEL_BODY)
         assert resp.status_code == 401
+
+
+class TestKitPassGating:
+    def test_generate_export_returns_403_when_user_lacks_active_kit_pass(
+        self,
+        client: TestClient,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        mock_sub_repo.get_kit_pass_state.return_value = {
+            "active": False,
+            "season": None,
+            "purchased_at": None,
+        }
+
+        resp = client.post("/exports/generate", json=EXCEL_BODY)
+
+        assert resp.status_code == 403
+        assert resp.json()["detail"] == "kit pass required"

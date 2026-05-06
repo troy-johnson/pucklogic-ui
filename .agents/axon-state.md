@@ -1,15 +1,15 @@
 | Field | Value |
 |---|---|
-| Active Phase | `008e-optional-pick-number` — merged to `main` via PR #35 on 2026-04-28 |
-| Active Branch | main |
-| Open PR | none |
-| Current Focus | Post-merge status reconciliation complete for 008e; selecting next implementation track |
-| Track | express — 008e complete and closed |
-| Last Action | Merged PR #35, resolved outdated review thread, and synced docs/PR body/Serena closure memory |
+| Active Phase | `011b-implement-tdd` — in progress (implementation complete; PR review/merge readiness and status reconciliation active) |
+| Active Branch | `spec/011-milestone-c-token-pass` (tracking `origin/spec/011-milestone-c-token-pass`) |
+| Open PR | [#36](https://github.com/troy-johnson/pucklogic-ui/pull/36) — `feat(api): implement milestone C entitlements and close-time snapshots` (base: `main`, state: OPEN) |
+| Current Focus | Drive PR #36 through review/merge readiness and finalize cross-system status reconciliation (not commit-boundary prep) |
+| Track | implement-tdd — `011a` and `011b` changes committed and under open PR review |
+| Last Action | Created commit `d264d1e` (`feat(api): align milestone C entitlements and close snapshot contract`) and updated PR #36 body with Spec 011 review follow-up details plus focused verification evidence |
 | Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
-| Current Hypothesis | Live draft backend/session authority path (008b/008d/008e) is now complete; next value is milestone-C backend additions and season-blocked live verification readiness artifacts |
-| Next Steps | 1. Reconcile Notion status for 008e as merged/completed 2. Pick next card: Milestone C backend additions (draft_tokens + Stripe token purchase flow) 3. Open branch/plan for that card |
-| Next Session Entry | Resume at: select and start Milestone C backend token-model implementation task. |
+| Current Hypothesis | PR #36 is green on required checks (Backend tests/pytest, Frontend tests/Vitest, Vercel, Vercel Preview Comments); remaining risk is review/merge disposition plus post-merge status sync. Full local `pytest apps/api/tests` remains blocked by pre-existing missing `shap` dependency in ML tests. |
+| Next Steps | 1. Request/re-run review on PR #36 if needed 2. Monitor/confirm PR checks and review disposition 3. After approval/merge, reconcile Notion and axon-state to mark `011a`/`011b` complete |
+| Next Session Entry | Resume at: check PR #36 review state + checks, then complete post-merge Notion/axon-state reconciliation for Milestone C closure. |
 
 ## Merge and code review outcome (2026-04-10)
 
@@ -32,6 +32,13 @@
 - Planning assumption now locked: final implementation uses WebSocket transport; Yahoo remains stretch acceptance and must not delay ESPN MVP readiness.
 - Infra assumption now locked for launch planning: Fly.io single-instance backend, WebSocket primary, HTTP/manual fallback allowed, Redis deferred until scale requires it.
 - Activated execution sequence on 2026-04-11: `008b` is the first implementation track, `008c` follows backend protocol stabilization, and `010a` is restricted to scaffold work until spec `010` leaves draft. As of 2026-04-18, `008b` is complete on `main` and `008c` is the active next track.
+- Reviewed and approved spec `docs/specs/011-milestone-c-token-pass-backend.md` for implementation after resolving entitlement, export, and snapshot-source doc conflicts.
+- Wrote implementation plan `docs/plans/011a-token-pass-entitlements-and-gating.md` for Stripe kit-pass purchase flow, authenticated entitlement reads, gated routes, and roadmap/docs alignment.
+- Wrote implementation plan `docs/plans/011b-session-close-rankings-snapshot.md` for persisted draft-session recipe inputs and clean-close rankings snapshot generation.
+- Updated `docs/plans/INDEX.md` to index `011a` and `011b` as approved plans.
+- Locked Milestone C execution order on 2026-04-30: `011a` runs first for `subscriptions` entitlement columns, Stripe product/webhook handling, `GET /entitlements`, and route gating; `011b` follows for `draft_sessions` recipe/snapshot columns and close-time rankings snapshots.
+- Executed `011a` implement-tdd through entitlement storage/read paths, Stripe metadata/webhook credit behavior, route gating (`user-kits`, `league-profiles`, `exports`), dependency coverage, docs updates, and focused verification.
+- Executed `011b` implement-tdd through recipe persistence schema alignment, close-time snapshot repository/service wiring, rankings recompute snapshot builder integration, backend docs updates, and plan-specified focused verification command.
 
 - Merged `main` (`c34f36b` scraper data quality hardening) into `feat/live-draft-sync-spec`.
 - All conflicts resolved keeping HEAD: agent config paths (post-rename), `hockey_reference.py` stable dedup, `hockey_reference` test suite.

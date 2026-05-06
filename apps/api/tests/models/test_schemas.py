@@ -14,6 +14,7 @@ from models.schemas import (
     DraftManualPickRequest,
     DraftPick,
     DraftSession,
+    DraftSessionStartRequest,
     DraftSyncState,
     ShapValues,
     TrendedPlayer,
@@ -304,8 +305,13 @@ class TestDraftSession:
             session_id="ses_123",
             user_id="usr_123",
             platform="espn",
+            season="2026-27",
+            league_profile_id="lp_123",
+            scoring_config_id="sc_123",
+            source_weights={"hashtag": 1.0},
             status="active",
             sync_state=DraftSyncState(last_processed_pick=12, sync_health="healthy"),
+            closing_rankings_snapshot=None,
             accepted_picks=[],
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC),
@@ -320,8 +326,13 @@ class TestDraftSession:
                 session_id="ses_123",
                 user_id="usr_123",
                 platform="sleeper",
+                season="2026-27",
+                league_profile_id="lp_123",
+                scoring_config_id="sc_123",
+                source_weights={"hashtag": 1.0},
                 status="active",
                 sync_state=DraftSyncState(last_processed_pick=0, sync_health="healthy"),
+                closing_rankings_snapshot=None,
                 accepted_picks=[],
                 created_at=datetime.now(UTC),
                 updated_at=datetime.now(UTC),
@@ -334,10 +345,51 @@ class TestDraftSession:
                 session_id="ses_123",
                 user_id="usr_123",
                 platform="espn",
+                season="2026-27",
+                league_profile_id="lp_123",
+                scoring_config_id="sc_123",
+                source_weights={"hashtag": 1.0},
                 status="paused",
                 sync_state=DraftSyncState(last_processed_pick=0, sync_health="healthy"),
+                closing_rankings_snapshot=None,
                 accepted_picks=[],
                 created_at=datetime.now(UTC),
                 updated_at=datetime.now(UTC),
                 last_heartbeat_at=datetime.now(UTC),
+            )
+
+
+class TestDraftSessionStartRequest:
+    def test_requires_snapshot_recipe_fields(self) -> None:
+        req = DraftSessionStartRequest(
+            platform="espn",
+            season="2026-27",
+            league_profile_id="lp_123",
+            scoring_config_id="sc_123",
+            source_weights={"hashtag": 1.0},
+        )
+        assert req.platform == "espn"
+        assert req.season == "2026-27"
+        assert req.league_profile_id == "lp_123"
+        assert req.scoring_config_id == "sc_123"
+        assert req.source_weights == {"hashtag": 1.0}
+
+    def test_league_profile_id_optional(self) -> None:
+        req = DraftSessionStartRequest(
+            platform="espn",
+            season="2026-27",
+            league_profile_id=None,
+            scoring_config_id="sc_123",
+            source_weights={"hashtag": 1.0},
+        )
+        assert req.league_profile_id is None
+
+    def test_rejects_negative_source_weights(self) -> None:
+        with pytest.raises(ValidationError, match="negative weights"):
+            DraftSessionStartRequest(
+                platform="espn",
+                season="2026-27",
+                league_profile_id="lp_123",
+                scoring_config_id="sc_123",
+                source_weights={"hashtag": -0.1, "dobber": 1.1},
             )
