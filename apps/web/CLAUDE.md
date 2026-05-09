@@ -24,32 +24,57 @@ pnpm lint            # ESLint
 ```
 apps/web/src/
   app/
-    layout.tsx           # Root layout (Tailwind, fonts)
-    page.tsx             # Home / landing page
-    globals.css
-    dashboard/
-      page.tsx           # Phase 2: main rankings aggregation page (TODO)
+    layout.tsx           # Root layout (fonts, globals.css)
+    page.tsx             # Value prop landing page
+    globals.css          # PL token layer + shadcn bridge + Tailwind base
+    (auth)/
+      layout.tsx         # Auth gate: getUser → redirect /login; entitlements fetch; AppShell
+      dashboard/
+        layout.tsx       # Kit context bar layout wrapper
+        page.tsx         # Server Component: PreDraftWorkspace
+      live/
+        layout.tsx       # Live-mode layout: ReconnectBanner above children
+        page.tsx         # Live draft route: LiveDraftScreen
+    login/
+      page.tsx           # Login form (outside auth group)
+    signup/
+      page.tsx           # Signup form (outside auth group)
+    auth/
+      callback/
+        route.ts         # Supabase PKCE code exchange
   components/
-    SourceWeightSelector.tsx   # Phase 2: sliders per source (TODO)
-    RankingsTable.tsx          # Phase 2: sortable results table (TODO)
+    AppShell.tsx               # Shell header: logo, passBalance, UserMenuButton
+    UserProvider.tsx           # 'use client'; onAuthStateChange; useUser() hook
+    KitSwitcher.tsx            # Right slide-in: kit list, active indicator, CRUD
+    PreDraftWorkspace.tsx      # Rankings table + right panel (weights, exports)
+    StartDraftModal.tsx        # 'use client'; createSession → cookie → store → /live
+    LiveDraftScreen.tsx        # Full live draft layout
+    ManualPickDrawer.tsx       # Slide-in: player search, row select, confirm
+    ReconnectBanner.tsx        # Reconnecting/disconnected inline banner
+    SourceWeightSelector.tsx   # ✅ Complete — sliders per source, equalise button
+    RankingsTable.tsx          # ✅ Complete — sortable table, per-source rank columns
     __tests__/
-      SourceWeightSelector.test.tsx
-      RankingsTable.test.tsx
   lib/
     api/
-      index.ts           # apiFetch() wrapper — ALL backend calls go here
+      index.ts           # ✅ Complete — apiFetch() wrapper; ALL backend calls go here
+      entitlements.ts    # GET /entitlements client
+      draft-sessions.ts  # POST /start, /{id}/resume, /{id}/manual-picks, /{id}/end; GET /{id}/sync-state
+      user-kits.ts       # listKits, createKit, updateKit, deleteKit, duplicateKit
       __tests__/
-        index.test.ts
     supabase/
-      client.ts          # Supabase browser client (auth only)
-      server.ts          # Supabase server client (auth only)
+      client.ts          # ✅ Complete — Supabase browser client (auth only)
+      server.ts          # ✅ Complete — Supabase server client (auth only)
+  middleware.ts          # Session refresh, route protection, / → /dashboard redirect
   store/
-    index.ts             # Zustand root store (Phase 1 placeholder — update in Phase 2)
+    index.ts             # ✅ Complete — Zustand slice composition
     slices/
-      sources.ts         # Phase 2: sources + weights Zustand slice (TODO)
-      rankings.ts        # Phase 2: computed rankings slice (TODO)
+      sources.ts         # ✅ Complete — sources + weights slice
+      rankings.ts        # ✅ Complete — computed rankings slice
+      kits.ts            # Active kit selection; kit CRUD
+      draftSession.ts    # Live session state: picks, mode, status
+    __tests__/
   types/
-    index.ts             # Shared TypeScript types (TODO — add in Phase 2)
+    index.ts             # ✅ Complete — Source, RankedPlayer, RankingsResult, UserKit, DraftPick
   test/
     setup.ts             # jest-dom matchers imported globally
     vitest.d.ts          # Vitest type augmentation
@@ -68,20 +93,34 @@ Do not build v2.0 Trends UI components until the in-season engine (Layer 2) is s
 
 ---
 
-## Phase 2 Status
+## Milestone Status
 
 | Area | Status | Notes |
 |------|--------|-------|
-| `lib/api/index.ts` | ✅ Complete | `apiFetch()`, `ApiError`; needs Phase 2 endpoint methods |
-| `store/index.ts` | ✅ Placeholder | Replace with slice composition in Phase 2 |
+| `lib/api/index.ts` | ✅ Complete | `apiFetch()`, `ApiError` |
 | `lib/supabase/` | ✅ Complete | Auth-only; do not use for data fetching |
-| `types/index.ts` | ⬜ TODO | `Source`, `RankedPlayer`, `RankingsResult`, `UserKit` |
-| `store/slices/sources.ts` | ⬜ TODO | `sources`, `weights`, `setWeight`, `resetWeights`, `fetchSources` |
-| `store/slices/rankings.ts` | ⬜ TODO | `rankings`, `isLoading`, `error`, `computeRankings` |
-| `components/SourceWeightSelector.tsx` | ⬜ TODO | Slider per source, equalise button |
-| `components/RankingsTable.tsx` | ⬜ TODO | Sortable table, per-source rank columns |
-| `app/dashboard/page.tsx` | ⬜ TODO | Main aggregation dashboard |
-| Component tests | ⬜ TODO | SourceWeightSelector + RankingsTable |
+| `types/index.ts` | ✅ Complete | `Source`, `RankedPlayer`, `RankingsResult`, `UserKit`, `DraftPick` |
+| `store/index.ts` | ✅ Complete | Slice composition |
+| `store/slices/sources.ts` | ✅ Complete | `sources`, `weights`, `setWeight`, `resetWeights`, `fetchSources` |
+| `store/slices/rankings.ts` | ✅ Complete | `rankings`, `isLoading`, `error`, `computeRankings` |
+| `store/slices/kits.ts` | ✅ Complete | Active kit selection; kit CRUD |
+| `store/slices/draftSession.ts` | ✅ Complete | Live session state: picks, mode, status |
+| `components/SourceWeightSelector.tsx` | ✅ Complete | Slider per source, equalise button |
+| `components/RankingsTable.tsx` | ✅ Complete | Sortable table, per-source rank columns |
+| `components/AppShell.tsx` | ✅ Complete | Shell header: logo, passBalance, UserMenuButton |
+| `components/UserProvider.tsx` | ✅ Complete | `'use client'`; `useUser()` hook |
+| `components/KitSwitcher.tsx` | ✅ Complete | Right slide-in; kit CRUD |
+| `components/PreDraftWorkspace.tsx` | ✅ Complete | Rankings table + right panel |
+| `components/StartDraftModal.tsx` | ✅ Complete | Session creation → cookie → store → /live |
+| `components/LiveDraftScreen.tsx` | ✅ Complete | Full live draft layout |
+| `components/ManualPickDrawer.tsx` | ✅ Complete | Player search, row select, confirm pick |
+| `components/ReconnectBanner.tsx` | ✅ Complete | Reconnecting/disconnected banner |
+| `app/(auth)/dashboard/page.tsx` | ✅ Complete | Server Component: PreDraftWorkspace |
+| `app/(auth)/live/page.tsx` | ✅ Complete | Server Component: LiveDraftScreen |
+| `middleware.ts` | ✅ Complete | Route protection with PUBLIC_PATHS exclusion |
+| `lib/api/entitlements.ts` | ✅ Complete | GET /entitlements |
+| `lib/api/draft-sessions.ts` | ✅ Complete | Full session lifecycle API |
+| `lib/api/user-kits.ts` | ✅ Complete | listKits, createKit, updateKit, deleteKit, duplicateKit |
 
 ---
 

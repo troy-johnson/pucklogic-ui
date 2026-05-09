@@ -1,6 +1,6 @@
 # 2026-04-09 — Web UI Wireframes Design
 
-**Status:** Draft — design system section pending  
+**Status:** Approved with nits — adversarial review round 1 complete (2026-05-06)  
 **Milestone:** B → D — Locks wireframe decisions; feeds Milestone D implementation plan  
 **Related:** `docs/specs/009-web-draft-kit-ux.md`, `docs/plans/008a-draft-season-readiness.md`
 
@@ -10,7 +10,7 @@
 
 Spec 009 (approved 2026-04-09) defines the UX contract for the web draft kit. This doc captures the wireframe-level layout decisions made during Milestone B design review — the structural choices that shape implementation: app shell, navigation, workspace layouts, live draft session, and entry flow.
 
-Design system (colors, typography, spacing tokens) is a follow-on section to be completed before Milestone D begins.
+Design system (colors, typography, spacing tokens) is defined in the Design System section below. Token set locked 2026-05-06.
 
 ---
 
@@ -51,21 +51,33 @@ Design system (colors, typography, spacing tokens) is a follow-on section to be 
 - **User override:** dark or light, selectable in account settings
 - **Post-launch:** A/B test whether dark or light default improves conversion; switch default if one clearly wins
 
-### Color palette (placeholder — to be defined in design system section)
+### Color palette (locked 2026-05-05 — from Claude Design session)
+
+**UI accent: Emerald `#34d399`** — nav active state, pill-active, slider fill, Compute button gradient. Chosen over violet (too quiet for sports-data context) and rose (conflicts with error/down-trend red vocabulary). Passes AA contrast against `#111319` base and `#191b22` surface.
+
+**Source identity colors (fixed — data role only, never used as UI chrome):**
+- DF (Dobber Fantasy): `#a4c9ff` (blue)
+- EP (Elite Prospects): `#45dfa4` (green) — distinct luminance from emerald accent
+- NST (Natural Stat Trick): `#facc15` (yellow)
 
 | Token | Dark | Light | Purpose |
 |---|---|---|---|
-| `--bg-base` | `#0f1117` | `#f8fafc` | Page background |
-| `--bg-surface` | `#1a1d27` | `#ffffff` | Cards, panels |
-| `--bg-raised` | `#1e2130` | `#f1f5f9` | Alternate rows, context bar |
-| `--border` | `#2d3148` | `#e2e8f0` | Dividers |
-| `--text-primary` | `#e2e8f0` | `#1e293b` | Body text |
-| `--text-secondary` | `#94a3b8` | `#64748b` | Labels, metadata |
-| `--text-muted` | `#475569` | `#94a3b8` | Placeholders |
-| `--accent-blue` | `#60a5fa` | `#2563eb` | Links, actions |
-| `--accent-green` | `#34d399` | `#059669` | Sync status, success |
-| `--accent-yellow` | `#fbbf24` | `#d97706` | Suggestions, warnings |
-| `--accent-red` | `#f87171` | `#dc2626` | Urgent needs, errors |
+| `--bg-base` | `#111319` | `#f8fafc` | Page background |
+| `--bg-low` | `#191b22` | `#f1f5f9` | surface-container-low |
+| `--bg-surface` | `#1e1f26` | `#ffffff` | Cards, panels |
+| `--bg-raised` | `#282a30` | `#e8eef6` | Alternate rows, context bar |
+| `--bg-highest` | `#33343b` | `#dde5f0` | Highest elevation surfaces |
+| `--border` | `rgba(65,71,81,0.18)` | `rgba(148,163,184,0.25)` | Ghost dividers — no 1px solid lines |
+| `--border-mid` | `rgba(65,71,81,0.35)` | `rgba(148,163,184,0.45)` | Slightly more visible ghost |
+| `--text-primary` | `#e2e2eb` | `#1e293b` | Body text |
+| `--text-secondary` | `#c1c7d3` | `#475569` | Labels, metadata |
+| `--text-muted` | `#8b919d` | `#94a3b8` | Placeholders, de-emphasized |
+| `--accent-blue` | `#34d399` | `#059669` | **UI accent (emerald)** — nav, pills, sliders, CTA |
+| `--accent-green` | `#45dfa4` | `#059669` | EP source identity / sync status |
+| `--accent-yellow` | `#facc15` | `#d97706` | NST source identity / suggestions / warnings |
+| `--accent-red` | `#ffb4ab` | `#dc2626` | Errors, down-trend, urgent needs |
+
+> Note: The `--accent-blue` CSS variable is repurposed as the primary UI accent (emerald). The variable name is kept for code compatibility — it does not imply blue in the final implementation.
 
 ---
 
@@ -225,30 +237,33 @@ Accessible via a drawer (not always visible). Shows all picks in draft order wit
 
 ## Landing Page (Unauthenticated `/`)
 
-The `/` route shows default PuckLogic rankings — no auth required.
+The `/` route is a value prop marketing page — no auth required. Authenticated users hitting `/` are redirected to `/dashboard` by middleware.
+
+Design reference: Claude Design landing.jsx variant C.
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  PuckLogic                    [Sign in] [Sign up]│
+│  PuckLogic  Features Pricing Sources Docs        │
+│                              [Sign in] [Start]   │
 ├─────────────────────────────────────────────────┤
-│  ┌───────────────────────────────────────────┐  │
-│  │  Default rankings — ESPN H2H baseline     │  │  ← info banner
-│  │  Sign in to customize and save your kit   │  │
-│  └───────────────────────────────────────────┘  │
 │                                                  │
-│  [All positions ▾]  [Filter...]                  │
+│        [hero headline + subhead]                 │
+│        [primary CTA]                             │
 │                                                  │
-│  #  Player        Pos  Score                     │
-│  1  McDavid       C    98.4                      │
-│  2  MacKinnon     C    96.1                      │
-│  ...                                             │
+├─────────────────────────────────────────────────┤
+│  01 League profile  02 Weight sources  03 Draft  │  ← steps strip
+├─────────────────────────────────────────────────┤
+│  [features grid — 3×2]                          │
+├─────────────────────────────────────────────────┤
+│  [pricing section]                              │
+├─────────────────────────────────────────────────┤
+│  footer                                         │
 └─────────────────────────────────────────────────┘
 ```
 
-- No kit context bar (no active kit)
-- No source weight panel (defaults only)
-- Info banner explains what they're seeing and CTAs to sign in/up
-- **Post-launch:** replace with a proper marketing landing page (hero + login CTA + minified rankings hook)
+- Sticky glassmorphism nav (logo, links, sign in + start CTA)
+- No kit context bar — this is the public marketing surface
+- **Post-launch:** add a "browse default rankings" section or `/rankings` route for unauthenticated exploration
 
 ---
 
@@ -287,20 +302,116 @@ Accessible via the kit switcher slide-in panel (not a separate page). Kit cards 
 
 ## Design System
 
-> **Pending — to be defined before Milestone D begins.**
+shadcn/ui is the component library. All tokens are CSS custom properties in `globals.css`, referenced in `tailwind.config.ts`. shadcn/ui provides the accessible interaction layer; token overrides carry the visual identity.
 
-Sections to complete:
+### Typography
 
-- **Typography:** font family, scale (heading sizes, body, label, mono), line-height
-- **Spacing:** base unit, scale, padding/gap conventions
-- **Color tokens:** full dark + light palette (see placeholder table in Color Theme section)
-- **Border radius:** card, button, input, badge conventions
-- **Shadows / elevation:** surface layering for panels, modals, drawers
-- **Component primitives:** button variants (primary, secondary, ghost, danger), input, select, slider, badge, toast, skeleton
-- **Icon set:** which library (e.g. Lucide, which is default with shadcn/ui)
-- **Motion:** transition timing for drawers, toasts, skeleton → content
+**Families**
+- `--font-sans`: `'Inter', -apple-system, BlinkMacSystemFont, sans-serif` — feature settings `cv11`, `ss01`
+- `--font-mono`: `'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace` — tabular-nums
 
-shadcn/ui is the component library (already in stack). Tokens should be defined as CSS custom properties in `globals.css` and referenced in Tailwind config.
+**Scale**
+
+| Token | Size | Weight | Letter-spacing | Use |
+|---|---|---|---|---|
+| `display` | 42px | 800 | −1.5px | Landing hero only |
+| `heading-lg` | 28px | 700 | −0.5px | Page section titles |
+| `heading-md` | 20px | 800 | −0.5px | Card / modal headlines |
+| `heading-sm` | 16px | 700 | −0.3px | Panel section headers |
+| `body-lg` | 14px | 400 | — | Table rows, descriptions |
+| `body` | 13.5px | 400/600 | — | General UI copy |
+| `body-sm` | 13px | 400/500 | — | Labels, metadata |
+| `caption` | 12px | 500 | — | Timestamps, hints |
+| `overline` | 10–11px | 700 | +0.06–0.08em | Section labels (uppercase) |
+| `mono` | 13–14px | 600–700 | — | Scores, ranks, pass counts |
+
+Line-height: `1.5` for body; `1.15–1.2` for headings.
+
+---
+
+### Spacing
+
+Base unit: `4px`. Scale: 4, 8, 12, 16, 20, 24, 32, 40, 48, 64.
+
+| Context | Value |
+|---|---|
+| Intra-component gap (icon + label) | 6–8px |
+| Component internal padding | 10–14px vertical, 12–16px horizontal |
+| Panel / section padding | 16–24px |
+| Page section padding | 48–64px |
+| Stack gap between form fields | 8–12px |
+
+---
+
+### Border radius
+
+| Element | Radius |
+|---|---|
+| Button, input, small card | 4px |
+| Drawer panel, medium card | 6px |
+| Large card (landing) | 8px |
+| Pill / badge / avatar | 99px (fully rounded) |
+| Search input | 2px |
+| Slider thumb | 99px |
+
+---
+
+### Elevation / shadows
+
+| Layer | Shadow / treatment |
+|---|---|
+| Suggestion priority card | `0 10px 20px rgba(0,0,0,0.18)` |
+| Drawer / slide-in panels | `−8px 0 40px rgba(0,0,0,0.45)` |
+| Modal / empty-state card | `0 24px 60px rgba(0,0,0,0.32)` |
+| Scrim (drawer backdrop) | `rgba(10,12,18,0.68)` + `backdrop-filter: blur(3px)` |
+| Sticky table header | `backdrop-filter: blur(4px)` — no shadow |
+
+Panel separation uses surface tier shifts (`--bg-base` → `--bg-highest`), not `box-shadow`.
+
+---
+
+### Component primitives
+
+| Class | Description |
+|---|---|
+| `.pl-btn` | Base: flex, gap 6px, br 4px, 13px/500, no border |
+| `.pl-btn-primary` | Gradient `#34d399→#10b981`, text `#052e1c`, 7px 14px padding |
+| `.pl-btn-outline` | Transparent bg, `--border-mid` border, `--text-primary` |
+| `.pl-btn-ghost` | Transparent bg/border, `--text-muted`, hover bg-raised |
+| `.pl-btn-danger` | `--accent-red` text, ghost base — destructive actions only |
+| `.pl-input` | bg-low, no border, 7px 10px, br 2px; focus: `box-shadow 0 0 0 1px --accent-blue` |
+| `.pl-pill` | 5px 14px, br 99px, 11px/700 uppercase — position filter tabs |
+| `.pl-pill-active` | bg-highest, `--accent-blue` text |
+| `.pl-th` | 10px/700 uppercase, sticky, `backdrop-filter: blur(4px)` |
+| `.pl-td` | 14px, `--text-primary`, `border-bottom: 1px solid --border` |
+| `.pl-row` | hover `rgba(52,211,153,0.06)`, `transition: background 0.08s` |
+| `.pl-slider-track` | 6px tall, bg-highest, br 99px |
+| `.pl-slider-fill` | `--accent-blue`, absolute fill, `transition: width 0.06s` |
+| Skeleton | shadcn/ui `<Skeleton>` with `animate-pulse`; bg-highest override |
+| Toast | shadcn/ui `<Sonner>` with dark token override |
+| Scrollbar | 6px wide, `--border-mid` thumb, transparent track |
+
+---
+
+### Icon set
+
+**Lucide React** — shadcn/ui default. Icons rendered at 14–16px, stroke-width 1.5–2. `lucide-react` named imports in production; inline SVG used only in design prototypes.
+
+---
+
+### Motion
+
+| Interaction | Duration | Easing |
+|---|---|---|
+| Drawer slide-in / slide-out | 260ms | `cubic-bezier(0.32, 0, 0.08, 1)` |
+| Scrim fade | 220ms | `ease` |
+| Button / row hover bg | 80–120ms | `ease` |
+| Button state change (confirm) | 160ms | `ease` |
+| Slider fill | 60ms | `ease` |
+| Live pulse dot | 1600ms | `ease-in-out infinite` |
+| Skeleton shimmer | shadcn default `animate-pulse` | — |
+
+Rank reorder on table repopulation is instant — the sudden reorder communicates urgency intentionally.
 
 ---
 
@@ -317,8 +428,35 @@ shadcn/ui is the component library (already in stack). Tokens should be defined 
 | Live draft layout | Full-width available players + right panel (suggestions → needs → team) |
 | Suggestion panel | Priority-ordered by need × value; 3 picks shown (①②③) |
 | Roster needs | Grid per position, color-coded urgency |
-| Landing page (launch) | Default rankings view with info banner |
-| Landing page (post-launch) | Marketing page with hero + CTA + minified rankings |
+| Landing page (launch) | Value prop marketing page (Claude Design variant C); auth users → `/dashboard` |
+| Landing page (post-launch) | Add `/rankings` browsable default rankings for unauthenticated users |
 | Pick log | Accessible via drawer, not persistent |
 | Reconnect state | Banner (not modal), inline action |
-| Design system | Pending — before Milestone D |
+| Route shape — live draft | `/live` with own layout under `(auth)` route group; not nested under `/dashboard` |
+| Pass balance fetch | Server Component layout; `router.refresh()` post-purchase; no SWR/Zustand |
+| Auth state | Server-fetched session + thin `<UserProvider>` client context; no Zustand auth slice |
+| Token sequencing | Globals.css written in Wave 1 before any component work |
+| Design system | Complete — see Design System section above |
+
+---
+
+## Adversarial Review Record
+
+**Packet path:** inline (no external file)
+**Round:** 1
+**Date:** 2026-05-06
+**Verdict:** `APPROVED WITH NITS`
+
+### Findings
+
+**F-1 (Important) — Layout caching caveat for entitlements**
+Next.js App Router preserves shared layouts on client-side navigation — the Server Component does not re-render between `/dashboard` and `/live`. Entitlements are fetched only on hard navigation or explicit `router.refresh()`. This is correct behavior for pass balance (only changes post-purchase), but must be explicitly wired: post-purchase redirect pages must call `router.refresh()`. Carried forward to plan 010a Wave 2.
+
+**F-2 (Important) — shadcn/ui token bridge required**
+shadcn/ui reads its own CSS custom property namespace (`--primary`, `--background`, `--foreground`, etc. as HSL values). PL tokens use a parallel namespace (`--accent-blue`, `--bg-base`, etc.). Without an explicit bridge in `globals.css`, shadcn components render with their own defaults. Plan 010a Wave 1 must map PL values to shadcn token names. Carried forward as a Wave 1 task.
+
+**F-3 (Minor) — No formal acceptance criteria in this spec**
+Spec is design-document style; AC will be defined per-component in plan 010a.
+
+### Pre-plan gate
+Met. Adversarial verdict is `APPROVED WITH NITS`. Planning may proceed.

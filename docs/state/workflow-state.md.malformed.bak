@@ -1,0 +1,49 @@
+| Field | Value |
+|---|---|
+| Active Phase | `plan` — Milestone D: Build web draft kit UI |
+| Active Branch | `main` (branch TBD after plan) |
+| Open PR | None |
+| Current Focus | Write plan 010a — 5 waves, revised order, F-1/F-2 findings wired in |
+| Track | `research` |
+| Last Action | Spec 010 complete + adversarial review APPROVED WITH NITS (2026-05-06); stale context line removed per review |
+| Active Artifact | `docs/plans/010a-milestone-d-web-ui.md` (to be written) |
+| Pending External | Legal/commercial review of third-party aggregated data usage before monetized extension launch |
+| Next Steps | 1. Write plan 010a (wave order: tokens → shell → workspace → session → live) 2. Wire F-1 (router.refresh contract) and F-2 (shadcn token bridge) as explicit tasks 3. Confirm execution mode then implement |
+| Next Session Entry | Resume at: plan phase — write plan 010a; spec 010 is approved |
+
+## Spec 010 closure (2026-05-06)
+
+- Design system section written: typography, spacing, border radius, elevation, component primitives, icon set, motion
+- Landing page section updated: value prop page at `/` (Claude Design variant C); auth users → `/dashboard`
+- Decisions log updated with all 5 brainstorm decisions
+- Stale "design system pending" context line removed (review finding)
+- Adversarial review: `APPROVED WITH NITS` — F-1 (layout caching / router.refresh) and F-2 (shadcn token bridge) carried to plan 010a
+- Pre-plan gate: met
+
+## Brainstorm decisions (2026-05-06)
+
+1. **Route shape:** `/live` as separate route with own layout under `(auth)` route group
+2. **Pass balance:** Server Component layout fetches entitlements; `router.refresh()` on post-purchase; no SWR/Zustand
+3. **Landing page:** Distinct `/` — value prop landing page (Claude Design variant C); auth users redirect to `/dashboard`
+4. **Auth pattern:** Server-fetched session + thin `<UserProvider>` client context; Zustand auth slice dropped
+5. **Token sequencing:** Tokens first — Wave 1 before any component work
+
+**Cross-cutting principle:** Prefer Server Components. Zustand for client-only interactive state only (kit edits, pick log, UI toggles).
+
+**Revised wave order for plan 010a:**
+1. Design system baseline (globals.css tokens + shadcn bridge, fonts, Tailwind config)
+2. Shell + landing (AppShell, UserProvider, middleware, `/` landing, auth route group)
+3. Pre-draft workspace (KitSwitcher, kits slice, auth pages, PreDraftWorkspace)
+4. Session API + state (draftSession slice, draft-sessions client, entitlements client)
+5. Live draft screen (LiveDraftScreen, manual pick drawer, reconnect banner)
+
+## Milestone C closure (2026-05-06)
+
+- `011a` (kit-pass entitlements + Stripe webhook + `GET /entitlements` + route gating) and `011b` (session close rankings snapshot) merged on `main` via PR #36.
+- All Milestone C backend additions checklist items complete.
+- `ROADMAP.md` updated: Milestone C marked Complete; checklist items all [x].
+- Serena memory written: `live-draft/011-milestone-c-closure`.
+
+## State migration note
+
+Legacy state was at `.agents/axon-state.md`. This file (`docs/state/workflow-state.md`) is the canonical location going forward. The legacy file is preserved as historical record.

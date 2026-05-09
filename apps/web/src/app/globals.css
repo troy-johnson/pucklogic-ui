@@ -1,3 +1,306 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ─── PuckLogic Design Tokens ───────────────────────────────────────────── */
+
+:root,
+[data-theme="dark"] {
+  /* Surfaces — 5-tier dark stack */
+  --bg-base: #111319;
+  --bg-surface: #1a1d27;
+  --bg-elevated: #1f222e;
+  --bg-overlay: #252833;
+  --bg-raised: #33343b;
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-mid: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.2);
+
+  /* Text */
+  --text-primary: rgba(255, 255, 255, 0.92);
+  --text-secondary: rgba(255, 255, 255, 0.55);
+  --text-tertiary: rgba(255, 255, 255, 0.35);
+  --text-disabled: rgba(255, 255, 255, 0.2);
+
+  /* Accent — emerald (kept as --accent-blue for backwards compat) */
+  --accent-blue: #34d399;
+  --accent-blue-hover: #10b981;
+  --accent-blue-dim: rgba(52, 211, 153, 0.15);
+
+  /* Semantic */
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-error: #f87171;
+  --color-info: #60a5fa;
+
+  /* Typography */
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-pill: 99px;
+
+  /* Elevation shadows */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-dropdown: 0 8px 24px rgba(0, 0, 0, 0.36);
+  --shadow-drawer: -8px 0 40px rgba(0, 0, 0, 0.45);
+  --shadow-modal: 0 24px 60px rgba(0, 0, 0, 0.32);
+
+  /* shadcn/ui token bridge — maps PL tokens to shadcn HSL namespace */
+  --background: 221 17% 9%;           /* #111319 */
+  --foreground: 0 0% 92%;             /* --text-primary */
+  --card: 228 20% 13%;                /* #1a1d27 */
+  --card-foreground: 0 0% 92%;
+  --popover: 228 20% 13%;
+  --popover-foreground: 0 0% 92%;
+  --primary: 161 84% 52%;             /* #34d399 emerald */
+  --primary-foreground: 221 17% 9%;   /* dark text on emerald */
+  --secondary: 226 18% 17%;           /* #252833 */
+  --secondary-foreground: 0 0% 92%;
+  --muted: 226 14% 22%;               /* #33343b */
+  --muted-foreground: 0 0% 55%;       /* --text-secondary */
+  --accent: 161 84% 52%;              /* emerald */
+  --accent-foreground: 221 17% 9%;
+  --destructive: 0 91% 71%;           /* #f87171 */
+  --destructive-foreground: 0 0% 92%;
+  --border: 0 0% 100% / 0.12;         /* --border-mid */
+  --input: 0 0% 100% / 0.12;
+  --ring: 161 84% 52%;                /* emerald focus ring */
+  --radius: 0.5rem;
+}
+
+[data-theme="light"] {
+  --bg-base: #f8f9fb;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f0f2f5;
+  --bg-overlay: #e8ebf0;
+  --bg-raised: #dde1e8;
+
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-mid: rgba(0, 0, 0, 0.12);
+  --border-strong: rgba(0, 0, 0, 0.2);
+
+  --text-primary: rgba(0, 0, 0, 0.88);
+  --text-secondary: rgba(0, 0, 0, 0.55);
+  --text-tertiary: rgba(0, 0, 0, 0.35);
+  --text-disabled: rgba(0, 0, 0, 0.2);
+
+  --accent-blue: #059669;
+  --accent-blue-hover: #047857;
+  --accent-blue-dim: rgba(5, 150, 105, 0.12);
+
+  --background: 210 17% 98%;
+  --foreground: 0 0% 9%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 9%;
+  --primary: 161 91% 30%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 17% 95%;
+  --secondary-foreground: 0 0% 9%;
+  --muted: 210 17% 90%;
+  --muted-foreground: 0 0% 45%;
+  --accent: 161 91% 30%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 0% / 0.12;
+  --input: 0 0% 0% / 0.12;
+  --ring: 161 91% 30%;
+}
+
+/* ─── Base Resets ────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-mid);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+/* ─── PL Utility Classes (component primitives) ─────────────────────────── */
+
+.pl-btn-primary {
+  background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-blue-hover) 100%);
+  color: var(--bg-base);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  transition: opacity 150ms ease;
+}
+
+.pl-btn-primary:hover {
+  opacity: 0.88;
+}
+
+.pl-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pl-btn-secondary {
+  background: var(--bg-raised);
+  color: var(--text-primary);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.pl-btn-secondary:hover {
+  background: var(--bg-overlay);
+  border-color: var(--border-strong);
+}
+
+.pl-btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.pl-btn-ghost:hover {
+  background: var(--bg-raised);
+  color: var(--text-primary);
+}
+
+.pl-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.pl-card-elevated {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-dropdown);
+}
+
+.pl-input {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.pl-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px var(--accent-blue-dim);
+}
+
+.pl-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.pl-badge {
+  background: var(--accent-blue-dim);
+  color: var(--accent-blue);
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+}
+
+.pl-pill {
+  background: var(--bg-raised);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.pl-pill[data-active="true"],
+.pl-pill:hover {
+  background: var(--accent-blue-dim);
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.pl-scrim {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+/* ─── Motion ─────────────────────────────────────────────────────────────── */
+
+.pl-drawer-enter {
+  animation: pl-slide-in-right 260ms cubic-bezier(0.32, 0, 0.08, 1) forwards;
+}
+
+.pl-drawer-exit {
+  animation: pl-slide-out-right 220ms cubic-bezier(0.32, 0, 0.08, 1) forwards;
+}
+
+.pl-scrim-enter {
+  animation: pl-fade-in 220ms ease forwards;
+}
+
+.pl-scrim-exit {
+  animation: pl-fade-out 180ms ease forwards;
+}
+
+@keyframes pl-slide-in-right {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes pl-slide-out-right {
+  from { transform: translateX(0); }
+  to   { transform: translateX(100%); }
+}
+
+@keyframes pl-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes pl-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}

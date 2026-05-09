@@ -19,7 +19,7 @@
 | 008d | [draft-pass-session-lifecycle](008d-draft-pass-session-lifecycle.md) | Approved | 2026-04-25 | Implementation complete on PR #34; pass consumption, reconnect reuse, terminal completion semantics, and anti-abuse lifecycle rules are merge-ready, with seasonal manual verification still deferred |
 | 008d-r1 | [2026-04-24-008d-review-fixes](2026-04-24-008d-review-fixes.md) | Implemented | 2026-04-25 | Review remediation completed on PR #34, including migration uniqueness, terminal `/end` + WS denial handling, and extension reconnect hardening |
 | 008e | [optional-pick-number](008e-optional-pick-number.md) | Implemented | 2026-04-23 | Merged via PR #35 on 2026-04-28; WS auto-ingestion now treats optional pick_number as backend-derived while preserving strict manual HTTP contract |
-| 010a | [web-draft-kit-ui](010a-web-draft-kit-ui.md) | Draft | 2026-04-11 | UI implementation plan limited to scaffolding until spec 010 wireframe/design decisions are approved |
+| 010a | [web-draft-kit-ui](010a-web-draft-kit-ui.md) | Approved | 2026-05-06 | Milestone D implementation: 5 waves (tokens → shell → workspace → session → live), 26 tasks, 22 AC items |
 | 011a | [token-pass-entitlements-and-gating](011a-token-pass-entitlements-and-gating.md) | Approved | 2026-04-30 | Stripe kit-pass entitlement, authenticated entitlements read, route gating, and roadmap/docs alignment plan |
 | 011b | [session-close-rankings-snapshot](011b-session-close-rankings-snapshot.md) | Approved | 2026-04-30 | Draft-session recipe persistence and clean-close rankings snapshot plan, intentionally split from 011a schema work |
 
