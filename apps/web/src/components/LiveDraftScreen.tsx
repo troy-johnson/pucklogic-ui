@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useStore } from "@/store";
 import { ManualPickDrawer } from "./ManualPickDrawer";
+import { clearDraftSessionCookie } from "@/lib/draft-session-cookie";
 import type { SyncStateResponse } from "@/lib/api/draft-sessions";
 import type { DraftMode } from "@/store/slices/draftSession";
 import type { DraftPick, RankedPlayer } from "@/types";
@@ -29,9 +31,17 @@ export function LiveDraftScreen({
   myTeamPlayers: _myTeamPlayers,
   initialSyncState,
 }: Props) {
-  const { picks, mode, sessionId, setMode, recordPick, hydrateSession } = useStore();
+  const router = useRouter();
+  const { picks, mode, sessionId, setMode, recordPick, hydrateSession, endSession } = useStore();
   const [activePosition, setActivePosition] = useState<Position>("All");
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  function handleEndDraft() {
+    if (!confirm("End this draft session? Picks will be saved.")) return;
+    endSession();
+    clearDraftSessionCookie();
+    router.push("/dashboard");
+  }
 
   useEffect(() => {
     if (initialSyncState && sessionId !== initialSyncState.session_id) {
@@ -226,6 +236,12 @@ export function LiveDraftScreen({
               Switch to manual
             </button>
           )}
+          <button
+            onClick={handleEndDraft}
+            className="mt-1.5 w-full rounded py-1 text-xs text-color-error hover:bg-color-error/10"
+          >
+            End draft
+          </button>
         </div>
 
         {sessionId === null && (

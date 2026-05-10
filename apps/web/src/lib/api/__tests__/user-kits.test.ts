@@ -4,7 +4,16 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createUserKit, deleteUserKit, fetchUserKits } from "@/lib/api/user-kits";
+import {
+  createKit,
+  createUserKit,
+  deleteKit,
+  deleteUserKit,
+  duplicateKit,
+  fetchUserKits,
+  listKits,
+  updateKit,
+} from "@/lib/api/user-kits";
 
 const KIT = {
   id: "kit-1",
@@ -83,5 +92,99 @@ describe("deleteUserKit", () => {
   it("resolves without returning a value", async () => {
     const result = await deleteUserKit("kit-1");
     expect(result).toBeUndefined();
+  });
+});
+
+// ── Token-authenticated exports (Wave 3+ surface) ──────────────────────────
+
+const TOKEN = "test-bearer-token";
+
+describe("listKits (token-auth)", () => {
+  beforeEach(() => mockFetch([KIT]));
+
+  it("calls GET /user-kits with Authorization header", async () => {
+    await listKits(TOKEN);
+    const [url, init] = (fetch as ReturnType<typeof vi.spyOn>).mock.calls[0] as [
+      string,
+      RequestInit,
+    ];
+    expect(url).toContain("/user-kits");
+    const headers = init?.headers as Record<string, string>;
+    expect(headers.Authorization).toBe(`Bearer ${TOKEN}`);
+  });
+
+  it("returns the kit list", async () => {
+    const kits = await listKits(TOKEN);
+    expect(kits).toHaveLength(1);
+    expect(kits[0].id).toBe("kit-1");
+  });
+});
+
+describe("createKit (token-auth)", () => {
+  beforeEach(() => mockFetch(KIT, 201));
+
+  it("POSTs /user-kits with Authorization header and JSON body", async () => {
+    await createKit(
+      { name: "New Kit", source_weights: { nhl_com: 100 } },
+      TOKEN,
+    );
+    const [url, init] = (fetch as ReturnType<typeof vi.spyOn>).mock.calls[0] as [
+      string,
+      RequestInit,
+    ];
+    expect(url).toContain("/user-kits");
+    expect(init.method).toBe("POST");
+    const headers = init.headers as Record<string, string>;
+    expect(headers.Authorization).toBe(`Bearer ${TOKEN}`);
+    const body = JSON.parse(init.body as string);
+    expect(body.name).toBe("New Kit");
+  });
+});
+
+describe("updateKit (token-auth)", () => {
+  beforeEach(() => mockFetch({ ...KIT, name: "Renamed" }));
+
+  it("PATCHes /user-kits/{id} with Authorization header", async () => {
+    await updateKit("kit-1", { name: "Renamed" }, TOKEN);
+    const [url, init] = (fetch as ReturnType<typeof vi.spyOn>).mock.calls[0] as [
+      string,
+      RequestInit,
+    ];
+    expect(url).toContain("/user-kits/kit-1");
+    expect(init.method).toBe("PATCH");
+    const headers = init.headers as Record<string, string>;
+    expect(headers.Authorization).toBe(`Bearer ${TOKEN}`);
+  });
+});
+
+describe("deleteKit (token-auth)", () => {
+  beforeEach(() => mockFetch(null, 204));
+
+  it("DELETEs /user-kits/{id} with Authorization header", async () => {
+    await deleteKit("kit-1", TOKEN);
+    const [url, init] = (fetch as ReturnType<typeof vi.spyOn>).mock.calls[0] as [
+      string,
+      RequestInit,
+    ];
+    expect(url).toContain("/user-kits/kit-1");
+    expect(init.method).toBe("DELETE");
+    const headers = init.headers as Record<string, string>;
+    expect(headers.Authorization).toBe(`Bearer ${TOKEN}`);
+  });
+});
+
+describe("duplicateKit (token-auth)", () => {
+  beforeEach(() => mockFetch({ ...KIT, id: "kit-2" }, 201));
+
+  it("POSTs /user-kits/{id}/duplicate with Authorization header", async () => {
+    await duplicateKit("kit-1", TOKEN);
+    const [url, init] = (fetch as ReturnType<typeof vi.spyOn>).mock.calls[0] as [
+      string,
+      RequestInit,
+    ];
+    expect(url).toContain("/user-kits/kit-1/duplicate");
+    expect(init.method).toBe("POST");
+    const headers = init.headers as Record<string, string>;
+    expect(headers.Authorization).toBe(`Bearer ${TOKEN}`);
   });
 });

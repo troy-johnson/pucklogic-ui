@@ -35,8 +35,10 @@ export default async function AuthLayout({
         token: session.access_token,
       });
       passBalance = entitlements.draft_passes;
-    } catch {
-      // graceful degradation
+    } catch (err) {
+      // Surface failures in server logs so degraded "0 passes" state can be
+      // distinguished from genuine zero-balance accounts during incidents.
+      console.error("[auth-layout] entitlements fetch failed:", err);
     }
   }
 

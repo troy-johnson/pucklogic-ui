@@ -5,6 +5,10 @@ vi.mock("@/store", () => ({
   useStore: vi.fn(),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: vi.fn(() => ({ push: vi.fn() })),
+}));
+
 import { useStore } from "@/store";
 import { LiveDraftScreen } from "../LiveDraftScreen";
 import type { RankedPlayer } from "@/types";
@@ -58,6 +62,8 @@ function mockStore(overrides = {}) {
     sessionId: "sess-1",
     setMode: vi.fn(),
     recordPick: vi.fn(),
+    hydrateSession: vi.fn(),
+    endSession: vi.fn(),
     ...overrides,
   } as ReturnType<typeof useStore>);
 }

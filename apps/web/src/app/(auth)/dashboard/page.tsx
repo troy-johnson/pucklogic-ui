@@ -1,8 +1,13 @@
-import { fetchSources } from "@/lib/api/sources";
+import { loadInitialRankings } from "@/lib/rankings/load-initial";
 import { PreDraftWorkspace } from "@/components/PreDraftWorkspace";
 
 export default async function DashboardPage() {
-  const sources = await fetchSources().catch(() => []);
+  const { sources, rankings } = await loadInitialRankings();
 
-  return <PreDraftWorkspace initialSources={sources} />;
+  return (
+    <PreDraftWorkspace
+      initialSources={sources}
+      initialRankings={rankings}
+    />
+  );
 }
