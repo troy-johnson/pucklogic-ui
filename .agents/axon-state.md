@@ -2,12 +2,12 @@
 
 | Field | Value |
 |---|---|
-| Active Phase | `review` — Milestone D implementation complete, PR open |
-| Active Branch | `feat/milestone-d-web-ui` (tracking origin) |
-| Open PR | [#37](https://github.com/troy-johnson/pucklogic-ui/pull/37) — `feat(web): Milestone D — web draft kit UI` |
-| Current Focus | Final reviewer pass on PR #37; ship gate clears after confirmation |
-| Track | implement-tdd → review |
-| Last Action | 2026-05-10: addressed Codex C-2 (ManualPickDrawer stale defaults) in 8e301ba; replied to both inline comments; updated adversarial packet with round 4 |
+| Active Phase | `idle` — Milestone D complete |
+| Active Branch | `main` |
+| Open PR | None — PR #37 merged 2026-05-10 |
+| Current Focus | Milestone E — export polish (scope TBD) |
+| Track | N/A — between tracks |
+| Last Action | 2026-05-10: merged PR #37 (Milestone D web draft kit UI) to main; post-merge doc reconciliation |
 | Next Session Entry | See `docs/state/workflow-state.md` |
 
 ## Milestone D implementation outcome (2026-05-09 → 2026-05-10)

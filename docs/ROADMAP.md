@@ -15,7 +15,7 @@
 | F — First real ML execution | Apr 13 – Apr 20 | Complete | [Plan 008a §F](plans/008a-draft-season-readiness.md#milestone-f--first-real-ml-execution-run) |
 | B — Lock draft kit workflow / UI scope | Apr 21 – May 4 | Approved early | [Spec 009](specs/009-web-draft-kit-ux.md) · [ADR 007](adrs/007-web-first-draft-session-and-temp-kit-lifecycle.md) |
 | C — Backend integration verification | May 5 – May 18 | **Complete** | [Spec 011](specs/011-milestone-c-token-pass-backend.md) · [Plan 011a](plans/011a-token-pass-entitlements-and-gating.md) · [Plan 011b](plans/011b-session-close-rankings-snapshot.md) |
-| D — Build web draft kit UI | May 19 – Jun 29 | **In review (PR #37)** | [Spec 010](specs/010-web-ui-wireframes-design.md) · [Plan 010a](plans/010a-web-draft-kit-ui.md) |
+| D — Build web draft kit UI | May 19 – Jun 29 | **Complete** | [Spec 010](specs/010-web-ui-wireframes-design.md) · [Plan 010a](plans/010a-web-draft-kit-ui.md) |
 | E — Polish exports | Jun 30 – Jul 13 | Planned | [Plan 008a §E](plans/008a-draft-season-readiness.md#milestone-e--make-exports-launch-grade) |
 | G — Launch hardening | Jul 14 – Aug 17 | Planned | [Plan 008a §G](plans/008a-draft-season-readiness.md#milestone-g--harden-the-web-launch) |
 | H — Extension go/no-go | Aug 18 – Aug 24 | Conditional | [Plan 008a §H](plans/008a-draft-season-readiness.md#milestone-h--extension-gono-go) |
@@ -27,8 +27,8 @@
 - `008b` live-draft backend, `008d` draft-pass lifecycle, and `008e` optional pick-number follow-up are **implemented and merged on `main`**.
 - `008c` extension sync adapters are implemented; remaining validation is season-blocked live draft-room verification, with Yahoo still gated/non-blocking.
 - **Milestone C complete:** `011a` (kit-pass entitlements + Stripe + route gating) and `011b` (session close rankings snapshot) merged on `main` via PR #36 (2026-05-06).
-- **Milestone D implementation complete, in review:** spec `010` and plan `010a` approved; all 5 waves shipped on `feat/milestone-d-web-ui`; 182 tests passing, build clean. Four review rounds resolved (plan-stage, PR/QA self-review, external review, Codex automated). Awaiting reviewer ship gate on PR #37 before merge.
-- **Next execution priority:** merge PR #37 and proceed to Milestone E (export polish).
+- **Milestone D complete:** `010a` web draft kit UI shipped and merged to `main` via PR #37 (2026-05-10). All 27 tasks, 23 AC items, 182 tests passing. Full adversarial review trail in `docs/plans/010a-adversarial-review-r1.md`.
+- **Next execution priority:** Milestone E — export polish.
 
 Use this roadmap for milestone sequencing and launch prioritization. For live branch/phase status, defer to `docs/state/workflow-state.md` and the active plan docs.
 
