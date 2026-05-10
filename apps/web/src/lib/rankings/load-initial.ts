@@ -19,12 +19,17 @@ export interface InitialRankingsBundle {
  * baseline rankings using equal source weights. Returns empty arrays with
  * `loadError = true` if any step fails so callers can surface a degraded
  * state instead of crashing the page.
+ *
+ * Pass the user's access token if any of the underlying endpoints require
+ * authentication; safe to omit when called against public endpoints.
  */
-export async function loadInitialRankings(): Promise<InitialRankingsBundle> {
+export async function loadInitialRankings(
+  token?: string,
+): Promise<InitialRankingsBundle> {
   try {
     const [sources, presets] = await Promise.all([
-      fetchSources(),
-      fetchScoringConfigPresets(),
+      fetchSources(true, token),
+      fetchScoringConfigPresets(token),
     ]);
 
     if (sources.length === 0 || presets.length === 0) {
@@ -36,12 +41,15 @@ export async function loadInitialRankings(): Promise<InitialRankingsBundle> {
       sources.map((s) => [s.name, equalShare]),
     );
 
-    const result = await computeRankings({
-      season: DEFAULT_SEASON,
-      source_weights: sourceWeights,
-      scoring_config_id: presets[0].id,
-      platform: DEFAULT_PLATFORM,
-    });
+    const result = await computeRankings(
+      {
+        season: DEFAULT_SEASON,
+        source_weights: sourceWeights,
+        scoring_config_id: presets[0].id,
+        platform: DEFAULT_PLATFORM,
+      },
+      token,
+    );
 
     return { sources, rankings: result.rankings, loadError: false };
   } catch (err) {

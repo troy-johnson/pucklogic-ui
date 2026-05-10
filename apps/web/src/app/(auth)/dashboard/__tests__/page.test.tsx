@@ -8,6 +8,16 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: vi.fn().mockResolvedValue({
+    auth: {
+      getSession: vi.fn().mockResolvedValue({
+        data: { session: { access_token: "test-token" } },
+      }),
+    },
+  }),
+}));
+
 vi.mock("@/lib/rankings/load-initial", () => {
   const NULL_STATS = {
     g: null, a: null, plus_minus: null, pim: null, ppg: null, ppa: null,

@@ -49,4 +49,21 @@ describe("middleware redirect rules", () => {
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toContain("/login");
   });
+
+  it("preserves intended destination as ?next= on unauthenticated redirect", async () => {
+    const req = new NextRequest("http://localhost/live?session=abc");
+    const res = await middleware(req);
+    const location = res.headers.get("location") ?? "";
+    expect(location).toContain("/login");
+    expect(location).toMatch(/next=/);
+    expect(location).toContain(encodeURIComponent("/live"));
+  });
+
+  it("does not add ?next= when target is the default /dashboard", async () => {
+    const req = new NextRequest("http://localhost/dashboard");
+    const res = await middleware(req);
+    const location = res.headers.get("location") ?? "";
+    expect(location).toContain("/login");
+    expect(location).not.toMatch(/next=/);
+  });
 });

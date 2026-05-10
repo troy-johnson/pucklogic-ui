@@ -29,7 +29,7 @@ export default async function LivePage() {
     redirect("/dashboard");
   }
 
-  const { rankings } = await loadInitialRankings();
+  const { rankings } = await loadInitialRankings(token);
 
   return (
     <LiveDraftScreen

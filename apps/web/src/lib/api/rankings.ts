@@ -1,9 +1,13 @@
 import type { ComputeRankingsRequest, RankingsResult } from "@/types";
 import { apiFetch } from "./index";
 
-export async function computeRankings(req: ComputeRankingsRequest): Promise<RankingsResult> {
+export async function computeRankings(
+  req: ComputeRankingsRequest,
+  token?: string,
+): Promise<RankingsResult> {
   return apiFetch<RankingsResult>("/rankings/compute", {
     method: "POST",
     body: JSON.stringify(req),
+    token,
   });
 }

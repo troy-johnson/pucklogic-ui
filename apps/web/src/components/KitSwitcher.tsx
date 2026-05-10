@@ -2,7 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "@/store";
-import { createKit, deleteKit, duplicateKit, updateKit } from "@/lib/api/user-kits";
+import {
+  createKit as apiCreateKit,
+  deleteKit as apiDeleteKit,
+  duplicateKit as apiDuplicateKit,
+  updateKit as apiUpdateKit,
+} from "@/lib/api/user-kits";
 import { createClient } from "@/lib/supabase/client";
 
 async function getToken(): Promise<string> {
@@ -18,7 +23,7 @@ export function KitSwitcher({
   open: boolean;
   onClose: () => void;
 }) {
-  const { kits, activeKitId, setActiveKit, addKit, removeKit, updateKit: updateKitStore } =
+  const { kits, activeKitId, setActiveKit, addKit, removeKit, updateKit } =
     useStore();
 
   const [showNewKitForm, setShowNewKitForm] = useState(false);
@@ -45,7 +50,7 @@ export function KitSwitcher({
     e.preventDefault();
     if (!newKitName.trim()) return;
     const token = await getToken();
-    const kit = await createKit({ name: newKitName.trim(), source_weights: {} }, token);
+    const kit = await apiCreateKit({ name: newKitName.trim(), source_weights: {} }, token);
     addKit(kit);
     setActiveKit(kit.id);
     setNewKitName("");
@@ -55,21 +60,21 @@ export function KitSwitcher({
 
   async function handleDelete(id: string) {
     const token = await getToken();
-    await deleteKit(id, token);
+    await apiDeleteKit(id, token);
     removeKit(id);
   }
 
   async function handleDuplicate(id: string) {
     const token = await getToken();
-    const kit = await duplicateKit(id, token);
+    const kit = await apiDuplicateKit(id, token);
     addKit(kit);
   }
 
   async function handleRename(id: string) {
     if (!editingName.trim()) return;
     const token = await getToken();
-    const updated = await updateKit(id, { name: editingName.trim() }, token);
-    updateKitStore(id, { name: updated.name });
+    const updated = await apiUpdateKit(id, { name: editingName.trim() }, token);
+    updateKit(id, { name: updated.name });
     setEditingId(null);
     setEditingName("");
   }

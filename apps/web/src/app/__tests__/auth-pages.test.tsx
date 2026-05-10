@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 
 vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: vi.fn() })),
+  useSearchParams: vi.fn(() => ({ get: vi.fn().mockReturnValue(null) })),
 }));
 
 vi.mock("@/lib/supabase/client", () => ({

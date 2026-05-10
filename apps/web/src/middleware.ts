@@ -44,7 +44,14 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/favicon");
 
   if (!isPublic && !user) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    const loginUrl = new URL("/login", request.url);
+    // Preserve the user's intended destination (path + search) so we can
+    // bounce them back after sign-in.
+    const intended = pathname + (request.nextUrl.search ?? "");
+    if (intended !== "/dashboard") {
+      loginUrl.searchParams.set("next", intended);
+    }
+    return NextResponse.redirect(loginUrl);
   }
 
   if (pathname === "/" && user) {
