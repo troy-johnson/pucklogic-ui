@@ -1,303 +1,58 @@
 /**
- * TDD tests for the Dashboard page.
- * Written before the implementation.
- * Mocks: useStore (Zustand), fetchSources, computeRankings.
+ * Tests for (auth)/dashboard/page.tsx — Server Component wrapper.
+ *
+ * The page is an async Server Component that fetches sources and renders
+ * PreDraftWorkspace. Comprehensive interaction tests live in
+ * PreDraftWorkspace.test.tsx and RankingsTable.test.tsx.
  */
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
 
-// Mock the store — all tests control state explicitly
-vi.mock("@/store", () => ({
-  useStore: vi.fn(),
-}));
-
-// Mock API modules
 vi.mock("@/lib/api/sources", () => ({
-  fetchSources: vi.fn(),
+  fetchSources: vi.fn().mockResolvedValue([
+    {
+      id: "s1",
+      name: "nhl_com",
+      display_name: "NHL.com",
+      url: null,
+      active: true,
+      default_weight: null,
+      is_paid: false,
+    },
+  ]),
 }));
 
-vi.mock("@/lib/api/rankings", () => ({
-  computeRankings: vi.fn(),
-}));
-
-vi.mock("@/lib/api/scoring-configs", () => ({
-  fetchScoringConfigPresets: vi.fn(),
-}));
-
-import { useStore } from "@/store";
-import { fetchSources } from "@/lib/api/sources";
-import { computeRankings } from "@/lib/api/rankings";
-import { fetchScoringConfigPresets } from "@/lib/api/scoring-configs";
-import type { Source, RankedPlayer } from "@/types";
-import DashboardPage from "../page";
-
-const SOURCES: Source[] = [
-  { id: "s1", name: "nhl_com", display_name: "NHL.com", url: null, active: true, default_weight: null, is_paid: false },
-];
-
-const RANKINGS: RankedPlayer[] = [
-  {
-    composite_rank: 1,
-    player_id: "p1",
-    name: "Connor McDavid",
-    team: "EDM",
-    default_position: "C",
-    platform_positions: [],
-    projected_fantasy_points: 30.5,
-    vorp: null,
-    schedule_score: null,
-    off_night_games: null,
-    source_count: 1,
-    projected_stats: { g: null, a: null, plus_minus: null, pim: null, ppg: null, ppa: null, ppp: null, shg: null, sha: null, shp: null, sog: null, fow: null, fol: null, hits: null, blocks: null, gp: null, gs: null, w: null, l: null, ga: null, sa: null, sv: null, sv_pct: null, so: null, otl: null },
-    breakout_score: null,
-    regression_risk: null,
-  },
-];
-
-function makeStoreMock(overrides = {}) {
-  return {
+vi.mock("@/store", () => ({
+  useStore: vi.fn().mockReturnValue({
     sources: [],
     weights: {},
-    rankings: [],
-    loading: false,
-    error: null,
-    cached: false,
-    computedAt: null,
-    season: "2025-26",
-    setSources: vi.fn(),
     setWeight: vi.fn(),
     resetWeights: vi.fn(),
     activeWeights: vi.fn().mockReturnValue({}),
-    setRankings: vi.fn(),
-    setLoading: vi.fn(),
-    setError: vi.fn(),
-    clearRankings: vi.fn(),
-    setSeason: vi.fn(),
-    ...overrides,
-  };
-}
+    kits: [],
+    activeKitId: null,
+  }),
+}));
 
-const PRESET_CONFIG = { id: "sc-preset-1", name: "Standard Points", stat_weights: {}, is_preset: true };
+import DashboardPage from "../page";
 
-beforeEach(() => {
-  vi.mocked(fetchSources).mockResolvedValue(SOURCES);
-  vi.mocked(fetchScoringConfigPresets).mockResolvedValue([PRESET_CONFIG]);
-  vi.mocked(computeRankings).mockResolvedValue({
-    season: "2025-26",
-    computed_at: "2026-03-06T00:00:00Z",
-    cached: false,
-    rankings: RANKINGS,
-  });
-  vi.mocked(useStore).mockReturnValue(makeStoreMock());
-});
-
-describe("DashboardPage", () => {
-  describe("initial load", () => {
-    it("renders a page heading", () => {
-      render(<DashboardPage />);
-      expect(screen.getByRole("heading", { name: /rankings/i })).toBeInTheDocument();
-    });
-
-    it("fetches sources on mount", async () => {
-      render(<DashboardPage />);
-      await waitFor(() => {
-        // React 18 StrictMode may invoke effects twice in dev; assert at least once
-        expect(fetchSources).toHaveBeenCalled();
-      });
-    });
-
-    it("calls setSources with the fetched data", async () => {
-      const setSources = vi.fn();
-      vi.mocked(useStore).mockReturnValue(makeStoreMock({ setSources }));
-      render(<DashboardPage />);
-      await waitFor(() => {
-        expect(setSources).toHaveBeenCalledWith(SOURCES);
-      });
-    });
-
-    it("renders the SourceWeightSelector when sources are loaded", () => {
-      vi.mocked(useStore).mockReturnValue(
-        makeStoreMock({ sources: SOURCES, weights: { nhl_com: 100 } })
-      );
-      render(<DashboardPage />);
-      expect(screen.getByRole("slider")).toBeInTheDocument();
-    });
-
-    it("does not show the rankings table before computation", () => {
-      render(<DashboardPage />);
-      expect(screen.queryByRole("table")).not.toBeInTheDocument();
-    });
+describe("DashboardPage (Server Component)", () => {
+  it("renders without crashing and shows the workspace", async () => {
+    const element = await DashboardPage();
+    render(element);
+    expect(
+      screen.getByRole("button", { name: /export rankings/i }),
+    ).toBeInTheDocument();
   });
 
-  describe("compute button", () => {
-    it("renders a Compute Rankings button", () => {
-      vi.mocked(useStore).mockReturnValue(
-        makeStoreMock({ sources: SOURCES, weights: { nhl_com: 100 } })
-      );
-      render(<DashboardPage />);
-      expect(screen.getByRole("button", { name: /compute/i })).toBeInTheDocument();
-    });
-
-    it("calls setLoading(true) when Compute button is clicked", async () => {
-      const setLoading = vi.fn();
-      vi.mocked(useStore).mockReturnValue(
-        makeStoreMock({ sources: SOURCES, weights: { nhl_com: 100 }, setLoading, activeWeights: vi.fn().mockReturnValue({ nhl_com: 100 }) })
-      );
-      const user = userEvent.setup();
-      render(<DashboardPage />);
-      const button = screen.getByRole("button", { name: /compute/i });
-      await waitFor(() => expect(button).not.toBeDisabled());
-      await user.click(button);
-      expect(setLoading).toHaveBeenCalledWith(true);
-    });
-
-    it("calls computeRankings with season and active weights", async () => {
-      vi.mocked(useStore).mockReturnValue(
-        makeStoreMock({
-          sources: SOURCES,
-          weights: { nhl_com: 100 },
-          season: "2025-26",
-          activeWeights: vi.fn().mockReturnValue({ nhl_com: 100 }),
-        })
-      );
-      const user = userEvent.setup();
-      render(<DashboardPage />);
-      const button = screen.getByRole("button", { name: /compute/i });
-      await waitFor(() => expect(button).not.toBeDisabled());
-      await user.click(button);
-      expect(computeRankings).toHaveBeenCalledWith({
-        season: "2025-26",
-        source_weights: { nhl_com: 100 },
-        scoring_config_id: "sc-preset-1",
-        platform: "espn",
-      });
-    });
-
-    it("calls setRankings with the result", async () => {
-      const setRankings = vi.fn();
-      vi.mocked(useStore).mockReturnValue(
-        makeStoreMock({
-          sources: SOURCES,
-          weights: { nhl_com: 100 },
-          setRankings,
-          activeWeights: vi.fn().mockReturnValue({ nhl_com: 100 }),
-        })
-      );
-      const user = userEvent.setup();
-      render(<DashboardPage />);
-      const button = screen.getByRole("button", { name: /compute/i });
-      await waitFor(() => expect(button).not.toBeDisabled());
-      await user.click(button);
-      await waitFor(() => {
-        expect(setRankings).toHaveBeenCalled();
-      });
-    });
-
-    it("calls setError when computeRankings throws", async () => {
-      const setError = vi.fn();
-      vi.mocked(computeRankings).mockRejectedValue(new Error("Server error"));
-      vi.mocked(useStore).mockReturnValue(
-        makeStoreMock({
-          sources: SOURCES,
-          weights: { nhl_com: 100 },
-          setError,
-          activeWeights: vi.fn().mockReturnValue({ nhl_com: 100 }),
-        })
-      );
-      const user = userEvent.setup();
-      render(<DashboardPage />);
-      const button = screen.getByRole("button", { name: /compute/i });
-      await waitFor(() => expect(button).not.toBeDisabled());
-      await user.click(button);
-      await waitFor(() => {
-        expect(setError).toHaveBeenCalledWith("Server error");
-      });
-    });
-
-    it("calls setLoading(false) after successful compute", async () => {
-      const setLoading = vi.fn();
-      vi.mocked(useStore).mockReturnValue(
-        makeStoreMock({
-          sources: SOURCES,
-          weights: { nhl_com: 100 },
-          setLoading,
-          activeWeights: vi.fn().mockReturnValue({ nhl_com: 100 }),
-        })
-      );
-      const user = userEvent.setup();
-      render(<DashboardPage />);
-      const button = screen.getByRole("button", { name: /compute/i });
-      await waitFor(() => expect(button).not.toBeDisabled());
-      await user.click(button);
-      await waitFor(() => {
-        expect(setLoading).toHaveBeenCalledWith(false);
-      });
-    });
-
-    it("calls setLoading(false) after compute error", async () => {
-      const setLoading = vi.fn();
-      vi.mocked(computeRankings).mockRejectedValue(new Error("fail"));
-      vi.mocked(useStore).mockReturnValue(
-        makeStoreMock({
-          sources: SOURCES,
-          weights: { nhl_com: 100 },
-          setLoading,
-          activeWeights: vi.fn().mockReturnValue({ nhl_com: 100 }),
-        })
-      );
-      const user = userEvent.setup();
-      render(<DashboardPage />);
-      const button = screen.getByRole("button", { name: /compute/i });
-      await waitFor(() => expect(button).not.toBeDisabled());
-      await user.click(button);
-      await waitFor(() => {
-        expect(setLoading).toHaveBeenCalledWith(false);
-      });
-    });
-  });
-
-  describe("loading state", () => {
-    it("shows a loading indicator when loading is true", () => {
-      vi.mocked(useStore).mockReturnValue(makeStoreMock({ loading: true }));
-      render(<DashboardPage />);
-      expect(screen.getByRole("status")).toBeInTheDocument();
-    });
-
-    it("disables the Compute button when loading", () => {
-      vi.mocked(useStore).mockReturnValue(
-        makeStoreMock({ sources: SOURCES, weights: { nhl_com: 100 }, loading: true })
-      );
-      render(<DashboardPage />);
-      expect(screen.getByRole("button", { name: /compute/i })).toBeDisabled();
-    });
-  });
-
-  describe("error state", () => {
-    it("shows the error message when error is set", () => {
-      vi.mocked(useStore).mockReturnValue(
-        makeStoreMock({ error: "Failed to fetch rankings" })
-      );
-      render(<DashboardPage />);
-      expect(screen.getByText("Failed to fetch rankings")).toBeInTheDocument();
-    });
-  });
-
-  describe("results", () => {
-    it("renders the RankingsTable when rankings are available", () => {
-      vi.mocked(useStore).mockReturnValue(
-        makeStoreMock({ sources: SOURCES, rankings: RANKINGS })
-      );
-      render(<DashboardPage />);
-      expect(screen.getByRole("table")).toBeInTheDocument();
-    });
-
-    it("shows cached badge when result is from cache", () => {
-      vi.mocked(useStore).mockReturnValue(
-        makeStoreMock({ sources: SOURCES, rankings: RANKINGS, cached: true })
-      );
-      render(<DashboardPage />);
-      expect(screen.getByText(/cached/i)).toBeInTheDocument();
-    });
+  it("renders the export buttons", async () => {
+    const element = await DashboardPage();
+    render(element);
+    expect(
+      screen.getByRole("button", { name: /export rankings/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /export draft sheet/i }),
+    ).toBeInTheDocument();
   });
 });
