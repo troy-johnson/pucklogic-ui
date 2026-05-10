@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSession } from "@/lib/api/draft-sessions";
+import { writeDraftSessionCookie } from "@/lib/draft-session-cookie";
 import { createClient } from "@/lib/supabase/client";
 import { useStore } from "@/store";
 
@@ -29,7 +30,7 @@ export function StartDraftModal({
 
       const response = await createSession({ kitId }, token);
 
-      document.cookie = `draft-session-id=${response.session_id}; path=/; SameSite=Lax`;
+      writeDraftSessionCookie(response.session_id);
 
       startSession({ sessionId: response.session_id, kitId });
 

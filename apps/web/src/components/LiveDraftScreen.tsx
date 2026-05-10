@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useStore } from "@/store";
 import { ManualPickDrawer } from "./ManualPickDrawer";
+import type { SyncStateResponse } from "@/lib/api/draft-sessions";
+import type { DraftMode } from "@/store/slices/draftSession";
 import type { DraftPick, RankedPlayer } from "@/types";
 
 const POSITIONS = ["All", "C", "LW", "RW", "D", "G"] as const;
@@ -19,12 +21,33 @@ const ROSTER_NEEDS: Record<string, { filled: number; needed: number }> = {
 interface Props {
   players: RankedPlayer[];
   myTeamPlayers: RankedPlayer[];
+  initialSyncState?: SyncStateResponse;
 }
 
-export function LiveDraftScreen({ players, myTeamPlayers: _myTeamPlayers }: Props) {
-  const { picks, mode, sessionId, setMode, recordPick } = useStore();
+export function LiveDraftScreen({
+  players,
+  myTeamPlayers: _myTeamPlayers,
+  initialSyncState,
+}: Props) {
+  const { picks, mode, sessionId, setMode, recordPick, hydrateSession } = useStore();
   const [activePosition, setActivePosition] = useState<Position>("All");
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    if (initialSyncState && sessionId !== initialSyncState.session_id) {
+      hydrateSession({
+        sessionId: initialSyncState.session_id,
+        picks: initialSyncState.picks.map((p) => ({
+          playerId: p.player_id,
+          playerName: p.player_name,
+          round: p.round,
+          pickNumber: p.pick_number,
+          recordedAt: p.recorded_at,
+        })),
+        mode: initialSyncState.mode as DraftMode,
+      });
+    }
+  }, [initialSyncState, sessionId, hydrateSession]);
 
   const pickedIds = new Set(picks.map((p: DraftPick) => p.playerId));
 

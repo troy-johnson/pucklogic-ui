@@ -12,6 +12,11 @@ export interface DraftSessionSlice {
   status: DraftStatus;
 
   startSession: (payload: { sessionId: string; kitId: string }) => void;
+  hydrateSession: (payload: {
+    sessionId: string;
+    picks: DraftPick[];
+    mode: DraftMode;
+  }) => void;
   recordPick: (pick: DraftPick) => void;
   setMode: (mode: DraftMode) => void;
   endSession: () => void;
@@ -37,12 +42,21 @@ export const createDraftSessionSlice: StateCreator<
   startSession: ({ sessionId, kitId }) =>
     set({ sessionId, kitId, status: "active", picks: [], mode: "sync" }),
 
+  hydrateSession: ({ sessionId, picks, mode }) =>
+    set((state) => ({
+      sessionId,
+      picks,
+      mode,
+      status: "active",
+      kitId: state.kitId,
+    })),
+
   recordPick: (pick) =>
     set((state) => ({ picks: [...state.picks, pick] })),
 
   setMode: (mode) => set({ mode }),
 
-  endSession: () => set({ status: "ended", mode: "sync" }),
+  endSession: () => set({ ...INITIAL_STATE, status: "ended" }),
 
   reset: () => set(INITIAL_STATE),
 });

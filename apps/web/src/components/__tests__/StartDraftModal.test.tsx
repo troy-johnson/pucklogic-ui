@@ -53,4 +53,11 @@ describe("StartDraftModal", () => {
     await user.click(screen.getByRole("button", { name: /start draft/i }));
     expect(mockPush).toHaveBeenCalledWith("/live");
   });
+
+  it("writes the draft-session-id cookie on success", async () => {
+    const user = userEvent.setup();
+    render(<StartDraftModal kitId="kit-1" onClose={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: /start draft/i }));
+    expect(document.cookie).toContain("draft-session-id=sess-abc");
+  });
 });

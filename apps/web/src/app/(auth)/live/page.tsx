@@ -1,8 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { fetchSyncState } from "@/lib/api/draft-sessions";
-import { fetchSources } from "@/lib/api/sources";
+import { fetchSyncState, type SyncStateResponse } from "@/lib/api/draft-sessions";
 import { LiveDraftScreen } from "@/components/LiveDraftScreen";
 
 export default async function LivePage() {
@@ -19,14 +18,24 @@ export default async function LivePage() {
   } = await supabase.auth.getSession();
   const token = session?.access_token ?? "";
 
-  const [syncState, sources] = await Promise.allSettled([
-    fetchSyncState(sessionId, token),
-    fetchSources(),
-  ]);
+  let syncState: SyncStateResponse | undefined;
+  try {
+    syncState = await fetchSyncState(sessionId, token);
+  } catch {
+    // Stale or invalid sessionId — bounce back to dashboard.
+    // The cookie cleanup happens client-side; the redirect prevents
+    // a broken /live render in the meantime.
+    redirect("/dashboard");
+  }
 
-  const players =
-    syncState.status === "fulfilled" ? [] : [];
-  void sources;
-
-  return <LiveDraftScreen players={players} myTeamPlayers={[]} />;
+  // Ranked players come from a separate compute call gated on user
+  // scoring config / platform — wired in a follow-up. For now LiveDraftScreen
+  // renders with no available players but full session-state hydration.
+  return (
+    <LiveDraftScreen
+      players={[]}
+      myTeamPlayers={[]}
+      initialSyncState={syncState}
+    />
+  );
 }

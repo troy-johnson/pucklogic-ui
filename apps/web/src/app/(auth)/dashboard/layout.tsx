@@ -1,3 +1,5 @@
+import { StartDraftButton } from "@/components/StartDraftButton";
+
 export default function DashboardLayout({
   children,
 }: {
@@ -30,9 +32,7 @@ export default function DashboardLayout({
           Weights
         </button>
         <div className="ml-auto">
-          <button className="pl-btn-primary flex items-center gap-1.5 rounded px-3 py-1 text-xs">
-            ▶ Compute
-          </button>
+          <StartDraftButton />
         </div>
       </div>
       <div className="flex flex-1 flex-col">{children}</div>

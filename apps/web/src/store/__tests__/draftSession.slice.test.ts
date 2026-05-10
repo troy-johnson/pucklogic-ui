@@ -75,6 +75,21 @@ describe("recordPick", () => {
   });
 });
 
+describe("hydrateSession", () => {
+  it("populates sessionId, picks, and mode from server data", () => {
+    const store = makeStore();
+    store.getState().hydrateSession({
+      sessionId: "sess-hydrate",
+      picks: [PICK, { ...PICK, playerId: "p2", pickNumber: 4 }],
+      mode: "manual",
+    });
+    expect(store.getState().sessionId).toBe("sess-hydrate");
+    expect(store.getState().picks).toHaveLength(2);
+    expect(store.getState().mode).toBe("manual");
+    expect(store.getState().status).toBe("active");
+  });
+});
+
 describe("setMode", () => {
   it("updates the draft mode", () => {
     const store = makeStore();
