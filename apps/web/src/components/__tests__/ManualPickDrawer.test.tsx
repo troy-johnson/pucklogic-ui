@@ -92,6 +92,44 @@ describe("ManualPickDrawer", () => {
     expect(screen.getByRole("button", { name: /confirm pick/i })).not.toBeDisabled();
   });
 
+  it("resets round/pick defaults when reopened with new props", () => {
+    const { rerender } = render(
+      <ManualPickDrawer
+        open
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+        players={PLAYERS}
+        currentRound={1}
+        currentPick={1}
+      />,
+    );
+    expect((screen.getByLabelText(/round/i) as HTMLInputElement).value).toBe("1");
+
+    // Close, advance the draft, then reopen with new round/pick values.
+    rerender(
+      <ManualPickDrawer
+        open={false}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+        players={PLAYERS}
+        currentRound={3}
+        currentPick={5}
+      />,
+    );
+    rerender(
+      <ManualPickDrawer
+        open
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+        players={PLAYERS}
+        currentRound={3}
+        currentPick={5}
+      />,
+    );
+    expect((screen.getByLabelText(/round/i) as HTMLInputElement).value).toBe("3");
+    expect((screen.getByLabelText(/^pick$/i) as HTMLInputElement).value).toBe("5");
+  });
+
   it('calls onConfirm and shows "Recorded" flash after confirm', async () => {
     const onConfirm = vi.fn();
     const user = userEvent.setup();

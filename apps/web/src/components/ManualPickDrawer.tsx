@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { RankedPlayer } from "@/types";
 
 interface Props {
@@ -29,6 +29,16 @@ export function ManualPickDrawer({
   const [recorded, setRecorded] = useState(false);
   const [round, setRound] = useState(currentRound);
   const [pick, setPick] = useState(currentPick);
+
+  // The drawer stays mounted across open/close transitions, so sync the
+  // round/pick defaults to the live props each time it reopens — otherwise
+  // a manual pick recorded after several rounds would carry stale numbers.
+  useEffect(() => {
+    if (open) {
+      setRound(currentRound);
+      setPick(currentPick);
+    }
+  }, [open, currentRound, currentPick]);
 
   const filtered = useMemo(() => {
     if (!query) return players;

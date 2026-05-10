@@ -242,15 +242,34 @@ Self-review minors flagged in PR/QA round 1 but deferred at the time, addressed 
 
 ### Round 3 status
 
-All initial-review minors resolved. **181 tests passing, build clean.** No outstanding findings from any review round.
+All initial-review minors resolved.
+
+## Round 4 (Codex automated review, 2026-05-10)
+
+GitHub PR comments from `chatgpt-codex-connector[bot]` flagging two findings on the open PR.
+
+| ID | Severity | File | Comment ID | Finding |
+|---|---|---|---|---|
+| C-1 | P1 | `app/(auth)/live/page.tsx` | 3214125230 | `players` hardcoded to `[]` in both ternary branches; `/live` renders empty even when `fetchSyncState` succeeds. (Reviewed against early commit `a004bc36c5` — superseded.) |
+| C-2 | P2 | `components/ManualPickDrawer.tsx:31` | 3214125232 | `round` / `pick` initialized from props once via `useState`; drawer stays mounted across open/close, so subsequent openings keep stale values. After the draft advances, manual picks could be recorded against the wrong round/pick numbers. |
+
+### Resolutions
+
+- C-1 → Already resolved before the comment was posted, in commit `c44bf4f`. Current `live/page.tsx` passes `rankings` from `loadInitialRankings(token)` to `LiveDraftScreen.players`. No additional change needed.
+- C-2 → Real bug, fixed. Added a `useEffect` that re-syncs `round`/`pick` state to the live `currentRound`/`currentPick` props each time `open` flips to `true`. Regression test added that mounts the drawer with `{round: 1, pick: 1}`, closes/reopens with `{round: 3, pick: 5}`, and asserts the inputs reflect the new defaults.
+
+### Round 4 status
+
+All Codex findings resolved. **182 tests passing, build clean.** No outstanding findings from any review round.
 
 ---
 
 ## Test/build evidence
 
-- `pnpm --filter @pucklogic/web test` → 181/181 passing across 26 files
+- `pnpm --filter @pucklogic/web test` → 182/182 passing across 26 files
 - `pnpm --filter @pucklogic/web build` → exits 0; routes `/`, `/auth/callback`, `/dashboard`, `/live`, `/login`, `/signup` all compile
-- New tests added in remediation across all rounds: 16
+- New tests added in remediation across all rounds: 17
   - Round 1: 4 (hydrateSession kitId×2, KitSwitcher dropdown×2)
   - Round 2: 9 (5 user-kits token-auth + 3 KitContextSwitcher + 1 LiveDraftScreen mock fix)
   - Round 3: 7 (5 safeNextPath unit + 2 middleware next-redirect preservation)
+  - Round 4: 1 (ManualPickDrawer reopen-prop-sync regression test)
