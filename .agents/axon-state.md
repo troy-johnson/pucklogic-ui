@@ -2,13 +2,25 @@
 
 | Field | Value |
 |---|---|
-| Active Phase | `idle` — Milestone C complete |
-| Active Branch | `main` |
-| Open PR | None — PR #36 merged 2026-05-06 |
-| Current Focus | Milestone D — Build web draft kit UI |
-| Track | N/A — between tracks |
-| Last Action | Post-merge docs/Serena sync for Milestone C closure |
+| Active Phase | `review` — Milestone D implementation complete, PR open |
+| Active Branch | `feat/milestone-d-web-ui` (tracking origin) |
+| Open PR | [#37](https://github.com/troy-johnson/pucklogic-ui/pull/37) — `feat(web): Milestone D — web draft kit UI` |
+| Current Focus | Final reviewer pass on PR #37; ship gate clears after confirmation |
+| Track | implement-tdd → review |
+| Last Action | 2026-05-10: addressed Codex C-2 (ManualPickDrawer stale defaults) in 8e301ba; replied to both inline comments; updated adversarial packet with round 4 |
 | Next Session Entry | See `docs/state/workflow-state.md` |
+
+## Milestone D implementation outcome (2026-05-09 → 2026-05-10)
+
+- Implemented all 5 waves of plan `010a` on `feat/milestone-d-web-ui`: design-token baseline (c6b78e4), shell + landing + middleware + auth layout (a38c6f9), pre-draft workspace + kits + auth pages (6e0ec19), draft-session API + slice + StartDraftModal (fe888eb), live draft screen + manual pick drawer + reconnect banner (190460d).
+- All 23 AC items green; 182 tests passing across 26 files; production build exits 0 with routes `/`, `/auth/callback`, `/dashboard`, `/live`, `/login`, `/signup`.
+- PR #37 opened against `main`; CI green (Backend tests, Frontend tests, Vercel preview).
+- Four review rounds resolved; full audit trail in `docs/plans/010a-adversarial-review-r1.md`:
+  - PR/QA round 1 (self-review) fixed in c96f56d + 235c09b: live route hydration, StartDraftModal entry point, cookie hardening, KitSwitcher real dropdown, kitId hydration.
+  - PR/QA round 2 (external review) fixed in c44bf4f: real ranked players on /dashboard and /live, KitContextSwitcher kit loading, entitlement error logging, end-draft cookie cleanup, user-kits token-auth tests.
+  - PR/QA round 3 (deferred minors) fixed in ba8bfa9: token consistency, `?next=` redirect, callback error logging, KitSwitcher name collision.
+  - PR/QA round 4 (Codex) C-1 already resolved in c44bf4f; C-2 (ManualPickDrawer stale defaults) fixed in 8e301ba.
+- Adversarial PR/QA coverage on auth-surface files (`middleware.ts`, `(auth)/layout.tsx`, `auth/callback/route.ts`, `StartDraftModal.tsx`) complete per plan ship-gate requirement.
 
 ## Merge and code review outcome (2026-04-10)
 
