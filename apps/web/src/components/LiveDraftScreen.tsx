@@ -37,6 +37,7 @@ export function LiveDraftScreen({
     if (initialSyncState && sessionId !== initialSyncState.session_id) {
       hydrateSession({
         sessionId: initialSyncState.session_id,
+        kitId: initialSyncState.kit_id,
         picks: initialSyncState.picks.map((p) => ({
           playerId: p.player_id,
           playerName: p.player_name,

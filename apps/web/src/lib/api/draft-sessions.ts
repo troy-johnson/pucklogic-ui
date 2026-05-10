@@ -8,6 +8,7 @@ export interface SessionResponse {
 
 export interface SyncStateResponse {
   session_id: string;
+  kit_id?: string;
   picks: PickRecord[];
   mode: string;
   status: string;

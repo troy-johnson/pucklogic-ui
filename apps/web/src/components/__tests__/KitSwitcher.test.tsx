@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 vi.mock("@/store", () => ({
   useStore: vi.fn(),
@@ -70,5 +71,24 @@ describe("KitSwitcher", () => {
     render(<KitSwitcher open onClose={vi.fn()} />);
     const menuTriggers = screen.getAllByRole("button", { name: /kit options/i });
     expect(menuTriggers).toHaveLength(2);
+  });
+
+  it("does not show the dropdown menu by default", () => {
+    mockStore();
+    render(<KitSwitcher open onClose={vi.fn()} />);
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("clicking the overflow trigger reveals Rename/Duplicate/Delete menu items", async () => {
+    mockStore();
+    const user = userEvent.setup();
+    render(<KitSwitcher open onClose={vi.fn()} />);
+    const triggers = screen.getAllByRole("button", { name: /kit options/i });
+    await user.click(triggers[0]);
+    const menu = screen.getByRole("menu");
+    expect(menu).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /rename/i })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /duplicate/i })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /^delete$/i })).toBeInTheDocument();
   });
 });

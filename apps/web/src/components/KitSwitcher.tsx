@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "@/store";
 import { createKit, deleteKit, duplicateKit, updateKit } from "@/lib/api/user-kits";
 import { createClient } from "@/lib/supabase/client";
@@ -25,6 +25,19 @@ export function KitSwitcher({
   const [newKitName, setNewKitName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!openMenuId) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [openMenuId]);
 
   if (!open) return null;
 
@@ -123,27 +136,62 @@ export function KitSwitcher({
                 )}
               </button>
 
-              <button
-                aria-label="Kit options"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // Dropdown would open here — for now inline actions via context
-                  const action = window.prompt(
-                    `${kit.name}: type rename, duplicate, or delete`,
-                  );
-                  if (action === "rename") {
-                    setEditingId(kit.id);
-                    setEditingName(kit.name);
-                  } else if (action === "duplicate") {
-                    handleDuplicate(kit.id);
-                  } else if (action === "delete") {
-                    handleDelete(kit.id);
-                  }
-                }}
-                className="pl-btn-ghost hidden rounded p-1 text-xs group-hover:flex"
-              >
-                ···
-              </button>
+              <div className="relative" ref={openMenuId === kit.id ? menuRef : undefined}>
+                <button
+                  aria-label="Kit options"
+                  aria-haspopup="menu"
+                  aria-expanded={openMenuId === kit.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenMenuId((cur) => (cur === kit.id ? null : kit.id));
+                  }}
+                  className="pl-btn-ghost rounded p-1 text-xs"
+                >
+                  ···
+                </button>
+
+                {openMenuId === kit.id && (
+                  <div
+                    role="menu"
+                    aria-label={`${kit.name} options`}
+                    className="pl-card-elevated absolute right-0 top-full z-10 mt-1 w-32 overflow-hidden rounded-md py-1"
+                  >
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        setEditingId(kit.id);
+                        setEditingName(kit.name);
+                        setOpenMenuId(null);
+                      }}
+                      className="block w-full px-3 py-1.5 text-left text-xs hover:bg-bg-overlay"
+                    >
+                      Rename
+                    </button>
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        handleDuplicate(kit.id);
+                        setOpenMenuId(null);
+                      }}
+                      className="block w-full px-3 py-1.5 text-left text-xs hover:bg-bg-overlay"
+                    >
+                      Duplicate
+                    </button>
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        if (confirm(`Delete "${kit.name}"?`)) {
+                          handleDelete(kit.id);
+                        }
+                        setOpenMenuId(null);
+                      }}
+                      className="block w-full px-3 py-1.5 text-left text-xs text-color-error hover:bg-color-error/10"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>

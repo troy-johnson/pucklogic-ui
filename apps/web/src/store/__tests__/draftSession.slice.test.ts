@@ -88,6 +88,28 @@ describe("hydrateSession", () => {
     expect(store.getState().mode).toBe("manual");
     expect(store.getState().status).toBe("active");
   });
+
+  it("sets kitId when provided in payload", () => {
+    const store = makeStore();
+    store.getState().hydrateSession({
+      sessionId: "sess-1",
+      kitId: "kit-from-server",
+      picks: [],
+      mode: "sync",
+    });
+    expect(store.getState().kitId).toBe("kit-from-server");
+  });
+
+  it("preserves existing kitId when payload omits kitId", () => {
+    const store = makeStore();
+    store.getState().startSession({ sessionId: "s0", kitId: "existing-kit" });
+    store.getState().hydrateSession({
+      sessionId: "sess-2",
+      picks: [],
+      mode: "sync",
+    });
+    expect(store.getState().kitId).toBe("existing-kit");
+  });
 });
 
 describe("setMode", () => {
