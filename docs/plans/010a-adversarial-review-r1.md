@@ -220,12 +220,37 @@ Round 1 verdict was BLOCKED on F-1, F-2, F-3. All 5 corrections applied 2026-05-
 
 ### Round 2 status
 
-All blockers and important findings resolved. **174 tests passing, build clean.** Awaiting reviewer confirmation that the resolutions clear the ship gate.
+All blockers and important findings resolved. Awaiting reviewer confirmation that the resolutions clear the ship gate.
+
+## Round 3 (initial-review minors, 2026-05-10)
+
+Self-review minors flagged in PR/QA round 1 but deferred at the time, addressed pre-emptively in commit `ba8bfa9` to clean up the diff before final reviewer pass.
+
+| ID | Severity | File | Finding |
+|---|---|---|---|
+| m-1 | Minor | `lib/rankings/load-initial.ts` | `fetchSources` / `fetchScoringConfigPresets` / `computeRankings` called without a token; inconsistent with `(auth)/layout.tsx` which passes it. Brittle if endpoints later require auth. |
+| m-2 | Minor | `auth/callback/route.ts`, `app/login/page.tsx`, `middleware.ts` | `next` query param ignored — users always land on `/dashboard` after login regardless of intended destination. |
+| m-3 | Minor | `auth/callback/route.ts` | Silently swallows `exchangeCodeForSession` errors with only `?error=auth_callback_failed` in URL; no server-side log. |
+| m-4 | Minor | `KitSwitcher.tsx` | `updateKit` imported from API and also destructured from store (renamed to `updateKitStore`); read-confusing. |
+
+### Resolutions (commit `ba8bfa9`)
+
+- m-1 → All three API functions now accept optional `token`; `loadInitialRankings` forwards it; `dashboard/page.tsx` fetches `session.access_token` before calling; `live/page.tsx` reuses the token it already had. Public endpoints continue to work since the token is optional.
+- m-2 → Middleware preserves intended path as `?next=<path>` (skipping when target is `/dashboard`); new `lib/safe-next.ts` `safeNextPath()` validates that the value starts with `/` and isn't protocol-relative; login page reads via `useSearchParams` and uses the validated path on `router.push`; auth callback honors the same param. Login page wraps the form in `<Suspense>` for static prerender compatibility.
+- m-3 → `auth/callback/route.ts` now `console.error`s both exchange failures and missing-code requests, mirroring the entitlements logging in `(auth)/layout.tsx`.
+- m-4 → KitSwitcher API imports aliased (`apiCreateKit` / `apiDeleteKit` / `apiDuplicateKit` / `apiUpdateKit`); store action keeps the natural `updateKit` name.
+
+### Round 3 status
+
+All initial-review minors resolved. **181 tests passing, build clean.** No outstanding findings from any review round.
 
 ---
 
 ## Test/build evidence
 
-- `pnpm --filter @pucklogic/web test` → 174/174 passing across 25 files
+- `pnpm --filter @pucklogic/web test` → 181/181 passing across 26 files
 - `pnpm --filter @pucklogic/web build` → exits 0; routes `/`, `/auth/callback`, `/dashboard`, `/live`, `/login`, `/signup` all compile
-- New tests added in remediation: 9 (5 user-kits token-auth, 3 KitContextSwitcher, 1 LiveDraftScreen mock fix)
+- New tests added in remediation across all rounds: 16
+  - Round 1: 4 (hydrateSession kitId×2, KitSwitcher dropdown×2)
+  - Round 2: 9 (5 user-kits token-auth + 3 KitContextSwitcher + 1 LiveDraftScreen mock fix)
+  - Round 3: 7 (5 safeNextPath unit + 2 middleware next-redirect preservation)
