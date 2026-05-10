@@ -2,7 +2,7 @@
 
 **Launch target:** Mid-September 2026  
 **Strategy:** Ship web draft kit first. Extension is conditional — proceeds only if it does not jeopardize the web launch.  
-**Current date:** 2026-04-19  
+**Current date:** 2026-05-10  
 **Solo dev — nights and weekends**
 
 ---
@@ -14,22 +14,23 @@
 | A — Scraper hardening + backfill | Mar 28 – Apr 12 | In progress | [Plan 008a](plans/008a-draft-season-readiness.md) |
 | F — First real ML execution | Apr 13 – Apr 20 | Complete | [Plan 008a §F](plans/008a-draft-season-readiness.md#milestone-f--first-real-ml-execution-run) |
 | B — Lock draft kit workflow / UI scope | Apr 21 – May 4 | Approved early | [Spec 009](specs/009-web-draft-kit-ux.md) · [ADR 007](adrs/007-web-first-draft-session-and-temp-kit-lifecycle.md) |
-| C — Backend integration verification | May 5 – May 18 | Planned | [Plan 008a §C](plans/008a-draft-season-readiness.md#milestone-c--verify--gap-fill-backend-integration) |
-| D — Build web draft kit UI | May 19 – Jun 29 | Planned | [Spec 009](specs/009-web-draft-kit-ux.md) |
+| C — Backend integration verification | May 5 – May 18 | **Complete** | [Spec 011](specs/011-milestone-c-token-pass-backend.md) · [Plan 011a](plans/011a-token-pass-entitlements-and-gating.md) · [Plan 011b](plans/011b-session-close-rankings-snapshot.md) |
+| D — Build web draft kit UI | May 19 – Jun 29 | **In review (PR #37)** | [Spec 010](specs/010-web-ui-wireframes-design.md) · [Plan 010a](plans/010a-web-draft-kit-ui.md) |
 | E — Polish exports | Jun 30 – Jul 13 | Planned | [Plan 008a §E](plans/008a-draft-season-readiness.md#milestone-e--make-exports-launch-grade) |
 | G — Launch hardening | Jul 14 – Aug 17 | Planned | [Plan 008a §G](plans/008a-draft-season-readiness.md#milestone-g--harden-the-web-launch) |
 | H — Extension go/no-go | Aug 18 – Aug 24 | Conditional | [Plan 008a §H](plans/008a-draft-season-readiness.md#milestone-h--extension-gono-go) |
 | I — Extension MVP / beta | Aug 25 – Sep 14 | Conditional | [Spec 008](specs/008-live-draft-sync-launch-required.md) · [Plan 008a §I](plans/008a-draft-season-readiness.md#milestone-i--extension-mvp--beta-conditional) |
 
-### Current execution reality (2026-04-29)
+### Current execution reality (2026-05-10)
 
 - `008a` remains a **reference roadmap**, not the literal active execution order.
 - `008b` live-draft backend, `008d` draft-pass lifecycle, and `008e` optional pick-number follow-up are **implemented and merged on `main`**.
 - `008c` extension sync adapters are implemented; remaining validation is season-blocked live draft-room verification, with Yahoo still gated/non-blocking.
-- `010a` web draft kit UI remains **scaffold-only** until spec `010` is approved.
-- **Next execution priority:** Milestone C backend additions (token model + Stripe token purchase flow + token balance surfaces + kit-pass entitlement gating).
+- **Milestone C complete:** `011a` (kit-pass entitlements + Stripe + route gating) and `011b` (session close rankings snapshot) merged on `main` via PR #36 (2026-05-06).
+- **Milestone D implementation complete, in review:** spec `010` and plan `010a` approved; all 5 waves shipped on `feat/milestone-d-web-ui`; 182 tests passing, build clean. Four review rounds resolved (plan-stage, PR/QA self-review, external review, Codex automated). Awaiting reviewer ship gate on PR #37 before merge.
+- **Next execution priority:** merge PR #37 and proceed to Milestone E (export polish).
 
-Use this roadmap for milestone sequencing and launch prioritization. For live branch/phase status, defer to `.agents/axon-state.md` and the active plan docs.
+Use this roadmap for milestone sequencing and launch prioritization. For live branch/phase status, defer to `docs/state/workflow-state.md` and the active plan docs.
 
 ---
 
@@ -42,12 +43,12 @@ Items identified during Milestone B spec review that need to land in later miles
 - [x] Approve token-based session model (buy passes in advance, consume at draft room entry)
 - [x] Approve closed beta feedback pipeline: Discord + structured prompt; user sourcing deferred to Aug 2026
 
-### Milestone C backend additions (May 5 – May 18)
-- [ ] Implement spec 011 entitlement model on `subscriptions` (kit-pass season + purchase timestamp; no separate `draft_tokens` table)
-- [ ] Update Stripe checkout/webhook flow for kit-pass product metadata (`user_id`, `product`, `season`) and idempotent crediting
-- [ ] Expose authenticated `GET /entitlements` for web app and extension entitlement reads
-- [ ] Kit pass entitlement gating for customization and export paths
-- [ ] Snapshot PuckLogic rankings into session record at session close — required for post-season "ranking vs. actual performance" ML comparison job (no UI needed; backend only)
+### Milestone C backend additions (May 5 – May 18) — **Complete**
+- [x] Implement spec 011 entitlement model on `subscriptions` (kit-pass season + purchase timestamp; no separate `draft_tokens` table)
+- [x] Update Stripe checkout/webhook flow for kit-pass product metadata (`user_id`, `product`, `season`) and idempotent crediting
+- [x] Expose authenticated `GET /entitlements` for web app and extension entitlement reads
+- [x] Kit pass entitlement gating for customization and export paths
+- [x] Snapshot PuckLogic rankings into session record at session close — required for post-season "ranking vs. actual performance" ML comparison job (no UI needed; backend only)
 
 ### Milestone I extension additions (Aug 25 – Sep 14)
 - [ ] Draft room detection → token consumption prompt ("Use PuckLogic for this draft? X sessions remaining")

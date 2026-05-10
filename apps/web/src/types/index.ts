@@ -100,3 +100,11 @@ export interface CreateUserKitRequest {
   name: string;
   source_weights: Record<string, number>;
 }
+
+export interface DraftPick {
+  playerId: string;
+  playerName: string;
+  round: number;
+  pickNumber: number;
+  recordedAt: string;
+}
