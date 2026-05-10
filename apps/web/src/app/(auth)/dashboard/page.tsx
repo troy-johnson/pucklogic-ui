@@ -36,7 +36,7 @@ export default function DashboardPage() {
         if (presets.length > 0) setScoringConfigId(presets[0].id);
       })
       .catch(() => {});
-  }, []);
+  }, [setSources]);
 
   async function handleCompute() {
     if (!scoringConfigId) return;
