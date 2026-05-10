@@ -154,5 +154,78 @@ Round 1 verdict was BLOCKED on F-1, F-2, F-3. All 5 corrections applied 2026-05-
 
 ## Downstream requirements
 
-- Adversarial PR/QA review: **required** for `middleware.ts`, `(auth)/layout.tsx`, `auth/callback/route.ts`
+- Adversarial PR/QA review: **required** for `middleware.ts`, `(auth)/layout.tsx`, `auth/callback/route.ts`, `StartDraftModal.tsx`
 - Ship gate note: all AC items must be green and PR/QA adversarial review must pass before merge
+
+---
+
+# PR/QA Adversarial Review — PR #37
+
+**Branch:** `feat/milestone-d-web-ui`
+**PR:** [#37](https://github.com/troy-johnson/pucklogic-ui/pull/37)
+**Reviewed against:** plan 010a (Approved with nits, r1 corrections applied)
+
+## Round 1 (self-review, 2026-05-09)
+
+**Reviewer lens:** correctness, plan alignment
+**Verdict:** REVISE
+
+### Findings
+
+| ID | Severity | File | Finding |
+|---|---|---|---|
+| B-1 | Blocker | `app/(auth)/live/page.tsx:27-29` | Both branches of `players` ternary return `[]`; `void sources` discards fetched data. `/live` always renders empty regardless of session state. |
+| B-2 | Blocker | dashboard layout | `StartDraftModal` exists and is tested but has no call site — user has no UI path to start a draft session. |
+| I-1 | Important | `StartDraftModal.tsx:32` | `draft-session-id` cookie missing `Secure` flag, no `Max-Age` (session cookie), `endSession` doesn't clear it. |
+| I-2 | Important | `KitSwitcher.tsx:131-141` | Overflow menu uses `window.prompt()` placeholder shipping in production. |
+| I-3 | Important | `LiveDraftScreen` hydration | No mechanism to hydrate Zustand store from server-fetched `syncState`; hard refresh during `/live` loses picks/mode. |
+| M-1 | Medium | `draftSession.ts:46` | `endSession()` only resets `status`/`mode`, leaves `sessionId`/`kitId`/`picks` populated. |
+
+### Resolutions (commit `c96f56d`, `235c09b`)
+
+- B-1 → `live/page.tsx` passes real `syncState`; new `hydrateSession` slice action populates store on mount
+- B-2 → New `StartDraftButton` client island wired into dashboard kit-context bar
+- I-1 → New `lib/draft-session-cookie.ts` with `Secure`/`Max-Age=24h`/`clearDraftSessionCookie`
+- I-2 → Real `role="menu"` dropdown with click-outside detection; `window.prompt` removed
+- I-3 → `SyncStateResponse.kit_id` optional; `hydrateSession` accepts `kitId` with fallback
+- M-1 → `endSession()` now fully resets state via `INITIAL_STATE` spread
+
+## Round 2 (external review, 2026-05-09)
+
+**Reviewer:** external review disposition (inline; not written to disk)
+**Verdict:** REVISE — ship gate BLOCKED
+
+### Findings
+
+| ID | Severity | File | Finding |
+|---|---|---|---|
+| B2-1 | Blocker | `app/(auth)/live/page.tsx` | `players={[]}` and `myTeamPlayers={[]}` — core draft experience renders blank board on hard navigation/refresh |
+| B2-2 | Blocker | `app/(auth)/dashboard/page.tsx` | Pre-draft workspace passes empty data — workspace reachable but functionally blank |
+| B2-3 | Blocker | dashboard layout | `KitSwitcher` not reachable from app UI; only static context buttons present |
+| I2-1 | Important | `lib/api/__tests__/user-kits.test.ts` | Token-auth API surface (`listKits`/`createKit`/etc.) lacks direct test coverage |
+| I2-2 | Important | `app/(auth)/layout.tsx` | Silent fallback to 0 draft passes on entitlement fetch failure can mask auth/API outages |
+| I2-3 | Important | (informational) | High-risk auth/session paths touched: middleware, auth layout, PKCE callback, JS-writable draft-session cookie, live session hydration |
+| m2-1 | Minor | `lib/draft-session-cookie.ts` | `clearDraftSessionCookie()` defined but unused; stale cookies persist after session end |
+| m2-2 | Minor | (structural) | `draft-session-id` is JS-writable by design; XSS could tamper. Mitigated by `SameSite=Lax` + conditional `Secure` + 24h `Max-Age` |
+
+### Resolutions (commit `c44bf4f`)
+
+- B2-1 + B2-2 → New `lib/rankings/load-initial.ts` server-side helper. Fetches sources, default scoring preset, computes baseline rankings with equal weights. Both `/dashboard` and `/live` consume it; `LiveDraftScreen` and `PreDraftWorkspace` render real ranked players.
+- B2-3 → New `KitContextSwitcher` client island. Loads kits via `listKits(token)` on mount, populates Zustand store, replaces static "Draft Kit" button. Click opens existing `KitSwitcher` drawer.
+- I2-1 → 5 new tests in `user-kits.test.ts` covering path, method, and `Authorization: Bearer` header for each token-auth function.
+- I2-2 → `(auth)/layout.tsx` now `console.error`s entitlement failures; degraded "0 passes" state distinguishable from real zero-balance accounts in server logs.
+- m2-1 → `clearDraftSessionCookie()` wired into new "End draft" button in `LiveDraftScreen` (calls `endSession()` + clears cookie + routes to `/dashboard`).
+- m2-2 → Accepted as structural. The cookie must be JS-writable for the start-draft flow (Task 4.5). Mitigations remain: `SameSite=Lax`, conditional `Secure`, `Max-Age=24h`, server-side validation via `fetchSyncState`. Documented as accepted risk.
+- I2-3 → Acknowledged. Auth-surface changes covered by middleware unit tests, auth-pages tests, and StartDraftModal cookie-write assertion. Remains gated on adversarial PR/QA review (this packet) before merge.
+
+### Round 2 status
+
+All blockers and important findings resolved. **174 tests passing, build clean.** Awaiting reviewer confirmation that the resolutions clear the ship gate.
+
+---
+
+## Test/build evidence
+
+- `pnpm --filter @pucklogic/web test` → 174/174 passing across 25 files
+- `pnpm --filter @pucklogic/web build` → exits 0; routes `/`, `/auth/callback`, `/dashboard`, `/live`, `/login`, `/signup` all compile
+- New tests added in remediation: 9 (5 user-kits token-auth, 3 KitContextSwitcher, 1 LiveDraftScreen mock fix)
