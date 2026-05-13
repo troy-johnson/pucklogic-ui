@@ -8,17 +8,18 @@ Excel: openpyxl
 from __future__ import annotations
 
 import io
+from datetime import UTC, datetime
 from typing import Any
 
 _HEADERS = [
     "Rank",
     "Player",
+    "Position",
     "Team",
-    "Pos",
-    "FanPts",
-    "VORP",
+    "PuckLogic Score",
+    "Projected Fantasy Value",
     "OffNightGames",
-    "Sources",
+    "Source Count",
     "G",
     "A",
     "PPP",
@@ -57,8 +58,8 @@ def _write_rankings_sheet(
             [
                 row["composite_rank"],
                 row.get("name", ""),
-                row.get("team", ""),
                 row.get("default_position", ""),
+                row.get("team", ""),
                 _fmt(row.get("projected_fantasy_points")),
                 _fmt(row.get("vorp")),
                 row.get("off_night_games", ""),
@@ -117,8 +118,8 @@ def _write_by_position_sheet(
                 [
                     row["composite_rank"],
                     row.get("name", ""),
-                    row.get("team", ""),
                     row.get("default_position", ""),
+                    row.get("team", ""),
                     _fmt(row.get("projected_fantasy_points")),
                     _fmt(row.get("vorp")),
                     row.get("off_night_games", ""),
@@ -153,6 +154,10 @@ def generate_excel(
     from openpyxl.styles import Font, PatternFill
 
     wb = Workbook()
+    wb.properties.title = f"PuckLogic Rankings {season}"
+    wb.properties.subject = (
+        "Source context: Source Count column; League context: scoring configuration"
+    )
 
     header_fill = PatternFill(start_color="1E3A5F", end_color="1E3A5F", fill_type="solid")
     header_font = Font(color="FFFFFF", bold=True)
@@ -187,6 +192,7 @@ _HTML_TEMPLATE = """\
 <style>
   body {{ font-family: Arial, sans-serif; font-size: 11px; margin: 20px; }}
   h1 {{ color: #1e3a5f; font-size: 18px; }}
+  .context {{ color: #475569; margin-bottom: 12px; }}
   table {{ width: 100%; border-collapse: collapse; }}
   th {{ background: #1e3a5f; color: white; padding: 6px 8px; text-align: left; }}
   td {{ padding: 5px 8px; border-bottom: 1px solid #ddd; }}
@@ -196,12 +202,15 @@ _HTML_TEMPLATE = """\
 </style>
 </head>
 <body>
-<h1>PuckLogic Fantasy Rankings — {season}</h1>
+<h1>PuckLogic Draft Sheet</h1>
+<p class="context">Season: {season}</p>
+<p class="context">League context: scoring configuration</p>
+<p class="context">Generated: {generated_at}</p>
 <table>
   <thead>
     <tr>
       <th>Rank</th><th>Player</th><th>Team</th><th>Pos</th>
-      <th>FanPts</th><th>VORP</th><th>Off-Night</th>
+      <th>PuckLogic Score</th><th>Projected Fantasy Value</th><th>Off-Night</th>
       <th>G</th><th>A</th><th>PPP</th><th>SOG</th>
     </tr>
   </thead>
@@ -217,9 +226,13 @@ _HTML_TEMPLATE = """\
 def generate_pdf(
     rankings: list[dict[str, Any]],
     season: str,
+    *,
+    generated_at: str | None = None,
 ) -> bytes:
     """Return a PDF as bytes. Requires WeasyPrint to be installed."""
     from weasyprint import HTML
+
+    rendered_generated_at = generated_at or datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
 
     rows_html = ""
     for row in rankings:
@@ -242,5 +255,9 @@ def generate_pdf(
             f"</tr>\n"
         )
 
-    html_content = _HTML_TEMPLATE.format(season=season, rows=rows_html)
+    html_content = _HTML_TEMPLATE.format(
+        season=season,
+        generated_at=rendered_generated_at,
+        rows=rows_html,
+    )
     return HTML(string=html_content).write_pdf()

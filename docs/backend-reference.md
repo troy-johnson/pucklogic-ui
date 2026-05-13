@@ -500,7 +500,7 @@ DELETE /user-kits/{id}               — Delete preset (auth + active kit pass r
 
 POST   /exports/generate             — Run pipeline and stream PDF or Excel (auth + active kit pass required)
                                        Body: same as /rankings/compute + export_type: pdf|excel
-                                       Returns streaming bytes (Content-Disposition: attachment)
+                                       Returns attachment bytes with deterministic .pdf/.xlsx filename
 
 GET    /entitlements                 — Return current entitlement state (auth required)
                                        Response includes `Cache-Control: no-store`
@@ -1059,17 +1059,26 @@ async def get_player_trends(player_id: str):
 
 Exports are read-only outputs — no import slots, no VBA. **Export requires a kit pass** (per spec 009 entitlement matrix and spec 011 gating contract). Once held, kit-pass holders may export as many times as they want with any weight configuration at no additional cost — export is included with kit pass and is not sold separately.
 
+The export route preserves the synchronous bytes-response contract. It supports only `export_type: pdf|excel`; unsupported formats such as CSV are rejected by request validation. Responses use `Content-Disposition: attachment` with deterministic sanitized filenames:
+
+- Excel rankings: `pucklogic-{kit-or-config-id}-rankings-{YYYY-MM-DD}.xlsx`
+- PDF draft sheet: `pucklogic-{kit-or-config-id}-draft-sheet-{YYYY-MM-DD}.pdf`
+
+The `{kit-or-config-id}` segment currently uses the scoring config identifier available to the route as the safe kit/context fallback. Filename segments are lowercased and stripped of common filesystem-unsafe characters.
+
 **Excel — 2 sheets:**
-- **Sheet 1 — "Full Rankings {season}":** Rank, Player, Team, Pos, FanPts, VORP, ScheduleScore, OffNightGames, SourceCount, then all stat columns (skater stats, then goalie stats; null = `—`).
+- **Sheet 1 — "Full Rankings {season}":** stable header order beginning with Rank, Player, Position, Team, PuckLogic Score, Projected Fantasy Value, OffNightGames, Source Count, then stat columns used by the current ranking data (G, A, PPP, SOG, Hits, Blocks, GP, W, GA, SV%). Null numeric values render as empty cells.
 - **Sheet 2 — "By Position":** Players grouped by position (C, LW, RW, D, G) with a header row per group. Same columns as Sheet 1.
 
-Header block on both sheets: league settings, source weights used, PuckLogic Recommended flag, generated date and season.
+Workbook metadata includes `PuckLogic Rankings {season}` as the title and source/league context in the subject. Google Sheets compatibility means the generated `.xlsx` should import/open readably; there is no native Sheets API integration.
 
-**PDF — Print & Draft:** Full player rankings with blank checkbox column for pen-marking taken players; static best-available summary by position (snapshot at export time); league settings and source weights printed at top; generated date and season. Designed for offline drafts.
+**PDF — Print & Draft:** Printable ranked draft sheet with stable title/header, season, league context, generated timestamp, and row content for Rank, Player, Team, Position, PuckLogic Score, Projected Fantasy Value, Off-Night, G, A, PPP, and SOG. Designed for print or second-screen draft-room reference.
 
 **`ExportRequest`** schema fields: `season`, `source_weights`, `scoring_config_id`, `platform`, `league_profile_id` (optional). `generate_excel()` and `generate_pdf()` in `services/exports.py` accept and render: fantasy points, VORP, off-night games, full `projected_stats` object.
 
-Exports are synchronous streaming responses — no Celery job or Supabase Storage upload. `services/exports.py` exposes `generate_excel(ranked, season)` and `generate_pdf(ranked, season)` which return raw bytes; the router wraps them in `StreamingResponse` with the appropriate `Content-Disposition: attachment` header.
+Exports are synchronous attachment responses — no Celery job, export history, or Supabase Storage upload. `services/exports.py` exposes `generate_excel(ranked, season)` and `generate_pdf(ranked, season)` which return raw bytes; the router wraps them in a response with the appropriate media type and `Content-Disposition: attachment` header.
+
+Manual launch verification for Milestone E should include opening the generated XLSX in an Excel-compatible tool, importing/opening it in Google Sheets, and opening or print-previewing the generated PDF.
 
 ---
 

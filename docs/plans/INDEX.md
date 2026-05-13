@@ -22,6 +22,8 @@
 | 010a | [web-draft-kit-ui](010a-web-draft-kit-ui.md) | Implemented | 2026-05-10 | Milestone D: 5 waves, 27 tasks, 23 AC items; merged to main via PR #37; adversarial review trail in [010a-adversarial-review-r1.md](010a-adversarial-review-r1.md) |
 | 011a | [token-pass-entitlements-and-gating](011a-token-pass-entitlements-and-gating.md) | Approved | 2026-04-30 | Stripe kit-pass entitlement, authenticated entitlements read, route gating, and roadmap/docs alignment plan |
 | 011b | [session-close-rankings-snapshot](011b-session-close-rankings-snapshot.md) | Approved | 2026-04-30 | Draft-session recipe persistence and clean-close rankings snapshot plan, intentionally split from 011a schema work |
+| 012a | [export-polish-backend](012a-export-polish-backend.md) | Approved | 2026-05-11 | Milestone E backend export content, deterministic filenames, gating regressions, and canonical backend docs plan |
+| 012b | [export-polish-frontend](012b-export-polish-frontend.md) | Approved | 2026-05-11 | Milestone E pre-draft export download UX, binary API helper, error states, and canonical frontend docs plan |
 
 ## Drafts
 

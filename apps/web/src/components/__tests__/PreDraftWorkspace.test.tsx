@@ -1,11 +1,17 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 vi.mock("@/store", () => ({
   useStore: vi.fn(),
 }));
 
+vi.mock("@/lib/api/exports", () => ({
+  downloadExport: vi.fn(),
+}));
+
 import { useStore } from "@/store";
+import { downloadExport } from "@/lib/api/exports";
 import type { Source, RankedPlayer } from "@/types";
 import { PreDraftWorkspace } from "../PreDraftWorkspace";
 
@@ -57,6 +63,25 @@ function mockStore(overrides = {}) {
   } as ReturnType<typeof useStore>);
 }
 
+const EXPORT_CONTEXT = {
+  token: "tok_abc123",
+  season: "2025-26",
+  scoringConfigId: "sc-1",
+  platform: "espn",
+};
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+afterEach(() => vi.clearAllMocks());
+
 describe("PreDraftWorkspace", () => {
   it("renders RankingsTable with player data", () => {
     mockStore();
@@ -85,5 +110,158 @@ describe("PreDraftWorkspace", () => {
     expect(
       screen.getByRole("button", { name: /export draft sheet/i }),
     ).toBeInTheDocument();
+  });
+
+  it("calls the export helper for rankings downloads", async () => {
+    vi.mocked(downloadExport).mockResolvedValue("pucklogic-rankings.xlsx");
+    mockStore();
+    render(
+      <PreDraftWorkspace
+        exportContext={EXPORT_CONTEXT}
+        initialSources={SOURCES}
+        initialRankings={[]}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /export rankings/i }));
+
+    expect(downloadExport).toHaveBeenCalledWith({
+      type: "rankings",
+      token: "tok_abc123",
+      season: "2025-26",
+      sourceWeights: { nhl_com: 100 },
+      scoringConfigId: "sc-1",
+      platform: "espn",
+    });
+  });
+
+  it("calls the export helper for draft sheet downloads", async () => {
+    vi.mocked(downloadExport).mockResolvedValue("pucklogic-draft-sheet.pdf");
+    mockStore();
+    render(
+      <PreDraftWorkspace
+        exportContext={EXPORT_CONTEXT}
+        initialSources={SOURCES}
+        initialRankings={[]}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /export draft sheet/i }));
+
+    expect(downloadExport).toHaveBeenCalledWith({
+      type: "draft-sheet",
+      token: "tok_abc123",
+      season: "2025-26",
+      sourceWeights: { nhl_com: 100 },
+      scoringConfigId: "sc-1",
+      platform: "espn",
+    });
+  });
+
+  it("shows loading state and prevents duplicate rankings exports", async () => {
+    const pending = deferred<string>();
+    vi.mocked(downloadExport).mockReturnValue(pending.promise);
+    mockStore();
+    render(
+      <PreDraftWorkspace
+        exportContext={EXPORT_CONTEXT}
+        initialSources={SOURCES}
+        initialRankings={[]}
+      />,
+    );
+
+    const button = screen.getByRole("button", { name: /export rankings/i });
+    await userEvent.click(button);
+    await userEvent.click(button);
+
+    expect(screen.getByRole("button", { name: /exporting rankings/i })).toBeDisabled();
+    expect(downloadExport).toHaveBeenCalledOnce();
+    pending.resolve("pucklogic-rankings.xlsx");
+    expect(await screen.findByText(/downloaded pucklogic-rankings\.xlsx/i)).toBeInTheDocument();
+  });
+
+  it("shows a success affordance after a rankings download starts", async () => {
+    vi.mocked(downloadExport).mockResolvedValue("pucklogic-rankings.xlsx");
+    mockStore();
+    render(
+      <PreDraftWorkspace
+        exportContext={EXPORT_CONTEXT}
+        initialSources={SOURCES}
+        initialRankings={[]}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /export rankings/i }));
+
+    expect(await screen.findByText(/downloaded pucklogic-rankings\.xlsx/i)).toBeInTheDocument();
+  });
+
+  it("prompts sign-in for unauthenticated export failures", async () => {
+    vi.mocked(downloadExport).mockRejectedValue({ category: "unauthenticated" });
+    mockStore();
+    render(
+      <PreDraftWorkspace
+        exportContext={EXPORT_CONTEXT}
+        initialSources={SOURCES}
+        initialRankings={[]}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /export rankings/i }));
+
+    expect(await screen.findByText(/sign in to export/i)).toBeInTheDocument();
+  });
+
+  it("explains kit-pass requirement without leaking entitlement internals", async () => {
+    vi.mocked(downloadExport).mockRejectedValue({
+      category: "no-pass",
+      message: "kit pass required",
+    });
+    mockStore();
+    render(
+      <PreDraftWorkspace
+        exportContext={EXPORT_CONTEXT}
+        initialSources={SOURCES}
+        initialRankings={[]}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /export rankings/i }));
+
+    expect(await screen.findByText(/export requires an active kit pass/i)).toBeInTheDocument();
+    expect(screen.queryByText(/kit pass required/i)).not.toBeInTheDocument();
+  });
+
+  it("directs users to recompute missing export context", async () => {
+    vi.mocked(downloadExport).mockRejectedValue({ category: "missing-context" });
+    mockStore();
+    render(
+      <PreDraftWorkspace
+        exportContext={EXPORT_CONTEXT}
+        initialSources={SOURCES}
+        initialRankings={[]}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /export rankings/i }));
+
+    expect(await screen.findByText(/complete or recompute your kit/i)).toBeInTheDocument();
+  });
+
+  it("offers retry guidance for generation failures", async () => {
+    vi.mocked(downloadExport).mockRejectedValue({ category: "generation-failed" });
+    mockStore();
+    render(
+      <PreDraftWorkspace
+        exportContext={EXPORT_CONTEXT}
+        initialSources={SOURCES}
+        initialRankings={[]}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /export rankings/i }));
+
+    expect(await screen.findByText(/export failed/i)).toBeInTheDocument();
+    expect(screen.getByText(/try again/i)).toBeInTheDocument();
   });
 });

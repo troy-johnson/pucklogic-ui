@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -24,6 +26,25 @@ from services.exports import generate_excel, generate_pdf
 from services.projections import aggregate_projections
 
 router = APIRouter(prefix="/exports", tags=["exports"])
+
+
+def _export_date() -> str:
+    """Return the UTC date used in deterministic export attachment names."""
+    return datetime.now(UTC).strftime("%Y-%m-%d")
+
+
+def _safe_filename_part(value: str) -> str:
+    """Return a filesystem-safe filename segment."""
+    sanitized = re.sub(r"[^A-Za-z0-9-]+", "-", value).strip("-")
+    return sanitized.lower() or "export"
+
+
+def _export_filename(req: ExportRequest) -> str:
+    """Build the attachment filename for an export request."""
+    context = _safe_filename_part(req.scoring_config_id)
+    export_type = "rankings" if req.export_type == "excel" else "draft-sheet"
+    extension = "xlsx" if req.export_type == "excel" else "pdf"
+    return f"pucklogic-{context}-{export_type}-{_export_date()}.{extension}"
 
 
 @router.post("/generate")
@@ -77,19 +98,19 @@ async def generate_export(
     rows = proj_repo.get_by_season(req.season, req.platform, user["id"])
     ranked = aggregate_projections(rows, req.source_weights, scoring_config, league_profile)
 
-    filename = f"pucklogic-rankings-{req.season}"
+    filename = _export_filename(req)
 
     if req.export_type == "excel":
         content = generate_excel(ranked, req.season)
         return Response(
             content=content,
             media_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
-            headers={"Content-Disposition": f'attachment; filename="{filename}.xlsx"'},
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
     content = generate_pdf(ranked, req.season)
     return Response(
         content=content,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

@@ -1,11 +1,11 @@
 # Workflow State
 
-**Active Phase:** idle — Milestone D complete
-**Active Branch:** main
-**Active Artifacts:** none
-**Current Gate:** none
-**Blockers:** none
-**Next Action:** begin Milestone E (export polish) — scope via spec/plan as needed
+**Active Phase:** plan complete — Milestone E export polish  
+**Active Branch:** main  
+**Active Artifacts:** `docs/research/005-milestone-e-export-polish-brainstorm.md`, `docs/specs/012-export-polish.md`, `docs/plans/012a-export-polish-backend.md`, `docs/plans/012b-export-polish-frontend.md`  
+**Current Gate:** implement-tdd  
+**Blockers:** none  
+**Next Action:** implement `docs/plans/012a-export-polish-backend.md`, then `docs/plans/012b-export-polish-frontend.md`  
 **Active Snapshot Pointer:** none
 
 > This file is a current pointer, not a full session log.
@@ -33,4 +33,4 @@
 
 **Milestone C:** complete — PR #36 merged 2026-05-06
 **Milestone D:** complete — PR #37 merged 2026-05-10
-**Milestone E:** next — export polish (scope TBD)
+**Milestone E:** plans approved — backend plan `docs/plans/012a-export-polish-backend.md` and frontend plan `docs/plans/012b-export-polish-frontend.md`; CSV out of scope; XLSX/PDF launch-grade export polish only; implementation should run backend first, then frontend, with adversarial PR/QA review before ship-sync

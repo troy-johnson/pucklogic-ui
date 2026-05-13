@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError, apiFetch } from "../index";
+import { ApiError, apiFetch, apiFetchBinary } from "../index";
 
 const BASE = "http://localhost:8000";
 
@@ -76,6 +76,60 @@ describe("apiFetch", () => {
       mockFetch({ ok: false, status: 422, text: async () => "Unprocessable" });
       const err = (await apiFetch("/broken").catch((e: unknown) => e as ApiError)) as ApiError;
       expect(err.message).toBe("Unprocessable");
+    });
+  });
+});
+
+describe("apiFetchBinary", () => {
+  it("returns the raw response for successful binary downloads", async () => {
+    const blob = new Blob(["XLSXDATA"], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const response = {
+      ok: true,
+      status: 200,
+      headers: new Headers({
+        "Content-Disposition": 'attachment; filename="pucklogic-rankings.xlsx"',
+      }),
+      blob: async () => blob,
+    } as Response;
+    mockFetch(response);
+
+    const result = await apiFetchBinary("/exports/generate", {
+      method: "POST",
+      token: "tok_abc123",
+      body: JSON.stringify({ export_type: "excel" }),
+    });
+
+    expect(result).toBe(response);
+    await expect(result.blob()).resolves.toBe(blob);
+    expect(result.headers.get("Content-Disposition")).toBe(
+      'attachment; filename="pucklogic-rankings.xlsx"',
+    );
+  });
+
+  it("preserves JSON content-type and auth headers without parsing JSON", async () => {
+    const spy = mockFetch({ ok: true, status: 200, blob: async () => new Blob(["PDF"]) });
+
+    await apiFetchBinary("/exports/generate", {
+      method: "POST",
+      token: "tok_abc123",
+      body: JSON.stringify({ export_type: "pdf" }),
+    });
+
+    const [, opts] = spy.mock.calls[0];
+    expect((opts as RequestInit).headers).toMatchObject({
+      "Content-Type": "application/json",
+      Authorization: "Bearer tok_abc123",
+    });
+  });
+
+  it("throws ApiError on failed binary responses", async () => {
+    mockFetch({ ok: false, status: 403, text: async () => "kit pass required" });
+
+    await expect(apiFetchBinary("/exports/generate")).rejects.toMatchObject({
+      status: 403,
+      message: "kit pass required",
     });
   });
 });

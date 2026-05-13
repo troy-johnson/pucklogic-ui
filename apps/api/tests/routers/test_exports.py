@@ -152,6 +152,33 @@ class TestGenerateExcelExport:
         assert "attachment" in resp.headers["content-disposition"]
         assert ".xlsx" in resp.headers["content-disposition"]
 
+    def test_content_disposition_filename_contains_context_date_and_extension(
+        self,
+        client: TestClient,
+    ) -> None:
+        with (
+            patch("routers.exports._export_date", return_value="2026-05-11", create=True),
+            patch("routers.exports.generate_excel", return_value=b"XLSX"),
+        ):
+            resp = client.post("/exports/generate", json=EXCEL_BODY)
+
+        assert resp.headers["content-disposition"] == (
+            'attachment; filename="pucklogic-sc-1-rankings-2026-05-11.xlsx"'
+        )
+
+    def test_content_disposition_filename_sanitizes_context(self, client: TestClient) -> None:
+        body = {**EXCEL_BODY, "scoring_config_id": "kit:bad/name"}
+
+        with (
+            patch("routers.exports._export_date", return_value="2026-05-11", create=True),
+            patch("routers.exports.generate_excel", return_value=b"XLSX"),
+        ):
+            resp = client.post("/exports/generate", json=body)
+
+        assert resp.headers["content-disposition"] == (
+            'attachment; filename="pucklogic-kit-bad-name-rankings-2026-05-11.xlsx"'
+        )
+
     def test_returns_excel_bytes(self, client: TestClient) -> None:
         with patch("routers.exports.generate_excel", return_value=b"XLSXDATA"):
             resp = client.post("/exports/generate", json=EXCEL_BODY)
@@ -174,11 +201,38 @@ class TestGeneratePdfExport:
         assert "attachment" in resp.headers["content-disposition"]
         assert ".pdf" in resp.headers["content-disposition"]
 
+    def test_content_disposition_filename_contains_draft_sheet_type(
+        self,
+        client: TestClient,
+    ) -> None:
+        with (
+            patch("routers.exports._export_date", return_value="2026-05-11", create=True),
+            patch("routers.exports.generate_pdf", return_value=b"%PDF"),
+        ):
+            resp = client.post("/exports/generate", json=PDF_BODY)
+
+        assert resp.headers["content-disposition"] == (
+            'attachment; filename="pucklogic-sc-1-draft-sheet-2026-05-11.pdf"'
+        )
+
 
 class TestExportValidation:
     def test_invalid_export_type_returns_422(self, client: TestClient) -> None:
         body = {**EXCEL_BODY, "export_type": "csv"}
         assert client.post("/exports/generate", json=body).status_code == 422
+
+    def test_csv_export_type_does_not_invoke_generation(self, client: TestClient) -> None:
+        body = {**EXCEL_BODY, "export_type": "csv"}
+
+        with (
+            patch("routers.exports.generate_excel", return_value=b"XLSX") as excel_mock,
+            patch("routers.exports.generate_pdf", return_value=b"%PDF") as pdf_mock,
+        ):
+            resp = client.post("/exports/generate", json=body)
+
+        assert resp.status_code == 422
+        excel_mock.assert_not_called()
+        pdf_mock.assert_not_called()
 
     def test_bundle_export_type_returns_422(self, client: TestClient) -> None:
         body = {**EXCEL_BODY, "export_type": "bundle"}
@@ -224,3 +278,62 @@ class TestKitPassGating:
 
         assert resp.status_code == 403
         assert resp.json()["detail"] == "kit pass required"
+
+
+class TestExportAccessValidation:
+    def test_user_owned_source_for_another_user_is_rejected(
+        self,
+        client: TestClient,
+        mock_src_repo: MagicMock,
+    ) -> None:
+        mock_src_repo.get_by_names.return_value = {
+            "private": {"name": "private", "user_id": "other-user", "is_paid": False},
+        }
+        body = {**EXCEL_BODY, "source_weights": {"private": 1.0}}
+
+        resp = client.post("/exports/generate", json=body)
+
+        assert resp.status_code == 400
+        assert resp.json()["detail"] == "Unknown source key: private"
+
+    def test_paid_source_requires_active_subscription(
+        self,
+        client: TestClient,
+        mock_src_repo: MagicMock,
+        mock_sub_repo: MagicMock,
+    ) -> None:
+        mock_src_repo.get_by_names.return_value = {
+            "paid": {"name": "paid", "user_id": None, "is_paid": True},
+        }
+        mock_sub_repo.is_active.return_value = False
+        body = {**EXCEL_BODY, "source_weights": {"paid": 1.0}}
+
+        resp = client.post("/exports/generate", json=body)
+
+        assert resp.status_code == 403
+        assert resp.json()["detail"] == "Source 'paid' requires an active subscription"
+
+    def test_missing_scoring_config_is_rejected(
+        self,
+        client: TestClient,
+        mock_sc_repo: MagicMock,
+    ) -> None:
+        mock_sc_repo.get.return_value = None
+
+        resp = client.post("/exports/generate", json=EXCEL_BODY)
+
+        assert resp.status_code == 404
+        assert resp.json()["detail"] == "Scoring config not found"
+
+    def test_unauthorized_league_profile_is_rejected(
+        self,
+        client: TestClient,
+        mock_lp_repo: MagicMock,
+    ) -> None:
+        mock_lp_repo.get.return_value = None
+        body = {**EXCEL_BODY, "league_profile_id": "lp-other"}
+
+        resp = client.post("/exports/generate", json=body)
+
+        assert resp.status_code == 403
+        assert resp.json()["detail"] == "Not authorized to access this league profile"

@@ -99,7 +99,12 @@ def _make_weasyprint_mock(write_pdf_return: bytes = b"%PDF-1.4") -> MagicMock:
     return mock_module
 
 
-def _capture_html(rankings: list[dict[str, Any]], season: str) -> str:
+def _capture_html(
+    rankings: list[dict[str, Any]],
+    season: str,
+    *,
+    generated_at: str | None = None,
+) -> str:
     """Run generate_pdf with a mocked weasyprint and return the HTML string."""
     captured: dict[str, str] = {}
 
@@ -113,7 +118,8 @@ def _capture_html(rankings: list[dict[str, Any]], season: str) -> str:
     mock_module.HTML.side_effect = fake_html
 
     with patch.dict(sys.modules, {"weasyprint": mock_module}):
-        generate_pdf(rankings, season)
+        kwargs = {"generated_at": generated_at} if generated_at is not None else {}
+        generate_pdf(rankings, season, **kwargs)
 
     return captured["html"]
 
@@ -148,21 +154,40 @@ class TestGenerateExcel:
         wb = load_workbook(io.BytesIO(result))
         ws = wb.active
         headers = [ws.cell(1, col).value for col in range(1, 5)]
-        assert headers == ["Rank", "Player", "Team", "Pos"]
+        assert headers == ["Rank", "Player", "Position", "Team"]
 
-    def test_header_row_has_fanpts(self) -> None:
+    def test_launch_xlsx_minimum_columns_and_context_metadata(self) -> None:
+        result = generate_excel(RANKINGS, SEASON)
+        wb = load_workbook(io.BytesIO(result))
+        ws = wb.active
+
+        headers = [ws.cell(1, col).value for col in range(1, ws.max_column + 1)]
+
+        assert headers[:6] == [
+            "Rank",
+            "Player",
+            "Position",
+            "Team",
+            "PuckLogic Score",
+            "Projected Fantasy Value",
+        ]
+        assert "Source Count" in headers
+        assert wb.properties.title == f"PuckLogic Rankings {SEASON}"
+        assert "Source context" in (wb.properties.subject or "")
+
+    def test_header_row_has_pucklogic_score(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
         wb = load_workbook(io.BytesIO(result))
         ws = wb.active
         headers = [ws.cell(1, col).value for col in range(1, ws.max_column + 1)]
-        assert "FanPts" in headers
+        assert "PuckLogic Score" in headers
 
-    def test_header_row_has_vorp(self) -> None:
+    def test_header_row_has_projected_fantasy_value(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
         wb = load_workbook(io.BytesIO(result))
         ws = wb.active
         headers = [ws.cell(1, col).value for col in range(1, ws.max_column + 1)]
-        assert "VORP" in headers
+        assert "Projected Fantasy Value" in headers
 
     def test_data_rows_count(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
@@ -176,15 +201,15 @@ class TestGenerateExcel:
         ws = wb.active
         assert ws.cell(2, 1).value == 1
         assert ws.cell(2, 2).value == "Connor McDavid"
-        assert ws.cell(2, 3).value == "EDM"
-        assert ws.cell(2, 4).value == "C"
+        assert ws.cell(2, 3).value == "C"
+        assert ws.cell(2, 4).value == "EDM"
 
     def test_first_data_row_fanpts(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
         wb = load_workbook(io.BytesIO(result))
         ws = wb.active
         headers = [ws.cell(1, col).value for col in range(1, ws.max_column + 1)]
-        fp_col = headers.index("FanPts") + 1
+        fp_col = headers.index("PuckLogic Score") + 1
         assert ws.cell(2, fp_col).value == pytest.approx(290.0, abs=0.01)
 
     def test_second_data_row_values(self) -> None:
@@ -193,7 +218,7 @@ class TestGenerateExcel:
         ws = wb.active
         assert ws.cell(3, 1).value == 2
         assert ws.cell(3, 2).value == "Nathan MacKinnon"
-        assert ws.cell(3, 3).value == "COL"
+        assert ws.cell(3, 4).value == "COL"
 
     def test_single_player_no_sources(self) -> None:
         rankings = [
@@ -221,7 +246,7 @@ class TestGenerateExcel:
         wb = load_workbook(io.BytesIO(result))
         ws = wb.active
         headers = [ws.cell(1, col).value for col in range(1, ws.max_column + 1)]
-        fp_col = headers.index("FanPts") + 1
+        fp_col = headers.index("PuckLogic Score") + 1
         assert ws.cell(2, fp_col).value in (None, "")
 
     def test_header_uses_ga_not_gaa(self) -> None:
@@ -294,6 +319,20 @@ class TestGeneratePdf:
         html = _capture_html(RANKINGS, SEASON)
         assert SEASON in html
 
+    def test_printable_draft_sheet_header_context_and_timestamp(self) -> None:
+        html = _capture_html(
+            RANKINGS,
+            SEASON,
+            generated_at="2026-05-11 15:30 UTC",
+        )
+
+        assert "PuckLogic Draft Sheet" in html
+        assert f"Season: {SEASON}" in html
+        assert "League context: scoring configuration" in html
+        assert "Generated: 2026-05-11 15:30 UTC" in html
+        assert "PuckLogic Score" in html
+        assert "Projected Fantasy Value" in html
+
     def test_html_contains_player_names(self) -> None:
         html = _capture_html(RANKINGS, SEASON)
         assert "Connor McDavid" in html
@@ -313,13 +352,13 @@ class TestGeneratePdf:
         assert ">1<" in html
         assert ">2<" in html
 
-    def test_html_contains_fanpts(self) -> None:
+    def test_html_contains_pucklogic_score(self) -> None:
         html = _capture_html(RANKINGS, SEASON)
-        assert "FanPts" in html
+        assert "PuckLogic Score" in html
 
-    def test_html_contains_vorp(self) -> None:
+    def test_html_contains_projected_fantasy_value(self) -> None:
         html = _capture_html(RANKINGS, SEASON)
-        assert "VORP" in html
+        assert "Projected Fantasy Value" in html
 
     def test_html_missing_fanpts_shows_em_dash(self) -> None:
         rankings = [{**PLAYER_A, "projected_fantasy_points": None}]

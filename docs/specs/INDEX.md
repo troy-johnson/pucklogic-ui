@@ -13,3 +13,4 @@
 | 009 | [web-draft-kit-ux](009-web-draft-kit-ux.md) | Approved | 2026-04-07 | Canonical web-first draft kit UX contract for Milestone B |
 | 010 | [web-ui-wireframes-design](010-web-ui-wireframes-design.md) | Draft | 2026-04-11 | Web UI wireframe/layout decisions; still required before full 010a implementation beyond scaffolding |
 | 011 | [milestone-c-token-pass-backend](011-milestone-c-token-pass-backend.md) | Approved | 2026-04-29 | Kit-pass schema, Stripe SKU, /entitlements read surface, kit-pass gating, session-close rankings snapshot |
+| 012 | [export-polish](012-export-polish.md) | Approved | 2026-05-10 | Milestone E contract for gated, downloadable, readable XLSX/PDF exports from the pre-draft workspace |
