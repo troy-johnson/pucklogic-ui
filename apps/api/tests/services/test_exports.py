@@ -130,6 +130,12 @@ def _capture_html(
 
 
 class TestGenerateExcel:
+    def test_context_label_is_in_workbook_subject(self) -> None:
+        context_label = "Standard (sc-1); league profile: H2H; sources: hashtag:1"
+        result = generate_excel(RANKINGS, SEASON, context_label)
+        wb = load_workbook(io.BytesIO(result))
+        assert context_label in (wb.properties.subject or "")
+
     def test_returns_bytes(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
         assert isinstance(result, bytes)
@@ -332,6 +338,23 @@ class TestGeneratePdf:
         assert "Generated: 2026-05-11 15:30 UTC" in html
         assert "PuckLogic Score" in html
         assert "Projected Fantasy Value" in html
+
+    def test_printable_draft_sheet_uses_passed_context_label(self) -> None:
+        context_label = "Standard (sc-1); league profile: H2H; sources: hashtag:1"
+        html = _capture_html(
+            RANKINGS,
+            SEASON,
+            generated_at="2026-05-11 15:30 UTC",
+        )
+
+        assert "League context: scoring configuration" in html
+
+        mock_module = _make_weasyprint_mock()
+        with patch.dict(sys.modules, {"weasyprint": mock_module}):
+            generate_pdf(RANKINGS, SEASON, context_label, generated_at="2026-05-11 15:30 UTC")
+
+        rendered_html = mock_module.HTML.call_args.kwargs["string"]
+        assert f"League context: {context_label}" in rendered_html
 
     def test_html_contains_player_names(self) -> None:
         html = _capture_html(RANKINGS, SEASON)

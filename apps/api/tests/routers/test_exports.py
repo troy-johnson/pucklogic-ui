@@ -137,6 +137,17 @@ def _raise_401() -> None:
 
 
 class TestGenerateExcelExport:
+    def test_passes_context_label_to_excel_generator(self, client: TestClient) -> None:
+        with patch("routers.exports.generate_excel", return_value=b"XLSX") as export_mock:
+            resp = client.post("/exports/generate", json=EXCEL_BODY)
+
+        assert resp.status_code == 200
+        export_mock.assert_called_once()
+        args = export_mock.call_args.args
+        assert args[1] == SEASON
+        assert "Standard (sc-1)" in args[2]
+        assert "sources: hashtag:1" in args[2]
+
     def test_returns_200(self, client: TestClient) -> None:
         with patch("routers.exports.generate_excel", return_value=b"XLSX"):
             assert client.post("/exports/generate", json=EXCEL_BODY).status_code == 200
@@ -186,6 +197,17 @@ class TestGenerateExcelExport:
 
 
 class TestGeneratePdfExport:
+    def test_passes_context_label_to_pdf_generator(self, client: TestClient) -> None:
+        with patch("routers.exports.generate_pdf", return_value=b"%PDF") as export_mock:
+            resp = client.post("/exports/generate", json=PDF_BODY)
+
+        assert resp.status_code == 200
+        export_mock.assert_called_once()
+        args = export_mock.call_args.args
+        assert args[1] == SEASON
+        assert "Standard (sc-1)" in args[2]
+        assert "sources: hashtag:1" in args[2]
+
     def test_returns_200(self, client: TestClient) -> None:
         with patch("routers.exports.generate_pdf", return_value=b"%PDF"):
             assert client.post("/exports/generate", json=PDF_BODY).status_code == 200

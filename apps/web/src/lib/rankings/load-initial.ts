@@ -10,6 +10,9 @@ export interface InitialRankingsBundle {
   sources: Source[];
   rankings: RankedPlayer[];
   loadError: boolean;
+  season: string;
+  scoringConfigId: string | null;
+  platform: string;
 }
 
 /**
@@ -33,7 +36,14 @@ export async function loadInitialRankings(
     ]);
 
     if (sources.length === 0 || presets.length === 0) {
-      return { sources, rankings: [], loadError: false };
+      return {
+        sources,
+        rankings: [],
+        loadError: false,
+        season: DEFAULT_SEASON,
+        scoringConfigId: presets[0]?.id ?? null,
+        platform: DEFAULT_PLATFORM,
+      };
     }
 
     const equalShare = parseFloat((100 / sources.length).toFixed(10));
@@ -51,9 +61,23 @@ export async function loadInitialRankings(
       token,
     );
 
-    return { sources, rankings: result.rankings, loadError: false };
+    return {
+      sources,
+      rankings: result.rankings,
+      loadError: false,
+      season: DEFAULT_SEASON,
+      scoringConfigId: presets[0].id,
+      platform: DEFAULT_PLATFORM,
+    };
   } catch (err) {
     console.error("[load-initial-rankings] failed:", err);
-    return { sources: [], rankings: [], loadError: true };
+    return {
+      sources: [],
+      rankings: [],
+      loadError: true,
+      season: DEFAULT_SEASON,
+      scoringConfigId: null,
+      platform: DEFAULT_PLATFORM,
+    };
   }
 }

@@ -144,6 +144,7 @@ def _write_by_position_sheet(
 def generate_excel(
     rankings: list[dict[str, Any]],
     season: str,
+    context_label: str | None = None,
 ) -> bytes:
     """Return an Excel workbook as bytes with two sheets.
 
@@ -155,8 +156,9 @@ def generate_excel(
 
     wb = Workbook()
     wb.properties.title = f"PuckLogic Rankings {season}"
+    rendered_context_label = context_label or "scoring configuration"
     wb.properties.subject = (
-        "Source context: Source Count column; League context: scoring configuration"
+        f"Source context: Source Count column; League context: {rendered_context_label}"
     )
 
     header_fill = PatternFill(start_color="1E3A5F", end_color="1E3A5F", fill_type="solid")
@@ -204,7 +206,7 @@ _HTML_TEMPLATE = """\
 <body>
 <h1>PuckLogic Draft Sheet</h1>
 <p class="context">Season: {season}</p>
-<p class="context">League context: scoring configuration</p>
+<p class="context">League context: {context_label}</p>
 <p class="context">Generated: {generated_at}</p>
 <table>
   <thead>
@@ -226,6 +228,7 @@ _HTML_TEMPLATE = """\
 def generate_pdf(
     rankings: list[dict[str, Any]],
     season: str,
+    context_label: str | None = None,
     *,
     generated_at: str | None = None,
 ) -> bytes:
@@ -257,6 +260,7 @@ def generate_pdf(
 
     html_content = _HTML_TEMPLATE.format(
         season=season,
+        context_label=context_label or "scoring configuration",
         generated_at=rendered_generated_at,
         rows=rows_html,
     )

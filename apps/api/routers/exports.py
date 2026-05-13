@@ -47,6 +47,22 @@ def _export_filename(req: ExportRequest) -> str:
     return f"pucklogic-{context}-{export_type}-{_export_date()}.{extension}"
 
 
+def _build_export_context_label(
+    req: ExportRequest,
+    scoring_config_name: str,
+    league_profile_name: str | None,
+) -> str:
+    source_summary = ", ".join(
+        f"{name}:{weight:g}" for name, weight in sorted(req.source_weights.items())
+    )
+    league_label = league_profile_name or "none"
+    return (
+        f"{scoring_config_name} ({req.scoring_config_id}); "
+        f"league profile: {league_label}; "
+        f"sources: {source_summary}"
+    )
+
+
 @router.post("/generate")
 async def generate_export(
     req: ExportRequest,
@@ -97,18 +113,23 @@ async def generate_export(
     # Run pipeline
     rows = proj_repo.get_by_season(req.season, req.platform, user["id"])
     ranked = aggregate_projections(rows, req.source_weights, scoring_config, league_profile)
+    context_label = _build_export_context_label(
+        req,
+        str(sc_row.get("name") or req.scoring_config_id),
+        str(league_profile.get("name")) if league_profile else None,
+    )
 
     filename = _export_filename(req)
 
     if req.export_type == "excel":
-        content = generate_excel(ranked, req.season)
+        content = generate_excel(ranked, req.season, context_label)
         return Response(
             content=content,
             media_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
-    content = generate_pdf(ranked, req.season)
+    content = generate_pdf(ranked, req.season, context_label)
     return Response(
         content=content,
         media_type="application/pdf",
