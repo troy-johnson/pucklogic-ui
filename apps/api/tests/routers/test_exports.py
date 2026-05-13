@@ -168,7 +168,7 @@ class TestGenerateExcelExport:
         client: TestClient,
     ) -> None:
         with (
-            patch("routers.exports._export_date", return_value="2026-05-11", create=True),
+            patch("routers.exports._export_date", return_value="2026-05-11"),
             patch("routers.exports.generate_excel", return_value=b"XLSX"),
         ):
             resp = client.post("/exports/generate", json=EXCEL_BODY)
@@ -181,7 +181,7 @@ class TestGenerateExcelExport:
         body = {**EXCEL_BODY, "scoring_config_id": "kit:bad/name"}
 
         with (
-            patch("routers.exports._export_date", return_value="2026-05-11", create=True),
+            patch("routers.exports._export_date", return_value="2026-05-11"),
             patch("routers.exports.generate_excel", return_value=b"XLSX"),
         ):
             resp = client.post("/exports/generate", json=body)
@@ -228,7 +228,7 @@ class TestGeneratePdfExport:
         client: TestClient,
     ) -> None:
         with (
-            patch("routers.exports._export_date", return_value="2026-05-11", create=True),
+            patch("routers.exports._export_date", return_value="2026-05-11"),
             patch("routers.exports.generate_pdf", return_value=b"%PDF"),
         ):
             resp = client.post("/exports/generate", json=PDF_BODY)
@@ -303,6 +303,19 @@ class TestKitPassGating:
 
 
 class TestExportAccessValidation:
+    def test_missing_source_key_is_rejected(
+        self,
+        client: TestClient,
+        mock_src_repo: MagicMock,
+    ) -> None:
+        mock_src_repo.get_by_names.return_value = {}
+        body = {**EXCEL_BODY, "source_weights": {"missing": 1.0}}
+
+        resp = client.post("/exports/generate", json=body)
+
+        assert resp.status_code == 400
+        assert resp.json()["detail"] == "Unknown source key: missing"
+
     def test_user_owned_source_for_another_user_is_rejected(
         self,
         client: TestClient,

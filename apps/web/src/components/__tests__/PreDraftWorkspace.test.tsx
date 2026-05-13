@@ -264,4 +264,15 @@ describe("PreDraftWorkspace", () => {
     expect(await screen.findByText(/export failed/i)).toBeInTheDocument();
     expect(screen.getByText(/try again/i)).toBeInTheDocument();
   });
+
+  it("shows missing-context guidance when exportContext is not provided", async () => {
+    vi.mocked(downloadExport).mockResolvedValue("pucklogic-rankings.xlsx");
+    mockStore();
+    render(<PreDraftWorkspace initialSources={SOURCES} initialRankings={[]} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /export rankings/i }));
+
+    expect(await screen.findByText(/complete or recompute your kit/i)).toBeInTheDocument();
+    expect(downloadExport).not.toHaveBeenCalled();
+  });
 });
