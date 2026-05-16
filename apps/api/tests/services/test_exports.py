@@ -175,7 +175,7 @@ class TestGenerateExcel:
             "Position",
             "Team",
             "PuckLogic Score",
-            "Projected Fantasy Value",
+            "Value Over Replacement",
         ]
         assert "Source Count" in headers
         assert wb.properties.title == f"PuckLogic Rankings {SEASON}"
@@ -188,12 +188,12 @@ class TestGenerateExcel:
         headers = [ws.cell(1, col).value for col in range(1, ws.max_column + 1)]
         assert "PuckLogic Score" in headers
 
-    def test_header_row_has_projected_fantasy_value(self) -> None:
+    def test_header_row_has_value_over_replacement(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
         wb = load_workbook(io.BytesIO(result))
         ws = wb.active
         headers = [ws.cell(1, col).value for col in range(1, ws.max_column + 1)]
-        assert "Projected Fantasy Value" in headers
+        assert "Value Over Replacement" in headers
 
     def test_data_rows_count(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
@@ -263,10 +263,10 @@ class TestGenerateExcel:
         assert "GA" in headers
         assert "GAA" not in headers
 
-    def test_workbook_has_two_sheets(self) -> None:
+    def test_workbook_has_three_sheets(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
         wb = load_workbook(io.BytesIO(result))
-        assert len(wb.sheetnames) == 2
+        assert len(wb.sheetnames) == 3
 
     def test_sheet2_title_is_by_position(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
@@ -301,6 +301,47 @@ class TestGenerateExcel:
             1 for r in range(2, ws2.max_row + 1) if isinstance(ws2.cell(r, 1).value, int)
         )
         assert player_rows_sheet2 == player_rows_sheet1
+
+    def test_null_vorp_writes_em_dash_in_full_rankings(self) -> None:
+        rankings = [{**PLAYER_A, "vorp": None}]
+        result = generate_excel(rankings, SEASON)
+        wb = load_workbook(io.BytesIO(result))
+        ws = wb.active
+        headers = [ws.cell(1, col).value for col in range(1, ws.max_column + 1)]
+        vorp_col = headers.index("Value Over Replacement") + 1
+        assert ws.cell(2, vorp_col).value == "—"
+
+    def test_null_vorp_writes_em_dash_in_by_position(self) -> None:
+        rankings = [{**PLAYER_A, "vorp": None}]
+        result = generate_excel(rankings, SEASON)
+        wb = load_workbook(io.BytesIO(result))
+        ws2 = wb["By Position"]
+        headers = [ws2.cell(1, col).value for col in range(1, ws2.max_column + 1)]
+        vorp_col = headers.index("Value Over Replacement") + 1
+        for r in range(2, ws2.max_row + 1):
+            if isinstance(ws2.cell(r, 1).value, int):
+                assert ws2.cell(r, vorp_col).value == "—"
+                return
+        pytest.fail("No data row found in By Position sheet")
+
+    def test_notes_sheet_is_third_tab_with_canonical_glossary(self) -> None:
+        result = generate_excel(RANKINGS, SEASON)
+        wb = load_workbook(io.BytesIO(result))
+        assert wb.sheetnames[2] == "Notes"
+        ws3 = wb["Notes"]
+        assert ws3.cell(1, 1).value == (
+            "PuckLogic Score: The scoring-configuration-weighted fantasy point"
+            " projection for this player."
+        )
+        assert ws3.cell(2, 1).value == (
+            "Value Over Replacement (VORP): Measures a player's projected fantasy"
+            " value relative to the replacement-level player at their position in"
+            " your league. Configure a league profile for this kit in your"
+            " PuckLogic dashboard to unlock this column."
+        )
+        assert ws3.cell(3, 1).value == (
+            "Source Count: The number of ranking sources that include this player."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -337,7 +378,7 @@ class TestGeneratePdf:
         assert "League context: scoring configuration" in html
         assert "Generated: 2026-05-11 15:30 UTC" in html
         assert "PuckLogic Score" in html
-        assert "Projected Fantasy Value" in html
+        assert "Value Over Replacement" in html
 
     def test_printable_draft_sheet_uses_passed_context_label(self) -> None:
         context_label = "Standard (sc-1); league profile: H2H; sources: hashtag:1"
@@ -379,9 +420,30 @@ class TestGeneratePdf:
         html = _capture_html(RANKINGS, SEASON)
         assert "PuckLogic Score" in html
 
-    def test_html_contains_projected_fantasy_value(self) -> None:
+    def test_html_contains_value_over_replacement(self) -> None:
         html = _capture_html(RANKINGS, SEASON)
-        assert "Projected Fantasy Value" in html
+        assert "Value Over Replacement" in html
+
+    def test_pdf_vorp_header_has_asterisk_when_null_vorp(self) -> None:
+        rankings = [{**PLAYER_A, "vorp": None}]
+        html = _capture_html(rankings, SEASON)
+        assert "Value Over Replacement*" in html
+
+    def test_pdf_footnote_present_when_null_vorp(self) -> None:
+        rankings = [{**PLAYER_A, "vorp": None}]
+        html = _capture_html(rankings, SEASON)
+        assert "class='footnote'" in html
+        assert "Configure a league profile for this kit" in html
+
+    def test_pdf_no_asterisk_or_footnote_when_all_vorp_present(self) -> None:
+        html = _capture_html(RANKINGS, SEASON)
+        assert "Value Over Replacement*" not in html
+        assert "class='footnote'" not in html
+
+    def test_pdf_no_asterisk_or_footnote_when_empty_rankings(self) -> None:
+        html = _capture_html([], SEASON)
+        assert "Value Over Replacement*" not in html
+        assert "class='footnote'" not in html
 
     def test_html_missing_fanpts_shows_em_dash(self) -> None:
         rankings = [{**PLAYER_A, "projected_fantasy_points": None}]

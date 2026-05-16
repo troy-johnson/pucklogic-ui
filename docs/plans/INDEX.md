@@ -24,6 +24,7 @@
 | 011b | [session-close-rankings-snapshot](011b-session-close-rankings-snapshot.md) | Approved | 2026-04-30 | Draft-session recipe persistence and clean-close rankings snapshot plan, intentionally split from 011a schema work |
 | 012a | [export-polish-backend](012a-export-polish-backend.md) | Approved | 2026-05-11 | Milestone E backend export content, deterministic filenames, gating regressions, and canonical backend docs plan |
 | 012b | [export-polish-frontend](012b-export-polish-frontend.md) | Approved | 2026-05-11 | Milestone E pre-draft export download UX, binary API helper, error states, and canonical frontend docs plan |
+| 013 | [vorp-export-column](013-vorp-export-column.md) | Approved | 2026-05-14 | Rename "Projected Fantasy Value" → "Value Over Replacement", em-dash nulls, Notes tab, PDF footnote — backend only |
 
 ## Drafts
 
