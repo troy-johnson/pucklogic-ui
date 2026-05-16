@@ -35,6 +35,20 @@ _HEADERS = [
 # Skater positions in display order, then goalies.
 _POSITION_ORDER = ["C", "LW", "RW", "D", "G"]
 
+_NOTES = [
+    (
+        "PuckLogic Score: The scoring-configuration-weighted fantasy point"
+        " projection for this player."
+    ),
+    (
+        "Value Over Replacement (VORP): Measures a player's projected fantasy"
+        " value relative to the replacement-level player at their position in"
+        " your league. Configure a league profile for this kit in your"
+        " PuckLogic dashboard to unlock this column."
+    ),
+    "Source Count: The number of ranking sources that include this player.",
+]
+
 
 def _write_rankings_sheet(
     ws: Any,
@@ -175,19 +189,6 @@ def generate_excel(
     _write_by_position_sheet(ws2, rankings, header_fill, header_font, section_font)
 
     ws3 = wb.create_sheet(title="Notes")
-    _NOTES = [
-        (
-            "PuckLogic Score: The scoring-configuration-weighted fantasy point"
-            " projection for this player."
-        ),
-        (
-            "Value Over Replacement (VORP): Measures a player's projected fantasy"
-            " value relative to the replacement-level player at their position in"
-            " your league. Configure a league profile for this kit in your"
-            " PuckLogic dashboard to unlock this column."
-        ),
-        "Source Count: The number of ranking sources that include this player.",
-    ]
     for note in _NOTES:
         ws3.append([note])
 

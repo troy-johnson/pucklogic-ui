@@ -5,7 +5,7 @@ import { RankingsTable } from "./RankingsTable";
 import { SourceWeightSelector } from "./SourceWeightSelector";
 import { downloadExport } from "@/lib/api/exports";
 import { useStore } from "@/store";
-import type { RankedPlayer, Source } from "@/types";
+import type { RankedPlayer, Source, WeightsMap } from "@/types";
 
 const POSITIONS = ["All", "C", "LW", "RW", "D", "G"] as const;
 type Position = (typeof POSITIONS)[number];
@@ -19,6 +19,7 @@ type ExportErrorCategory =
 interface Props {
   initialSources: Source[];
   initialRankings?: RankedPlayer[];
+  initialWeights?: WeightsMap;
   exportContext?: {
     token?: string;
     season: string;
@@ -65,6 +66,7 @@ function exportErrorMessage(error: unknown): string {
 export function PreDraftWorkspace({
   initialSources,
   initialRankings = [],
+  initialWeights,
   exportContext,
 }: Props) {
   const { sources, weights, setWeight, resetWeights } = useStore();
@@ -97,11 +99,13 @@ export function PreDraftWorkspace({
     setExporting(type);
     setExportMessage(null);
     try {
+      const effectiveWeights =
+        Object.keys(weights).length > 0 ? weights : (initialWeights ?? {});
       const filename = await downloadExport({
         type,
         token: exportContext.token,
         season: exportContext.season,
-        sourceWeights: weights,
+        sourceWeights: effectiveWeights,
         scoringConfigId: exportContext.scoringConfigId,
         platform: exportContext.platform,
         leagueProfileId: exportContext.leagueProfileId,

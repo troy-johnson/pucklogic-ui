@@ -13,6 +13,7 @@ export interface InitialRankingsBundle {
   season: string;
   scoringConfigId: string | null;
   platform: string;
+  sourceWeights: Record<string, number>;
 }
 
 /**
@@ -43,6 +44,7 @@ export async function loadInitialRankings(
         season: DEFAULT_SEASON,
         scoringConfigId: presets[0]?.id ?? null,
         platform: DEFAULT_PLATFORM,
+        sourceWeights: {},
       };
     }
 
@@ -68,6 +70,7 @@ export async function loadInitialRankings(
       season: DEFAULT_SEASON,
       scoringConfigId: presets[0].id,
       platform: DEFAULT_PLATFORM,
+      sourceWeights,
     };
   } catch (err) {
     console.error("[load-initial-rankings] failed:", err);
@@ -78,6 +81,7 @@ export async function loadInitialRankings(
       season: DEFAULT_SEASON,
       scoringConfigId: null,
       platform: DEFAULT_PLATFORM,
+      sourceWeights: {},
     };
   }
 }

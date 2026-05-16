@@ -424,6 +424,11 @@ class TestGeneratePdf:
         html = _capture_html(RANKINGS, SEASON)
         assert "Value Over Replacement" in html
 
+    def test_pdf_null_vorp_renders_em_dash_in_data_cell(self) -> None:
+        rankings = [{**PLAYER_A, "vorp": None}]
+        html = _capture_html(rankings, SEASON)
+        assert "<td class='num'>—</td>" in html
+
     def test_pdf_vorp_header_has_asterisk_when_null_vorp(self) -> None:
         rankings = [{**PLAYER_A, "vorp": None}]
         html = _capture_html(rankings, SEASON)

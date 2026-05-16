@@ -275,4 +275,25 @@ describe("PreDraftWorkspace", () => {
     expect(await screen.findByText(/complete or recompute your kit/i)).toBeInTheDocument();
     expect(downloadExport).not.toHaveBeenCalled();
   });
+
+  it("uses initialWeights when store weights are empty on first load", async () => {
+    vi.mocked(downloadExport).mockResolvedValue("pucklogic-rankings.xlsx");
+    mockStore({ sources: [], weights: {} });
+    const initialWeights = { nhl_com: 100 };
+
+    render(
+      <PreDraftWorkspace
+        exportContext={EXPORT_CONTEXT}
+        initialSources={SOURCES}
+        initialWeights={initialWeights}
+        initialRankings={[]}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /export rankings/i }));
+
+    expect(downloadExport).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceWeights: initialWeights }),
+    );
+  });
 });
