@@ -3,9 +3,9 @@
 **Active Phase:** review — Milestone F (VORP export column)  
 **Active Branch:** feature/012-export-polish (PR #38)  
 **Active Artifacts:** `docs/research/006-vorp-export-column-brainstorm.md`, `docs/specs/013-vorp-export-column.md`, `docs/plans/013-vorp-export-column.md`, `docs/specs/013-vorp-export-column-adversarial-pr-review-r1.md`  
-**Current Gate:** pre-ship — adversarial PR/QA review APPROVED WITH NITS (I-1, M-1, M-2)  
+**Current Gate:** pre-ship — adversarial PR/QA review APPROVED WITH NITS; ship gate READY  
 **Blockers:** none  
-**Next Action:** resolve nits (I-1: add PDF cell em-dash test; M-1: move _NOTES to module scope) or accept and ship-sync  
+**Next Action:** optional cleanup for M-2 plan/spec count mismatch, otherwise proceed to ship-sync  
 **Active Snapshot Pointer:** none
 
 > This file is a current pointer, not a full session log.
