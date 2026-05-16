@@ -1,11 +1,11 @@
 # Workflow State
 
-**Active Phase:** implement-tdd — Milestone F (VORP export column)  
-**Active Branch:** main (PR #38 APPROVED WITH NITS — merge when ready)  
-**Active Artifacts:** `docs/research/006-vorp-export-column-brainstorm.md`, `docs/specs/013-vorp-export-column.md`, `docs/plans/013-vorp-export-column.md`  
-**Current Gate:** pre-review — implement tasks 1–16 then verify  
+**Active Phase:** review — Milestone F (VORP export column)  
+**Active Branch:** feature/012-export-polish (PR #38)  
+**Active Artifacts:** `docs/research/006-vorp-export-column-brainstorm.md`, `docs/specs/013-vorp-export-column.md`, `docs/plans/013-vorp-export-column.md`, `docs/specs/013-vorp-export-column-adversarial-pr-review-r1.md`  
+**Current Gate:** pre-ship — adversarial PR/QA review APPROVED WITH NITS (I-1, M-1, M-2)  
 **Blockers:** none  
-**Next Action:** implement plan 013 (RED wave tasks 1–8, GREEN wave tasks 9–14, VERIFY tasks 15–16)  
+**Next Action:** resolve nits (I-1: add PDF cell em-dash test; M-1: move _NOTES to module scope) or accept and ship-sync  
 **Active Snapshot Pointer:** none
 
 > This file is a current pointer, not a full session log.
