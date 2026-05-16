@@ -1,11 +1,11 @@
 # Workflow State
 
-**Active Phase:** idle — Milestone D complete
-**Active Branch:** main
-**Active Artifacts:** none
-**Current Gate:** none
-**Blockers:** none
-**Next Action:** begin Milestone E (export polish) — scope via spec/plan as needed
+**Active Phase:** review — Milestone F (VORP export column)  
+**Active Branch:** feature/012-export-polish (PR #38)  
+**Active Artifacts:** `docs/research/006-vorp-export-column-brainstorm.md`, `docs/specs/013-vorp-export-column.md`, `docs/plans/013-vorp-export-column.md`, `docs/specs/013-vorp-export-column-adversarial-pr-review-r1.md`  
+**Current Gate:** pre-ship — adversarial PR/QA review APPROVED WITH NITS; ship gate READY  
+**Blockers:** none  
+**Next Action:** optional cleanup for M-2 plan/spec count mismatch, otherwise proceed to ship-sync  
 **Active Snapshot Pointer:** none
 
 > This file is a current pointer, not a full session log.
@@ -33,4 +33,4 @@
 
 **Milestone C:** complete — PR #36 merged 2026-05-06
 **Milestone D:** complete — PR #37 merged 2026-05-10
-**Milestone E:** next — export polish (scope TBD)
+**Milestone E:** PR #38 open; adversarial review round 2 APPROVED WITH NITS — see `docs/specs/012-export-polish-adversarial-pr-review-r2.md`; all three prior blockers resolved; M-1/M-2/M-3 nits fixed and verified (25 backend router tests, 203 frontend tests pass); I-1 deferred post-merge; ready for ship-sync

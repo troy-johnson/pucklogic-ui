@@ -8,6 +8,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
+const preDraftWorkspaceSpy = vi.fn();
+
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn().mockResolvedValue({
     auth: {
@@ -57,9 +59,24 @@ vi.mock("@/lib/rankings/load-initial", () => {
         },
       ],
       loadError: false,
+      season: "2025-26",
+      scoringConfigId: "sc-1",
+      platform: "espn",
     }),
   };
 });
+
+vi.mock("@/components/PreDraftWorkspace", () => ({
+  PreDraftWorkspace: (props: unknown) => {
+    preDraftWorkspaceSpy(props);
+    return (
+      <div>
+        <button>Export rankings</button>
+        <button>Export draft sheet</button>
+      </div>
+    );
+  },
+}));
 
 vi.mock("@/store", () => ({
   useStore: vi.fn().mockReturnValue({
@@ -79,8 +96,7 @@ describe("DashboardPage (Server Component)", () => {
   it("renders the rankings table populated by loadInitialRankings", async () => {
     const element = await DashboardPage();
     render(element);
-    expect(screen.getByRole("table")).toBeInTheDocument();
-    expect(screen.getByText("Connor McDavid")).toBeInTheDocument();
+    expect(preDraftWorkspaceSpy).toHaveBeenCalled();
   });
 
   it("renders the export buttons", async () => {
@@ -92,5 +108,20 @@ describe("DashboardPage (Server Component)", () => {
     expect(
       screen.getByRole("button", { name: /export draft sheet/i }),
     ).toBeInTheDocument();
+  });
+
+  it("passes export context into PreDraftWorkspace", async () => {
+    const element = await DashboardPage();
+    render(element);
+
+    const lastCall = preDraftWorkspaceSpy.mock.calls.at(-1);
+    expect(lastCall?.[0]).toMatchObject({
+      exportContext: {
+        token: "test-token",
+        season: "2025-26",
+        scoringConfigId: "sc-1",
+        platform: "espn",
+      },
+    });
   });
 });

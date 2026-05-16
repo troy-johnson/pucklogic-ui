@@ -9,12 +9,24 @@ export default async function DashboardPage() {
   } = await supabase.auth.getSession();
   const token = session?.access_token;
 
-  const { sources, rankings } = await loadInitialRankings(token);
+  const { sources, rankings, season, scoringConfigId, platform, sourceWeights } =
+    await loadInitialRankings(token);
 
   return (
     <PreDraftWorkspace
       initialSources={sources}
       initialRankings={rankings}
+      initialWeights={sourceWeights}
+      exportContext={
+        scoringConfigId
+          ? {
+              token,
+              season,
+              scoringConfigId,
+              platform,
+            }
+          : undefined
+      }
     />
   );
 }

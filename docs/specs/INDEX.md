@@ -13,3 +13,7 @@
 | 009 | [web-draft-kit-ux](009-web-draft-kit-ux.md) | Approved | 2026-04-07 | Canonical web-first draft kit UX contract for Milestone B |
 | 010 | [web-ui-wireframes-design](010-web-ui-wireframes-design.md) | Draft | 2026-04-11 | Web UI wireframe/layout decisions; still required before full 010a implementation beyond scaffolding |
 | 011 | [milestone-c-token-pass-backend](011-milestone-c-token-pass-backend.md) | Approved | 2026-04-29 | Kit-pass schema, Stripe SKU, /entitlements read surface, kit-pass gating, session-close rankings snapshot |
+| 012 | [export-polish](012-export-polish.md) | Approved | 2026-05-10 | Milestone E contract for gated, downloadable, readable XLSX/PDF exports from the pre-draft workspace |
+| 012r2 | [export-polish-adversarial-pr-review-r2](012-export-polish-adversarial-pr-review-r2.md) | APPROVED WITH NITS | 2026-05-13 | Round-2 adversarial review of PR #38 — all blockers resolved, 4 nits remain |
+| 013 | [vorp-export-column](013-vorp-export-column.md) | Approved | 2026-05-13 | Rename "Projected Fantasy Value" → "Value Over Replacement"; em-dash nulls; Notes tab (XLSX); asterisk + footnote (PDF) |
+| 013r1 | [vorp-export-column-adversarial-pr-review-r1](013-vorp-export-column-adversarial-pr-review-r1.md) | APPROVED WITH NITS | 2026-05-16 | Adversarial PR/QA review of plan 013 / PR #38 — B-1, I-1, and M-1 resolved; ship gate READY; M-2 plan/spec count mismatch remains non-blocking |

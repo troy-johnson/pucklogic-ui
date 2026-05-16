@@ -26,7 +26,7 @@ apps/web/
 │   │   ├── WeightControls.tsx        # Source weight sliders
 │   │   ├── RankingsTable.tsx         # Sortable/filterable rankings grid
 │   │   ├── PlayerCard.tsx            # Player detail popover
-│   │   ├── ExportPanel.tsx           # PDF/Excel download buttons
+│   │   ├── PreDraftWorkspace.tsx     # Rankings workspace, source weights, and PDF/XLSX export actions
 │   │   ├── ScoringConfigPanel.tsx    # Fantasy scoring preset + custom editor
 │   │   └── TrendsPanel.tsx           # Breakout/regression scores + SHAP explainer
 │   ├── lib/
@@ -370,12 +370,24 @@ If the Next.js app introduces local route handlers or proxy endpoints, keep them
 - Custom editor: inputs per stat category (goals, assists, PPP, SOG, hits, blocks)
 - Shows both **raw projected stats** and **fantasy points** side-by-side in rankings
 
-### ExportPanel
+### Pre-draft exports
 
-- Location: `apps/web/src/components/ExportPanel.tsx`
-- Triggers `POST /exports/generate`
-- Current launch path assumes synchronous export generation/response rather than polling a queued export job
-- If queued exports are introduced later, update both this reference and the backend reference together
+- Location: `apps/web/src/components/PreDraftWorkspace.tsx`
+- API helper: `apps/web/src/lib/api/exports.ts`
+- Visible actions:
+  - **Export rankings** posts `export_type: "excel"` to `POST /exports/generate` and triggers an `.xlsx` browser download.
+  - **Export draft sheet** posts `export_type: "pdf"` to `POST /exports/generate` and triggers a `.pdf` browser download.
+- Current launch path assumes synchronous export generation/attachment response rather than polling a queued export job.
+- The export helper uses the backend `Content-Disposition` filename when present and otherwise builds a sanitized fallback filename containing `pucklogic`, the active scoring-config/kit identifier, export type, generation date, and the correct extension.
+- Each export action has an independent loading state, prevents duplicate submissions for the active action, and shows a success affordance after the browser download is triggered.
+- Recoverable error categories are mapped to action-oriented, non-sensitive UI messages:
+  - unauthenticated: prompt sign-in before exporting;
+  - no pass: explain that export requires an active kit pass;
+  - missing context: direct the user to complete or recompute the kit;
+  - generation failure: explain that export failed and offer retry.
+- CSV export and native Google Sheets API integration are out of scope. Google Sheets compatibility means opening/importing the downloaded `.xlsx` file.
+- Manual launch verification should trigger both pre-draft workspace downloads, confirm filename extensions, open/import XLSX in spreadsheet tools, and open or print-preview the PDF.
+- If queued exports, export history, CSV, or native Google Sheets integration are introduced later, update both this reference and the backend reference together.
 
 ### TrendsPanel (Phase 3)
 

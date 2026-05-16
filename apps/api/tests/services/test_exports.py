@@ -99,7 +99,12 @@ def _make_weasyprint_mock(write_pdf_return: bytes = b"%PDF-1.4") -> MagicMock:
     return mock_module
 
 
-def _capture_html(rankings: list[dict[str, Any]], season: str) -> str:
+def _capture_html(
+    rankings: list[dict[str, Any]],
+    season: str,
+    *,
+    generated_at: str | None = None,
+) -> str:
     """Run generate_pdf with a mocked weasyprint and return the HTML string."""
     captured: dict[str, str] = {}
 
@@ -113,7 +118,8 @@ def _capture_html(rankings: list[dict[str, Any]], season: str) -> str:
     mock_module.HTML.side_effect = fake_html
 
     with patch.dict(sys.modules, {"weasyprint": mock_module}):
-        generate_pdf(rankings, season)
+        kwargs = {"generated_at": generated_at} if generated_at is not None else {}
+        generate_pdf(rankings, season, **kwargs)
 
     return captured["html"]
 
@@ -124,6 +130,12 @@ def _capture_html(rankings: list[dict[str, Any]], season: str) -> str:
 
 
 class TestGenerateExcel:
+    def test_context_label_is_in_workbook_subject(self) -> None:
+        context_label = "Standard (sc-1); league profile: H2H; sources: hashtag:1"
+        result = generate_excel(RANKINGS, SEASON, context_label)
+        wb = load_workbook(io.BytesIO(result))
+        assert context_label in (wb.properties.subject or "")
+
     def test_returns_bytes(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
         assert isinstance(result, bytes)
@@ -148,21 +160,40 @@ class TestGenerateExcel:
         wb = load_workbook(io.BytesIO(result))
         ws = wb.active
         headers = [ws.cell(1, col).value for col in range(1, 5)]
-        assert headers == ["Rank", "Player", "Team", "Pos"]
+        assert headers == ["Rank", "Player", "Position", "Team"]
 
-    def test_header_row_has_fanpts(self) -> None:
+    def test_launch_xlsx_minimum_columns_and_context_metadata(self) -> None:
+        result = generate_excel(RANKINGS, SEASON)
+        wb = load_workbook(io.BytesIO(result))
+        ws = wb.active
+
+        headers = [ws.cell(1, col).value for col in range(1, ws.max_column + 1)]
+
+        assert headers[:6] == [
+            "Rank",
+            "Player",
+            "Position",
+            "Team",
+            "PuckLogic Score",
+            "Value Over Replacement",
+        ]
+        assert "Source Count" in headers
+        assert wb.properties.title == f"PuckLogic Rankings {SEASON}"
+        assert "Source context" in (wb.properties.subject or "")
+
+    def test_header_row_has_pucklogic_score(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
         wb = load_workbook(io.BytesIO(result))
         ws = wb.active
         headers = [ws.cell(1, col).value for col in range(1, ws.max_column + 1)]
-        assert "FanPts" in headers
+        assert "PuckLogic Score" in headers
 
-    def test_header_row_has_vorp(self) -> None:
+    def test_header_row_has_value_over_replacement(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
         wb = load_workbook(io.BytesIO(result))
         ws = wb.active
         headers = [ws.cell(1, col).value for col in range(1, ws.max_column + 1)]
-        assert "VORP" in headers
+        assert "Value Over Replacement" in headers
 
     def test_data_rows_count(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
@@ -176,15 +207,15 @@ class TestGenerateExcel:
         ws = wb.active
         assert ws.cell(2, 1).value == 1
         assert ws.cell(2, 2).value == "Connor McDavid"
-        assert ws.cell(2, 3).value == "EDM"
-        assert ws.cell(2, 4).value == "C"
+        assert ws.cell(2, 3).value == "C"
+        assert ws.cell(2, 4).value == "EDM"
 
     def test_first_data_row_fanpts(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
         wb = load_workbook(io.BytesIO(result))
         ws = wb.active
         headers = [ws.cell(1, col).value for col in range(1, ws.max_column + 1)]
-        fp_col = headers.index("FanPts") + 1
+        fp_col = headers.index("PuckLogic Score") + 1
         assert ws.cell(2, fp_col).value == pytest.approx(290.0, abs=0.01)
 
     def test_second_data_row_values(self) -> None:
@@ -193,7 +224,7 @@ class TestGenerateExcel:
         ws = wb.active
         assert ws.cell(3, 1).value == 2
         assert ws.cell(3, 2).value == "Nathan MacKinnon"
-        assert ws.cell(3, 3).value == "COL"
+        assert ws.cell(3, 4).value == "COL"
 
     def test_single_player_no_sources(self) -> None:
         rankings = [
@@ -221,7 +252,7 @@ class TestGenerateExcel:
         wb = load_workbook(io.BytesIO(result))
         ws = wb.active
         headers = [ws.cell(1, col).value for col in range(1, ws.max_column + 1)]
-        fp_col = headers.index("FanPts") + 1
+        fp_col = headers.index("PuckLogic Score") + 1
         assert ws.cell(2, fp_col).value in (None, "")
 
     def test_header_uses_ga_not_gaa(self) -> None:
@@ -232,10 +263,10 @@ class TestGenerateExcel:
         assert "GA" in headers
         assert "GAA" not in headers
 
-    def test_workbook_has_two_sheets(self) -> None:
+    def test_workbook_has_three_sheets(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
         wb = load_workbook(io.BytesIO(result))
-        assert len(wb.sheetnames) == 2
+        assert len(wb.sheetnames) == 3
 
     def test_sheet2_title_is_by_position(self) -> None:
         result = generate_excel(RANKINGS, SEASON)
@@ -271,6 +302,47 @@ class TestGenerateExcel:
         )
         assert player_rows_sheet2 == player_rows_sheet1
 
+    def test_null_vorp_writes_em_dash_in_full_rankings(self) -> None:
+        rankings = [{**PLAYER_A, "vorp": None}]
+        result = generate_excel(rankings, SEASON)
+        wb = load_workbook(io.BytesIO(result))
+        ws = wb.active
+        headers = [ws.cell(1, col).value for col in range(1, ws.max_column + 1)]
+        vorp_col = headers.index("Value Over Replacement") + 1
+        assert ws.cell(2, vorp_col).value == "—"
+
+    def test_null_vorp_writes_em_dash_in_by_position(self) -> None:
+        rankings = [{**PLAYER_A, "vorp": None}]
+        result = generate_excel(rankings, SEASON)
+        wb = load_workbook(io.BytesIO(result))
+        ws2 = wb["By Position"]
+        headers = [ws2.cell(1, col).value for col in range(1, ws2.max_column + 1)]
+        vorp_col = headers.index("Value Over Replacement") + 1
+        for r in range(2, ws2.max_row + 1):
+            if isinstance(ws2.cell(r, 1).value, int):
+                assert ws2.cell(r, vorp_col).value == "—"
+                return
+        pytest.fail("No data row found in By Position sheet")
+
+    def test_notes_sheet_is_third_tab_with_canonical_glossary(self) -> None:
+        result = generate_excel(RANKINGS, SEASON)
+        wb = load_workbook(io.BytesIO(result))
+        assert wb.sheetnames[2] == "Notes"
+        ws3 = wb["Notes"]
+        assert ws3.cell(1, 1).value == (
+            "PuckLogic Score: The scoring-configuration-weighted fantasy point"
+            " projection for this player."
+        )
+        assert ws3.cell(2, 1).value == (
+            "Value Over Replacement (VORP): Measures a player's projected fantasy"
+            " value relative to the replacement-level player at their position in"
+            " your league. Configure a league profile for this kit in your"
+            " PuckLogic dashboard to unlock this column."
+        )
+        assert ws3.cell(3, 1).value == (
+            "Source Count: The number of ranking sources that include this player."
+        )
+
 
 # ---------------------------------------------------------------------------
 # generate_pdf — mocked WeasyPrint via sys.modules; validates HTML construction
@@ -294,6 +366,37 @@ class TestGeneratePdf:
         html = _capture_html(RANKINGS, SEASON)
         assert SEASON in html
 
+    def test_printable_draft_sheet_header_context_and_timestamp(self) -> None:
+        html = _capture_html(
+            RANKINGS,
+            SEASON,
+            generated_at="2026-05-11 15:30 UTC",
+        )
+
+        assert "PuckLogic Draft Sheet" in html
+        assert f"Season: {SEASON}" in html
+        assert "League context: scoring configuration" in html
+        assert "Generated: 2026-05-11 15:30 UTC" in html
+        assert "PuckLogic Score" in html
+        assert "Value Over Replacement" in html
+
+    def test_printable_draft_sheet_uses_passed_context_label(self) -> None:
+        context_label = "Standard (sc-1); league profile: H2H; sources: hashtag:1"
+        html = _capture_html(
+            RANKINGS,
+            SEASON,
+            generated_at="2026-05-11 15:30 UTC",
+        )
+
+        assert "League context: scoring configuration" in html
+
+        mock_module = _make_weasyprint_mock()
+        with patch.dict(sys.modules, {"weasyprint": mock_module}):
+            generate_pdf(RANKINGS, SEASON, context_label, generated_at="2026-05-11 15:30 UTC")
+
+        rendered_html = mock_module.HTML.call_args.kwargs["string"]
+        assert f"League context: {context_label}" in rendered_html
+
     def test_html_contains_player_names(self) -> None:
         html = _capture_html(RANKINGS, SEASON)
         assert "Connor McDavid" in html
@@ -313,13 +416,39 @@ class TestGeneratePdf:
         assert ">1<" in html
         assert ">2<" in html
 
-    def test_html_contains_fanpts(self) -> None:
+    def test_html_contains_pucklogic_score(self) -> None:
         html = _capture_html(RANKINGS, SEASON)
-        assert "FanPts" in html
+        assert "PuckLogic Score" in html
 
-    def test_html_contains_vorp(self) -> None:
+    def test_html_contains_value_over_replacement(self) -> None:
         html = _capture_html(RANKINGS, SEASON)
-        assert "VORP" in html
+        assert "Value Over Replacement" in html
+
+    def test_pdf_null_vorp_renders_em_dash_in_data_cell(self) -> None:
+        rankings = [{**PLAYER_A, "vorp": None}]
+        html = _capture_html(rankings, SEASON)
+        assert "<td class='num'>—</td>" in html
+
+    def test_pdf_vorp_header_has_asterisk_when_null_vorp(self) -> None:
+        rankings = [{**PLAYER_A, "vorp": None}]
+        html = _capture_html(rankings, SEASON)
+        assert "Value Over Replacement*" in html
+
+    def test_pdf_footnote_present_when_null_vorp(self) -> None:
+        rankings = [{**PLAYER_A, "vorp": None}]
+        html = _capture_html(rankings, SEASON)
+        assert "class='footnote'" in html
+        assert "Configure a league profile for this kit" in html
+
+    def test_pdf_no_asterisk_or_footnote_when_all_vorp_present(self) -> None:
+        html = _capture_html(RANKINGS, SEASON)
+        assert "Value Over Replacement*" not in html
+        assert "class='footnote'" not in html
+
+    def test_pdf_no_asterisk_or_footnote_when_empty_rankings(self) -> None:
+        html = _capture_html([], SEASON)
+        assert "Value Over Replacement*" not in html
+        assert "class='footnote'" not in html
 
     def test_html_missing_fanpts_shows_em_dash(self) -> None:
         rankings = [{**PLAYER_A, "projected_fantasy_points": None}]

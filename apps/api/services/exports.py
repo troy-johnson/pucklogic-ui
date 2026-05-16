@@ -8,17 +8,18 @@ Excel: openpyxl
 from __future__ import annotations
 
 import io
+from datetime import UTC, datetime
 from typing import Any
 
 _HEADERS = [
     "Rank",
     "Player",
+    "Position",
     "Team",
-    "Pos",
-    "FanPts",
-    "VORP",
+    "PuckLogic Score",
+    "Value Over Replacement",
     "OffNightGames",
-    "Sources",
+    "Source Count",
     "G",
     "A",
     "PPP",
@@ -33,6 +34,20 @@ _HEADERS = [
 
 # Skater positions in display order, then goalies.
 _POSITION_ORDER = ["C", "LW", "RW", "D", "G"]
+
+_NOTES = [
+    (
+        "PuckLogic Score: The scoring-configuration-weighted fantasy point"
+        " projection for this player."
+    ),
+    (
+        "Value Over Replacement (VORP): Measures a player's projected fantasy"
+        " value relative to the replacement-level player at their position in"
+        " your league. Configure a league profile for this kit in your"
+        " PuckLogic dashboard to unlock this column."
+    ),
+    "Source Count: The number of ranking sources that include this player.",
+]
 
 
 def _write_rankings_sheet(
@@ -53,14 +68,15 @@ def _write_rankings_sheet(
 
     for row in rankings:
         stats = row.get("projected_stats", {})
+        vorp = row.get("vorp")
         ws.append(
             [
                 row["composite_rank"],
                 row.get("name", ""),
-                row.get("team", ""),
                 row.get("default_position", ""),
+                row.get("team", ""),
                 _fmt(row.get("projected_fantasy_points")),
-                _fmt(row.get("vorp")),
+                vorp if vorp is not None else "—",
                 row.get("off_night_games", ""),
                 row.get("source_count", 0),
                 _fmt(stats.get("g")),
@@ -113,14 +129,15 @@ def _write_by_position_sheet(
 
         for row in by_position[pos]:
             stats = row.get("projected_stats", {})
+            vorp = row.get("vorp")
             ws.append(
                 [
                     row["composite_rank"],
                     row.get("name", ""),
-                    row.get("team", ""),
                     row.get("default_position", ""),
+                    row.get("team", ""),
                     _fmt(row.get("projected_fantasy_points")),
-                    _fmt(row.get("vorp")),
+                    vorp if vorp is not None else "—",
                     row.get("off_night_games", ""),
                     row.get("source_count", 0),
                     _fmt(stats.get("g")),
@@ -143,6 +160,7 @@ def _write_by_position_sheet(
 def generate_excel(
     rankings: list[dict[str, Any]],
     season: str,
+    context_label: str | None = None,
 ) -> bytes:
     """Return an Excel workbook as bytes with two sheets.
 
@@ -153,6 +171,11 @@ def generate_excel(
     from openpyxl.styles import Font, PatternFill
 
     wb = Workbook()
+    wb.properties.title = f"PuckLogic Rankings {season}"
+    rendered_context_label = context_label or "scoring configuration"
+    wb.properties.subject = (
+        f"Source context: Source Count column; League context: {rendered_context_label}"
+    )
 
     header_fill = PatternFill(start_color="1E3A5F", end_color="1E3A5F", fill_type="solid")
     header_font = Font(color="FFFFFF", bold=True)
@@ -164,6 +187,10 @@ def generate_excel(
 
     ws2 = wb.create_sheet(title="By Position")
     _write_by_position_sheet(ws2, rankings, header_fill, header_font, section_font)
+
+    ws3 = wb.create_sheet(title="Notes")
+    for note in _NOTES:
+        ws3.append([note])
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -187,21 +214,26 @@ _HTML_TEMPLATE = """\
 <style>
   body {{ font-family: Arial, sans-serif; font-size: 11px; margin: 20px; }}
   h1 {{ color: #1e3a5f; font-size: 18px; }}
+  .context {{ color: #475569; margin-bottom: 12px; }}
   table {{ width: 100%; border-collapse: collapse; }}
   th {{ background: #1e3a5f; color: white; padding: 6px 8px; text-align: left; }}
   td {{ padding: 5px 8px; border-bottom: 1px solid #ddd; }}
   tr:nth-child(even) {{ background: #f4f7fb; }}
   .num {{ text-align: right; font-family: monospace; }}
   .rank {{ text-align: center; font-weight: bold; }}
+  .footnote {{ color: #475569; font-style: italic; margin-top: 8px; font-size: 10px; }}
 </style>
 </head>
 <body>
-<h1>PuckLogic Fantasy Rankings — {season}</h1>
+<h1>PuckLogic Draft Sheet</h1>
+<p class="context">Season: {season}</p>
+<p class="context">League context: {context_label}</p>
+<p class="context">Generated: {generated_at}</p>
 <table>
   <thead>
     <tr>
       <th>Rank</th><th>Player</th><th>Team</th><th>Pos</th>
-      <th>FanPts</th><th>VORP</th><th>Off-Night</th>
+      <th>PuckLogic Score</th><th>{vorp_header}</th><th>Off-Night</th>
       <th>G</th><th>A</th><th>PPP</th><th>SOG</th>
     </tr>
   </thead>
@@ -209,6 +241,7 @@ _HTML_TEMPLATE = """\
     {rows}
   </tbody>
 </table>
+{footnote}
 </body>
 </html>
 """
@@ -217,9 +250,23 @@ _HTML_TEMPLATE = """\
 def generate_pdf(
     rankings: list[dict[str, Any]],
     season: str,
+    context_label: str | None = None,
+    *,
+    generated_at: str | None = None,
 ) -> bytes:
     """Return a PDF as bytes. Requires WeasyPrint to be installed."""
     from weasyprint import HTML
+
+    rendered_generated_at = generated_at or datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
+
+    has_null_vorp = any(r.get("vorp") is None for r in rankings)
+    vorp_header = "Value Over Replacement*" if has_null_vorp else "Value Over Replacement"
+    footnote = (
+        "<p class='footnote'>* Configure a league profile for this kit in your PuckLogic "
+        "dashboard to unlock Value Over Replacement rankings.</p>"
+        if has_null_vorp
+        else ""
+    )
 
     rows_html = ""
     for row in rankings:
@@ -242,5 +289,12 @@ def generate_pdf(
             f"</tr>\n"
         )
 
-    html_content = _HTML_TEMPLATE.format(season=season, rows=rows_html)
+    html_content = _HTML_TEMPLATE.format(
+        season=season,
+        context_label=context_label or "scoring configuration",
+        generated_at=rendered_generated_at,
+        rows=rows_html,
+        vorp_header=vorp_header,
+        footnote=footnote,
+    )
     return HTML(string=html_content).write_pdf()
