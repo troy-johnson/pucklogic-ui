@@ -1,11 +1,11 @@
 # Workflow State
 
-**Active Phase:** review — Milestone F (VORP export column)  
-**Active Branch:** feature/012-export-polish (PR #38)  
-**Active Artifacts:** `docs/research/006-vorp-export-column-brainstorm.md`, `docs/specs/013-vorp-export-column.md`, `docs/plans/013-vorp-export-column.md`, `docs/specs/013-vorp-export-column-adversarial-pr-review-r1.md`  
-**Current Gate:** pre-ship — adversarial PR/QA review APPROVED WITH NITS; ship gate READY  
+**Active Phase:** idle  
+**Active Branch:** main  
+**Active Artifacts:** none  
+**Current Gate:** none  
 **Blockers:** none  
-**Next Action:** optional cleanup for M-2 plan/spec count mismatch, otherwise proceed to ship-sync  
+**Next Action:** begin next milestone — no active track  
 **Active Snapshot Pointer:** none
 
 > This file is a current pointer, not a full session log.
@@ -31,6 +31,19 @@
 - draft-session-cookie utilities (Secure flag, Max-Age, clearDraftSessionCookie)
 - 182 tests across 26 files
 
-**Milestone C:** complete — PR #36 merged 2026-05-06
-**Milestone D:** complete — PR #37 merged 2026-05-10
-**Milestone E:** PR #38 open; adversarial review round 2 APPROVED WITH NITS — see `docs/specs/012-export-polish-adversarial-pr-review-r2.md`; all three prior blockers resolved; M-1/M-2/M-3 nits fixed and verified (25 backend router tests, 203 frontend tests pass); I-1 deferred post-merge; ready for ship-sync
+**Milestone C:** COMPLETE — PR #36 merged 2026-05-06
+**Milestone D:** COMPLETE — PR #37 merged 2026-05-10
+**Milestone E:** COMPLETE — PR #38 merged to main 2026-05-16 (squash commit 18154ce)
+**Milestone F:** COMPLETE — shipped in PR #38; spec 013, plan 013, brainstorm 006
+
+**What landed in PR #38:**
+- POST /exports/generate wired to PreDraftWorkspace XLSX + PDF download buttons
+- Deterministic export filenames (season/date/context slug)
+- Kit-pass gating enforced on export endpoint
+- Missing-context and error states in the UI
+- "Projected Fantasy Value" → "Value Over Replacement" in all XLSX sheets and PDF header
+- Null VORP → "—" (em-dash) in both XLSX sheets; 0.0 treated as valid replacement-level value
+- PDF conditional asterisk + footnote for null-VORP rows (league profile conversion nudge)
+- XLSX Notes tab (third sheet) with three canonical glossary entries
+- First-load export weights fallback via initialWeights prop (prevents empty source_weights 422)
+- 71 backend + 204 frontend tests
