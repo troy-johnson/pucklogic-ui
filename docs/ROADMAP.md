@@ -2,7 +2,7 @@
 
 **Launch target:** Mid-September 2026  
 **Strategy:** Ship web draft kit first. Extension is conditional — proceeds only if it does not jeopardize the web launch.  
-**Current date:** 2026-05-10  
+**Current date:** 2026-05-16  
 **Solo dev — nights and weekends**
 
 ---
@@ -11,24 +11,43 @@
 
 | Milestone | Window | Status | Key Docs |
 |---|---|---|---|
-| A — Scraper hardening + backfill | Mar 28 – Apr 12 | In progress | [Plan 008a](plans/008a-draft-season-readiness.md) |
-| F — First real ML execution | Apr 13 – Apr 20 | Complete | [Plan 008a §F](plans/008a-draft-season-readiness.md#milestone-f--first-real-ml-execution-run) |
+| A — Scraper hardening + backfill | Mar 28 – Apr 12 | Code complete; scheduled runs broken (missing GH secrets) | [Plan 008a](plans/008a-draft-season-readiness.md) |
+| F (ML) — First real ML execution | Apr 13 – Apr 20 | Complete | [Plan 008a §F](plans/008a-draft-season-readiness.md#milestone-f--first-real-ml-execution-run) |
 | B — Lock draft kit workflow / UI scope | Apr 21 – May 4 | Approved early | [Spec 009](specs/009-web-draft-kit-ux.md) · [ADR 007](adrs/007-web-first-draft-session-and-temp-kit-lifecycle.md) |
 | C — Backend integration verification | May 5 – May 18 | **Complete** | [Spec 011](specs/011-milestone-c-token-pass-backend.md) · [Plan 011a](plans/011a-token-pass-entitlements-and-gating.md) · [Plan 011b](plans/011b-session-close-rankings-snapshot.md) |
 | D — Build web draft kit UI | May 19 – Jun 29 | **Complete** | [Spec 010](specs/010-web-ui-wireframes-design.md) · [Plan 010a](plans/010a-web-draft-kit-ui.md) |
-| E — Polish exports | Jun 30 – Jul 13 | Planned | [Plan 008a §E](plans/008a-draft-season-readiness.md#milestone-e--make-exports-launch-grade) |
-| G — Launch hardening | Jul 14 – Aug 17 | Planned | [Plan 008a §G](plans/008a-draft-season-readiness.md#milestone-g--harden-the-web-launch) |
+| E — Polish exports | Jun 30 – Jul 13 | **Complete** | [Spec 012](specs/012-export-polish.md) |
+| F (Export) — VORP column rename / null UX | — | **Complete** | [Spec 013](specs/013-vorp-export-column.md) · [Brainstorm 006](research/006-vorp-export-column-brainstorm.md) |
+| G — Launch hardening | Jul 14 – Aug 17 | Next | [Plan 008a §G](plans/008a-draft-season-readiness.md#milestone-g--harden-the-web-launch) |
 | H — Extension go/no-go | Aug 18 – Aug 24 | Conditional | [Plan 008a §H](plans/008a-draft-season-readiness.md#milestone-h--extension-gono-go) |
 | I — Extension MVP / beta | Aug 25 – Sep 14 | Conditional | [Spec 008](specs/008-live-draft-sync-launch-required.md) · [Plan 008a §I](plans/008a-draft-season-readiness.md#milestone-i--extension-mvp--beta-conditional) |
 
-### Current execution reality (2026-05-10)
+> Note: the original roadmap reused the letter `F` for "First real ML execution." Milestone E+F under draft-kit polish (exports + VORP rename) shipped together as PR #38 and are tracked as separate rows above for clarity.
+
+### Current execution reality (2026-05-16)
 
 - `008a` remains a **reference roadmap**, not the literal active execution order.
 - `008b` live-draft backend, `008d` draft-pass lifecycle, and `008e` optional pick-number follow-up are **implemented and merged on `main`**.
 - `008c` extension sync adapters are implemented; remaining validation is season-blocked live draft-room verification, with Yahoo still gated/non-blocking.
 - **Milestone C complete:** `011a` (kit-pass entitlements + Stripe + route gating) and `011b` (session close rankings snapshot) merged on `main` via PR #36 (2026-05-06).
-- **Milestone D complete:** `010a` web draft kit UI shipped and merged to `main` via PR #37 (2026-05-10). All 27 tasks, 23 AC items, 182 tests passing. Full adversarial review trail in `docs/plans/010a-adversarial-review-r1.md`.
-- **Next execution priority:** Milestone E — export polish.
+- **Milestone D complete:** `010a` web draft kit UI shipped and merged to `main` via PR #37 (2026-05-10). All 27 tasks, 23 AC items, 182 tests passing.
+- **Milestones E + F (export polish + VORP column) complete:** spec 012 (export polish) and spec 013 (VORP rename + null UX) shipped together via PR #38 (2026-05-16, squash `18154ce`). 71 backend + 204 frontend tests.
+- **Scraper Actions broken since at least 2026-05-11:** `scrape-nhl-com` and `scrape-moneypuck` fail daily with `SupabaseException: supabase_url is required`. Root cause: `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are not configured as GitHub Actions secrets (neither repo-level nor in the `Production` / `Preview` environments). `scrape-projections` is failing weekly for the same reason. Fix is configuration only — see Milestone A close-out tasks below.
+- **Next execution priority:** close out Milestone A (scraper secrets + Node 20 action deprecation), then start Milestone G (launch hardening + E2E tests).
+
+### Milestone A close-out tasks (before Milestone G)
+
+- [ ] Add repo-level GitHub Actions secrets: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (service-role key, not anon)
+- [ ] Add optional secrets: `ELITE_PROSPECTS_API_KEY`, `YAHOO_OAUTH_REFRESH_TOKEN`, `FANTRAX_SESSION_TOKEN`, `DATABASE_URL` (for retrain workflow)
+- [ ] Add repo variable `CURRENT_SEASON=2025-26` (currently relies on inline default)
+- [ ] Manually trigger `scrape-nhl-com` and `scrape-moneypuck` via `workflow_dispatch` to confirm green
+- [ ] Bump `actions/checkout` and `actions/setup-python` past Node 20 deprecation (forced to Node 24 on 2026-06-02)
+- [ ] Decide whether scrapers should target the `Production` environment (so secrets live there) or stay repo-level
+
+### Milestone G additions
+
+- [ ] **Playwright E2E test setup** — install, baseline auth + dashboard + export + live-draft flows. Unit tests stay; E2E is additive launch-gating coverage.
+- [ ] Holistic code review pass (security, error handling, dead code, test gaps) after scraper fixes land.
 
 Use this roadmap for milestone sequencing and launch prioritization. For live branch/phase status, defer to `docs/state/workflow-state.md` and the active plan docs.
 
