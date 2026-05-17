@@ -8,6 +8,7 @@ on:
 jobs:
   platform-data:
     runs-on: ubuntu-latest
+    environment: Production
     defaults:
       run:
         working-directory: apps/api
