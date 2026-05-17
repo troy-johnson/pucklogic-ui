@@ -15,6 +15,7 @@ jobs:
   scrape:
     name: NHL.com daily scrape
     runs-on: ubuntu-latest
+    environment: Production
     defaults:
       run:
         working-directory: apps/api
